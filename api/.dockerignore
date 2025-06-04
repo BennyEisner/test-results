@@ -1,0 +1,25 @@
+# Ignore Go build output
+*.out
+*.exe
+*.test
+
+# Ignore version control
+.git
+.gitignore
+
+# Ignore IDE/editor configs
+.vscode
+.idea
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore temporary files
+*.log
+*.tmp
+*.swp
+
+# Ignore test data
+testdata/
+coverage.*

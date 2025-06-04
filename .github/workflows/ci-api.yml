@@ -1,0 +1,29 @@
+name: CI - API
+
+on:
+  push:
+    paths:
+      - 'api/**'
+      - '.github/workflows/ci-api.yml'
+  pull_request:
+    paths:
+      - 'api/**'
+      - '.github/workflows/ci-api.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install dependencies
+        run: go mod tidy
+
+      - name: Run tests
+        run: go test ./...
