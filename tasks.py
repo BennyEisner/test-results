@@ -45,5 +45,5 @@ def clean(c):
 @task(name="fmt", aliases=["f"])
 def fmt(c):
     """Format code using black and isort."""
-    c.run(f"isort {SRC_DIR} {TEST_DIR}")
-    c.run(f"black {SRC_DIR} {TEST_DIR}")
+    c.run(f"isort {SRC_DIR}")
+    c.run(f"black {SRC_DIR}")
