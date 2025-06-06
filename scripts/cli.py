@@ -1,15 +1,19 @@
+import os
 import subprocess
 import click
 import psycopg
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file if it existsj
 
 # Default DB connection info (can be overridden by env vars)
 DB_CONFIG = {
-    "dbname": "testresults",
-    "user": "postgres",
-    "password": "postgres",
-    "host": "localhost",
-    "port": 5432
+    "dbname": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": int(os.getenv("DB_PORT", "5432"))
 }
 
 def load_sql_and_execute(path: Path, conn: psycopg.Connection):
@@ -25,12 +29,17 @@ def load_sql_and_execute(path: Path, conn: psycopg.Connection):
 @click.group()
 def cli():
     """Database utility CLI for test-results."""
+    #click.echo(DB_CONFIG)  # Debug: print DB config
     pass
 
 @cli.command("create-db")
 @click.argument("sql_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 def create_db(sql_file):
-    """Create the DB schema using the given SQL_FILE."""
+    """
+    Create the DB schema using the given SQL_FILE.
+
+    Benny is soo cool.
+    """
     with psycopg.connect(**DB_CONFIG) as conn:
         load_sql_and_execute(sql_file, conn)
 
