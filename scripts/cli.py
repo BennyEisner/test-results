@@ -1,7 +1,9 @@
+# scripts/cli.py
 import os
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 import click
 import psycopg
@@ -25,7 +27,7 @@ PG_CONFIG = {**DB_CONFIG}
 PG_CONFIG["dbname"] = "postgres"
 
 
-def validate_config():
+def validate_config() -> None:
     """Validate that all required database configuration is present."""
     missing = []
     for key in ["dbname", "user", "password"]:
@@ -38,7 +40,7 @@ def validate_config():
         )
 
 
-def load_sql_and_execute(path: Path, conn: psycopg.Connection):
+def load_sql_and_execute(path: Path, conn: psycopg.Connection) -> None:
     """
     Load SQL from a file and execute it against the database.
 
@@ -72,7 +74,7 @@ def load_sql_and_execute(path: Path, conn: psycopg.Connection):
 
 
 @click.group()
-def cli():
+def cli() -> None:
     """Database utility CLI for test-results."""
     try:
         validate_config()
@@ -83,7 +85,7 @@ def cli():
 
 @cli.command("create-db")
 @click.option("--dbname", help="Override the database name from environment")
-def create_db(dbname):
+def create_db(dbname: Optional[str] = None) -> None:
     """
     Create the database if it doesn't exist.
 
@@ -117,7 +119,7 @@ def create_db(dbname):
 @click.argument(
     "schema_file", type=click.Path(exists=True, dir_okay=False, path_type=Path)
 )
-def init_schema(schema_file):
+def init_schema(schema_file: Path) -> None:
     """
     Initialize the database schema using the given SCHEMA_FILE.
 
@@ -138,7 +140,7 @@ def init_schema(schema_file):
 @click.argument(
     "sql_file", type=click.Path(exists=True, dir_okay=False, path_type=Path)
 )
-def seed_db(sql_file):
+def seed_db(sql_file: Path) -> None:
     """
     Seed the database with example data using SQL_FILE.
 
@@ -155,7 +157,7 @@ def seed_db(sql_file):
 @cli.command("dump-db")
 @click.argument("output_file", type=click.Path(dir_okay=False, path_type=Path))
 @click.option("--schema-only", is_flag=True, help="Dump only the schema.")
-def dump_db(output_file, schema_only):
+def dump_db(output_file: str, schema_only: bool = False) -> None:
     """
     Dump the database to OUTPUT_FILE using pg_dump.
 
@@ -198,7 +200,7 @@ def dump_db(output_file, schema_only):
 @cli.command("delete-db")
 @click.option("--force", is_flag=True, help="Force drop without confirmation")
 @click.option("--dbname", help="Override the database name from environment")
-def delete_db(force, dbname):
+def delete_db(force: bool, dbname: Optional[str] = None) -> None:
     """
     Drop (delete) the database completely.
 
@@ -215,7 +217,7 @@ def delete_db(force, dbname):
     # Safety confirmation unless --force is used
     if not force:
         confirmation = click.prompt(
-            f"Are you sure you want to drop database '{db_name}'? ' 
+            f"Are you sure you want to drop database '{db_name}'?"
             f"Type '{db_name}' to confirm",
             type=str,
         )
@@ -252,3 +254,4 @@ def delete_db(force, dbname):
 
 if __name__ == "__main__":
     cli()
+
