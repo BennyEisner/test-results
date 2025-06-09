@@ -6,12 +6,47 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"database/sql"
+
+	_ "github.com/lib/pq"
 )
 
-func main() {
-	addr := ":8080"
+const (
+	host     = "localhost"
+	port     = 5432
+	user     = "postgres"
+	password = "postgres"
+	dbname   = "testresults"
+)
 
+var pool *sql.DB
+
+func main() {
+
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+	// Test db connection
+	err = db.Ping()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Connected to database")
+
+	addr := ":8080"
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Home Page")
+	})
 
 	// Liveness probe
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
