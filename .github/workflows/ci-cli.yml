@@ -1,0 +1,19 @@
+# .github/workflows/ci-cli.yml
+name: CI for CLI
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'hotfix/**'
+      - 'bugfix/**'
+    paths:
+      - 'cli/**'
+      - '.github/workflows/ci-cli.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say Hello from CLI CI
+        run: echo "✅ Workflow triggered by changes in cli/ or ci-cli.yml"
