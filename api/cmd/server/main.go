@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -129,25 +130,68 @@ func main() {
 	mux.HandleFunc("/api/projects/create", func(w http.ResponseWriter, r *http.Request) {
 		//Query database for al projects
 		var p Project
-		decoder := json.NewDecoder(r.Body)
+		decoder := json.NewDecoder(r.Body) // Creates JSON decoder to read from request body
+		// Decodes JSON request body into p
 		if err := decoder.Decode(&p); err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid request: "+err.Error())
 			return
 		}
-		defer r.Body.Close()
+		defer r.Body.Close() //Closes request body
 
+		// Ensures project name isnt empty
 		if p.Name == "" {
 			respondWithError(w, http.StatusBadRequest, "Project name is required")
 			return
 		}
-		var id int
-		err := db.QueryRow("INSERT INTO projects(name) VALUES($1) RETURNING id", p.Name).Scan(&id)
+
+		var id int                                                                                 // Variable to hold new projects ID returned from the database
+		err := db.QueryRow("INSERT INTO projects(name) VALUES($1) RETURNING id", p.Name).Scan(&id) // Puts ID into id variable
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
 			return
 		}
-		p.ID = id
-		respondWithJSON(w, http.StatusCreated, p)
+		p.ID = id                                 // Updates Project struct with database ID
+		respondWithJSON(w, http.StatusCreated, p) //Send success response with complete project in the response
+	})
+
+	//DESTROY Project by ID
+	mux.HandleFunc("/api/projects/", func(w http.ResponseWriter, r *http.Request) {
+		// Ensure request is a DELETE request
+		if r.Method != http.MethodDelete {
+			respondWithError(w, http.StatusMethodNotAllowed, "Only DELETE method is allowed")
+			return
+		}
+		//Extract the project ID from URL
+		idStr := r.URL.Path[len("/api/projects/"):]
+		if idStr == "" {
+			respondWithError(w, http.StatusBadRequest, "Project name is required")
+			return
+		}
+		// Convert ID string to int
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalild Project ID format")
+			return
+		}
+		// Execute DELETE query
+		result, err := db.Exec("DELETE FROM projects WHERE id = $1", id)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
+			return
+		}
+		// Essentially check if the project existed by seeing if any rows were affected
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Error checking delete result: "+err.Error())
+			return
+		}
+
+		if rowsAffected == 0 {
+			respondWithError(w, http.StatusNotFound, "Project not found")
+			return
+		}
+		respondWithJSON(w, http.StatusOK, map[string]string{"message": "Project deleted successfully"})
+
 	})
 
 	log.Printf("Starting server on %s", addr)
