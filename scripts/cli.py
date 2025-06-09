@@ -1,3 +1,4 @@
+# scripts/cli.py
 import os
 import shutil
 import subprocess
@@ -215,7 +216,7 @@ def delete_db(force, dbname):
     # Safety confirmation unless --force is used
     if not force:
         confirmation = click.prompt(
-            f"Are you sure you want to drop database '{db_name}'? ' 
+            f"Are you sure you want to drop database '{db_name}'?"
             f"Type '{db_name}' to confirm",
             type=str,
         )
