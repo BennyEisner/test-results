@@ -45,5 +45,16 @@ def clean(c):
 @task(name="fmt", aliases=["f"])
 def fmt(c):
     """Format code using black and isort."""
-    c.run(f"isort {SRC_DIR}")
-    c.run(f"black {SRC_DIR}")
+    targets = f"{SRC_DIR} {TEST_DIR}"
+
+    print("Formatting code with isort...")
+    c.run(f"isort {targets}")
+
+    print("Formatting code with black...")
+    c.run(f"black {targets}")
+    
+    print("Formatting code with autoflake...")
+    c.run(f"autoflake --remove-all-unused-imports -in-place --recursive {targets}")
+
+    print("Code formatting complete.")
+

@@ -1,0 +1,14 @@
+[MASTER]
+ignore = venv,.venv,.tox,node_modules,data
+jobs = 5
+init-hook = import sys; sys.path.extend(['.', 'scripts', 'tests'])
+extension-pkg-allow-list = lxml.etree
+
+[FORMAT]
+max-line-length = 80
+
+[TYPECHECK]
+ignored-modules = pydantic
+
+[MESSAGES CONTROL]
+disable = W0703,R0201,R0911,R0912,R0913,R0917,W0613,W1203,W0718,R0914,R0915,C0114,C0115,C0116,R1702,R0903,R0801,E0110,E0611,C0301
