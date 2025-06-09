@@ -1,13 +1,13 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"time"
-
-	"database/sql"
 
 	_ "github.com/lib/pq"
 )
@@ -19,6 +19,22 @@ const (
 	password = "postgres"
 	dbname   = "testresults"
 )
+
+type Project struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+func respondWithJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+
+func respondWithError(w http.ResponseWriter, status int, message string) {
+	respondWithJSON(w, status, map[string]string{"error": message})
+
+}
 
 var pool *sql.DB
 
@@ -72,6 +88,66 @@ func main() {
 	mux.HandleFunc("/api/hello", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "Hello from %s at %s\n", os.Getenv("HOSTNAME"), time.Now().Format(time.RFC3339))
+	})
+
+	// Database connection + query test example
+	mux.HandleFunc("/api/db-test", func(w http.ResponseWriter, r *http.Request) {
+		var count int
+		err := db.QueryRow("SELECT COUNT(*) FROM projects").Scan(&count)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Database error: %v", err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "Database connection successful. Projects count: %d", count)
+	})
+
+	// GET all Projects
+	mux.HandleFunc("/api/projects", func(w http.ResponseWriter, r *http.Request) {
+		//Query database for al projects
+		rows, err := db.Query("SELECT id, name FROM projects ORDER BY id")
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
+			return
+		}
+		defer rows.Close()
+
+		projects := []Project{}
+		for rows.Next() {
+			var p Project
+			if err := rows.Scan(&p.ID, &p.Name); err != nil {
+				respondWithError(w, http.StatusInternalServerError, "Scan error: "+err.Error())
+				return
+			}
+			projects = append(projects, p)
+		}
+		respondWithJSON(w, http.StatusOK, projects)
+	})
+
+	// CREATE new Project
+	mux.HandleFunc("/api/projects/create", func(w http.ResponseWriter, r *http.Request) {
+		//Query database for al projects
+		var p Project
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&p); err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid request: "+err.Error())
+			return
+		}
+		defer r.Body.Close()
+
+		if p.Name == "" {
+			respondWithError(w, http.StatusBadRequest, "Project name is required")
+			return
+		}
+		var id int
+		err := db.QueryRow("INSERT INTO projects(name) VALUES($1) RETURNING id", p.Name).Scan(&id)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
+			return
+		}
+		p.ID = id
+		respondWithJSON(w, http.StatusCreated, p)
 	})
 
 	log.Printf("Starting server on %s", addr)
