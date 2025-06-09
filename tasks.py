@@ -54,7 +54,7 @@ def fmt(c):
     c.run(f"black {targets}")
     
     print("Formatting code with autoflake...")
-    c.run(f"autoflake --remove-all-unused-imports -in-place --recursive {targets}")
+    c.run(f"autoflake --remove-all-unused-imports --in-place --recursive {targets}")
 
     print("Code formatting complete.")
 
