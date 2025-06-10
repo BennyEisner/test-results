@@ -10,6 +10,35 @@ This is the backend service for the Test Results platform. It is responsible for
 * Structured logging middleware
 * Clean architecture with separation of concerns (`cmd`, `internal`, `middleware`, `routes`, `config`)
 
+## Go Task Runner
+
+### Install
+
+```shell
+brew install go-task
+```
+
+### Usage
+
+#### Install dependencies
+
+
+task deps
+
+#### Run lint checks
+
+```shell
+task lint
+```
+
+
+#### Run tests
+
+```shell
+task test
+```
+
+
 ## Project Structure
 
 ```
