@@ -1,0 +1,41 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Install required tools
+    cmds:
+      - |
+        if ! command -v golangci-lint >/dev/null 2>&1; then
+          echo "Installing golangci-lint from source..."
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.56.2
+        fi
+
+  deps:
+    desc: Install Go dependencies
+    cmds:
+      - go mod tidy
+
+  lint:
+    desc: Run golangci-lint
+    deps: [setup]
+    cmds:
+      - golangci-lint run ./...
+
+  test:
+    desc: Run unit tests
+    cmds:
+      - go test ./...
+
+  test-integration:
+    desc: Run integration tests
+    cmds:
+      - go test -tags=integration ./...
+
+  test-e2e:
+    desc: Run end-to-end tests
+    cmds:
+      - go test ./tests/e2e
+
+  ci:
+    desc: Run full CI pipeline
+    deps: [setup, deps, lint, test]
