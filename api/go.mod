@@ -1,5 +1,4 @@
-module github.com/BennyEisner/test-results/api
-
+module github.com/BennyEisner/test-results
 go 1.24.3
 
 require (
