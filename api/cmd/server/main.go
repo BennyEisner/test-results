@@ -19,8 +19,8 @@ func main() {
 		fmt.Fprintln(w, "OK")
 	})
 
-	// Readiness probe
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+	// Readiness probe
 		// Add readiness logic here (e.g. DB or cache connectivity check)
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "Ready")
@@ -44,3 +44,4 @@ func main() {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
+

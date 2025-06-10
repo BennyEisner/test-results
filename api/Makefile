@@ -2,6 +2,12 @@
 test:
 	go test ./...
 
+build:
+	go build cmd/server/main.go
+
+run:
+	go run cmd/server/main.go
+
 test-integration:
 	go test -tags=integration ./...
 
