@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/BennyEisner/test-results/routes"
+	"github.com/BennyEisner/test-results/internal/routes"
 	_ "github.com/lib/pq"
 )
 

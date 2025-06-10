@@ -3,7 +3,8 @@ package db
 import (
 	"context"
 	"database/sql"
-	"github.com/BennyEisner/test-results/api/models"
+
+	"github.com/BennyEisner/test-results/internal/models"
 )
 
 type SQLProjectRepository struct {

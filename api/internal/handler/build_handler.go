@@ -1,0 +1,415 @@
+package handler
+
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/BennyEisner/test-results/internal/models" // Using models for DB interaction
+	"github.com/BennyEisner/test-results/internal/utils"
+)
+
+// HandleBuilds handles GET (all builds) and POST (create build) requests for /api/builds
+func HandleBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	switch r.Method {
+	case http.MethodGet:
+		getAllBuilds(w, r, db) // Renamed from GetBuilds
+	case http.MethodPost:
+		createBuild(w, r, db) // New function to handle general build creation
+	default:
+		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+// HandleBuildByPath handles operations on a specific build via /api/builds/{id}
+func HandleBuildByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/builds/"), "/")
+	if len(pathSegments) != 1 || pathSegments[0] == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID in URL")
+		return
+	}
+
+	idStr := pathSegments[0]
+	id, err := strconv.ParseInt(idStr, 10, 64) // Build ID is int64 in models.Build
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID format: "+err.Error())
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		getBuildByID(w, r, id, db)
+	case http.MethodPatch:
+		updateBuild(w, r, id, db)
+	case http.MethodDelete:
+		deleteBuild(w, r, id, db)
+	default:
+		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+// HandleProjectBuilds handles GET and POST for builds under a specific project: /api/projects/{projectID}/builds
+func HandleProjectBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/projects/"), "/")
+	// Expected path: /api/projects/{projectID}/builds
+	if len(pathSegments) < 2 || pathSegments[0] == "" || pathSegments[1] != "builds" {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid URL. Expected /api/projects/{projectID}/builds")
+		return
+	}
+
+	projectIDStr := pathSegments[0]
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64) // Project ID is int64
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
+		return
+	}
+
+	// Check if the project exists
+	var exists bool
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&exists)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking project: "+err.Error())
+		return
+	}
+	if !exists {
+		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Project with ID %d not found", projectID))
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		getBuildsByProjectID(w, r, projectID, db)
+	case http.MethodPost:
+		createBuildForProject(w, r, projectID, db)
+	default:
+		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+// getBuildsByProjectID fetches all builds for a given projectID
+func getBuildsByProjectID(w http.ResponseWriter, r *http.Request, projectID int64, db *sql.DB) {
+	rows, err := db.Query("SELECT id, project_id, build_number, ci_provider, ci_url, created_at FROM builds WHERE project_id = $1 ORDER BY created_at DESC", projectID)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching builds: "+err.Error())
+		return
+	}
+	defer rows.Close()
+
+	buildsAPI := []utils.Build{} // Slice of utils.Build for API response
+	for rows.Next() {
+		var b models.Build // Scan into models.Build to handle db types
+		var ciURL sql.NullString
+		if err := rows.Scan(&b.ID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Error scanning build: "+err.Error())
+			return
+		}
+		apiBuild := utils.Build{
+			ID:          int(b.ID),        // Convert int64 to int for API DTO
+			ProjectID:   int(b.ProjectID), // Convert int64 to int
+			BuildNumber: b.BuildNumber,
+			CIProvider:  b.CIProvider,
+			CreatedAt:   b.CreatedAt,
+		}
+		if ciURL.Valid {
+			apiBuild.CIURL = ciURL.String
+		}
+		buildsAPI = append(buildsAPI, apiBuild)
+	}
+	if err = rows.Err(); err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Error iterating build rows: "+err.Error())
+		return
+	}
+	utils.RespondWithJSON(w, http.StatusOK, buildsAPI)
+}
+
+// getBuildByID fetches a single build by its ID
+func getBuildByID(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
+	var b models.Build
+	var ciURL sql.NullString
+	err := db.QueryRow("SELECT id, project_id, build_number, ci_provider, ci_url, created_at FROM builds WHERE id = $1", id).Scan(
+		&b.ID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			utils.RespondWithError(w, http.StatusNotFound, "Build not found")
+		} else {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching build: "+err.Error())
+		}
+		return
+	}
+	apiBuild := utils.Build{
+		ID:          int(b.ID),
+		ProjectID:   int(b.ProjectID),
+		BuildNumber: b.BuildNumber,
+		CIProvider:  b.CIProvider,
+		CreatedAt:   b.CreatedAt,
+	}
+	if ciURL.Valid {
+		apiBuild.CIURL = ciURL.String
+	}
+	utils.RespondWithJSON(w, http.StatusOK, apiBuild)
+}
+
+// getAllBuilds fetches all builds from the database
+func getAllBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	rows, err := db.Query("SELECT id, project_id, build_number, ci_provider, ci_url, created_at FROM builds ORDER BY created_at DESC")
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching all builds: "+err.Error())
+		return
+	}
+	defer rows.Close()
+
+	buildsAPI := []utils.Build{}
+	for rows.Next() {
+		var b models.Build
+		var ciURL sql.NullString
+		if err := rows.Scan(&b.ID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Error scanning build: "+err.Error())
+			return
+		}
+		apiBuild := utils.Build{
+			ID:          int(b.ID),
+			ProjectID:   int(b.ProjectID),
+			BuildNumber: b.BuildNumber,
+			CIProvider:  b.CIProvider,
+			CreatedAt:   b.CreatedAt,
+		}
+		if ciURL.Valid {
+			apiBuild.CIURL = ciURL.String
+		}
+		buildsAPI = append(buildsAPI, apiBuild)
+	}
+	if err = rows.Err(); err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Error iterating build rows: "+err.Error())
+		return
+	}
+	utils.RespondWithJSON(w, http.StatusOK, buildsAPI)
+}
+
+// createBuildForProject creates a new build associated with a projectID from the URL path
+func createBuildForProject(w http.ResponseWriter, r *http.Request, projectID int64, db *sql.DB) {
+	var input struct { // Define a specific input struct for clarity
+		BuildNumber string `json:"build_number"`
+		CIProvider  string `json:"ci_provider"`
+		CIURL       string `json:"ci_url"` // utils.Build uses string, models.Build uses *string
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	if strings.TrimSpace(input.BuildNumber) == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "Build number is required")
+		return
+	}
+	if strings.TrimSpace(input.CIProvider) == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "CI provider is required")
+		return
+	}
+
+	var newBuildID int64
+	var createdAt time.Time
+	ciURLNullStr := sql.NullString{String: input.CIURL, Valid: strings.TrimSpace(input.CIURL) != ""}
+
+	err := db.QueryRow(
+		"INSERT INTO builds(project_id, build_number, ci_provider, ci_url, created_at) VALUES($1, $2, $3, $4, NOW()) RETURNING id, created_at",
+		projectID, input.BuildNumber, input.CIProvider, ciURLNullStr,
+	).Scan(&newBuildID, &createdAt)
+
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error creating build: "+err.Error())
+		return
+	}
+
+	createdAPIBuild := utils.Build{
+		ID:          int(newBuildID),
+		ProjectID:   int(projectID), // projectID from path
+		BuildNumber: input.BuildNumber,
+		CIProvider:  input.CIProvider,
+		CIURL:       input.CIURL, // Return the string version
+		CreatedAt:   createdAt,
+	}
+	utils.RespondWithJSON(w, http.StatusCreated, createdAPIBuild)
+}
+
+// createBuild handles POST to /api/builds, creating a build with project_id in payload
+func createBuild(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	var input utils.Build // Use utils.Build as it matches expected API payload structure
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	if input.ProjectID == 0 { // Assuming 0 is not a valid project ID from API
+		utils.RespondWithError(w, http.StatusBadRequest, "Project ID is required and must be valid")
+		return
+	}
+	if strings.TrimSpace(input.BuildNumber) == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "Build number is required")
+		return
+	}
+	if strings.TrimSpace(input.CIProvider) == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "CI provider is required")
+		return
+	}
+
+	// Check if the referenced project exists
+	var projectExists bool
+	projectID64 := int64(input.ProjectID) // Convert API int to model int64
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID64).Scan(&projectExists)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking project: "+err.Error())
+		return
+	}
+	if !projectExists {
+		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Project with ID %d not found", input.ProjectID))
+		return
+	}
+
+	var newBuildID int64
+	var createdAt time.Time
+	ciURLNullStr := sql.NullString{String: input.CIURL, Valid: strings.TrimSpace(input.CIURL) != ""}
+
+	err = db.QueryRow(
+		"INSERT INTO builds(project_id, build_number, ci_provider, ci_url, created_at) VALUES($1, $2, $3, $4, NOW()) RETURNING id, created_at",
+		projectID64, input.BuildNumber, input.CIProvider, ciURLNullStr,
+	).Scan(&newBuildID, &createdAt)
+
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error creating build: "+err.Error())
+		return
+	}
+
+	createdAPIBuild := utils.Build{
+		ID:          int(newBuildID),
+		ProjectID:   input.ProjectID,
+		BuildNumber: input.BuildNumber,
+		CIProvider:  input.CIProvider,
+		CIURL:       input.CIURL,
+		CreatedAt:   createdAt,
+	}
+	utils.RespondWithJSON(w, http.StatusCreated, createdAPIBuild)
+}
+
+// deleteBuild deletes a build by its ID
+func deleteBuild(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
+	result, err := db.Exec("DELETE FROM builds WHERE id = $1", id) // Target builds table
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error deleting build: "+err.Error())
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Error checking delete result: "+err.Error())
+		return
+	}
+
+	if rowsAffected == 0 {
+		utils.RespondWithError(w, http.StatusNotFound, "Build not found or already deleted")
+		return
+	}
+	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Build deleted successfully"})
+}
+
+// updateBuild updates an existing build by its ID
+func updateBuild(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
+	// Define input struct with pointers to distinguish between empty and not provided
+	var input struct {
+		BuildNumber *string `json:"build_number"`
+		CIProvider  *string `json:"ci_provider"`
+		CIURL       *string `json:"ci_url"` // Allow unsetting CIURL by passing empty string or null
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	// Check if build exists
+	var exists bool
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM builds WHERE id = $1)", id).Scan(&exists)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking build: "+err.Error())
+		return
+	}
+	if !exists {
+		utils.RespondWithError(w, http.StatusNotFound, "Build not found")
+		return
+	}
+
+	updateFields := []string{}
+	args := []interface{}{}
+	argID := 1
+
+	if input.BuildNumber != nil {
+		if strings.TrimSpace(*input.BuildNumber) == "" {
+			utils.RespondWithError(w, http.StatusBadRequest, "Build number cannot be empty if provided")
+			return
+		}
+		updateFields = append(updateFields, fmt.Sprintf("build_number = $%d", argID))
+		args = append(args, *input.BuildNumber)
+		argID++
+	}
+	if input.CIProvider != nil {
+		if strings.TrimSpace(*input.CIProvider) == "" {
+			utils.RespondWithError(w, http.StatusBadRequest, "CI provider cannot be empty if provided")
+			return
+		}
+		updateFields = append(updateFields, fmt.Sprintf("ci_provider = $%d", argID))
+		args = append(args, *input.CIProvider)
+		argID++
+	}
+	if input.CIURL != nil { // If CIURL key is present in JSON
+		ciURLToUpdate := sql.NullString{String: *input.CIURL, Valid: strings.TrimSpace(*input.CIURL) != ""}
+		updateFields = append(updateFields, fmt.Sprintf("ci_url = $%d", argID))
+		args = append(args, ciURLToUpdate)
+		argID++
+	}
+
+	if len(updateFields) == 0 {
+		utils.RespondWithError(w, http.StatusBadRequest, "No valid fields provided for update")
+		// Alternatively, could return 304 Not Modified or current resource
+		return
+	}
+
+	args = append(args, id) // Add ID for WHERE clause
+	query := fmt.Sprintf("UPDATE builds SET %s WHERE id = $%d RETURNING id, project_id, build_number, ci_provider, ci_url, created_at",
+		strings.Join(updateFields, ", "), argID)
+
+	var updatedBuildModel models.Build
+	var updatedCIURL sql.NullString
+	err = db.QueryRow(query, args...).Scan(
+		&updatedBuildModel.ID,
+		&updatedBuildModel.ProjectID,
+		&updatedBuildModel.BuildNumber,
+		&updatedBuildModel.CIProvider,
+		&updatedCIURL,
+		&updatedBuildModel.CreatedAt,
+	)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Update build failed: "+err.Error())
+		return
+	}
+
+	responseAPIBuild := utils.Build{
+		ID:          int(updatedBuildModel.ID),
+		ProjectID:   int(updatedBuildModel.ProjectID),
+		BuildNumber: updatedBuildModel.BuildNumber,
+		CIProvider:  updatedBuildModel.CIProvider,
+		CreatedAt:   updatedBuildModel.CreatedAt,
+	}
+	if updatedCIURL.Valid {
+		responseAPIBuild.CIURL = updatedCIURL.String
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, responseAPIBuild)
+}

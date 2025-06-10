@@ -8,9 +8,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
+	_ "time"
 
-	"yourmodule/middleware" // replace with your actual module path
+	"github.com/BennyEisner/test-results/internal/middleware"
+	_ "github.com/BennyEisner/test-results/middleware"
 )
 
 func TestLoggingMiddleware(t *testing.T) {

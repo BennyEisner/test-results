@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/BennyEisner/test-results/internal/handler"
@@ -48,7 +49,24 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 		handler.HandleProjects(w, r, db)
 	})
 
+	// Build-related endpoints
+	mux.HandleFunc("/api/builds", func(w http.ResponseWriter, r *http.Request) {
+		handler.HandleBuilds(w, r, db)
+	})
+
+	mux.HandleFunc("/api/builds/", func(w http.ResponseWriter, r *http.Request) {
+		handler.HandleBuildByPath(w, r, db)
+	})
+
+	// Note: This pattern will handle /api/projects/{id}/builds
+	// It needs to be specific enough not to clash with /api/projects/{id}
 	mux.HandleFunc("/api/projects/", func(w http.ResponseWriter, r *http.Request) {
-		handler.HandleProjectByPath(w, r, db)
+		// Check if the path is for project builds
+		if strings.HasSuffix(r.URL.Path, "/builds") || strings.Contains(r.URL.Path, "/builds/") {
+			handler.HandleProjectBuilds(w, r, db)
+		} else {
+			// Otherwise, it's a regular project path
+			handler.HandleProjectByPath(w, r, db)
+		}
 	})
 }
