@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="My Project">
+  <testsuite name="TestSuite1" package="com.example">
+    <testcase name="testCase1" classname="com.example.Test1" time="0.1">
+    </testcase>
+  </testsuite>
+</testsuites>

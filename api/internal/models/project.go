@@ -2,11 +2,16 @@ package models
 
 import (
 	"database/sql"
+	"encoding/xml"
 )
 
 type Project struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID   int64  `json:"id"  xml:"id"`
+	Name string `json:"name" xml:"name"`
+}
+type ProjectXML struct {
+	XMLName xml.Name `xml:"project"`
+	Project Project  `xml:",inline"`
 }
 
 // ScanFromRow scans a single row into a Project

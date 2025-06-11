@@ -3,11 +3,14 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 
+	_ "github.com/BennyEisner/test-results/internal/models"
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 
@@ -113,27 +116,69 @@ func createProject(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	var p utils.Project
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&p); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request: "+err.Error())
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
+	// Handle content of request
+	var p utils.Project
+	contentType := r.Header.Get("Content-Type")
+
+	if strings.Contains(contentType, "application/JSON") {
+
+		if err := json.Unmarshal(body, &p); err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid request: "+err.Error())
+			return
+		}
+	} else if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
+		var projectXML struct {
+			XMLName xml.Name `xml:"project"`
+			Name    string   `xml:"name"`
+		}
+
+		if err := xml.Unmarshal(body, &projectXML); err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid XML: "+err.Error())
+			return
+		}
+		p.Name = projectXML.Name
+	} else {
+		utils.RespondWithError(w, http.StatusBadRequest, "Content type must be application/xml or application/json: ")
+		return
+	}
 	if p.Name == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Project name is required")
+		utils.RespondWithError(w, http.StatusBadRequest, "Project Name Required")
 		return
 	}
 
+	//Add to db
 	var id int
-	err := db.QueryRow("INSERT INTO projects(name) VALUES($1) RETURNING id", p.Name).Scan(&id)
+	err = db.QueryRow("INSERT INTO projects(name) VALUES($1) RETURNING id", p.Name).Scan(&id)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
+		utils.RespondWithError(w, http.StatusBadRequest, "Database Error: "+err.Error())
 		return
 	}
 	p.ID = id
-	utils.RespondWithJSON(w, http.StatusCreated, p)
+
+	//Determine response XML or JSON from Accept header
+
+	acceptHeader := r.Header.Get("Accept")
+	if strings.Contains(acceptHeader, "application/xml") {
+		w.Header().Set("Content-Type", "application/xml")
+		w.WriteHeader(http.StatusCreated)
+		xml.NewEncoder(w).Encode(struct {
+			XMLName xml.Name `xml:"project"`
+			Name    string   `xml:"name"`
+			ID      int      `xml:"id"`
+		}{
+			ID:   p.ID,
+			Name: p.Name,
+		})
+	} else {
+		utils.RespondWithJSON(w, http.StatusCreated, p)
+	}
 }
 
 // Delete a project by ID

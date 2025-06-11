@@ -7,4 +7,3 @@ type Failure struct {
 	Type       *string `json:"type,omitempty"`
 	Details    *string `json:"details,omitempty"`
 }
-
