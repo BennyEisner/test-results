@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -116,7 +116,7 @@ func createProject(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Error reading request body", http.StatusBadRequest)
 		return
@@ -205,8 +205,13 @@ func deleteProject(w http.ResponseWriter, r *http.Request, id int, db *sql.DB) {
 
 // Update a project by ID
 func updateProject(w http.ResponseWriter, r *http.Request, id int, db *sql.DB) {
-	var updateData map[string]interface{}
-	decoder := json.NewDecoder(r.Body)
+
+	type ProjectUpdate struct {
+		Name string `xml:"name"`
+	}
+
+	var updateData ProjectUpdate
+	decoder := xml.NewDecoder(r.Body)
 
 	if err := decoder.Decode(&updateData); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request: "+err.Error())
@@ -214,11 +219,14 @@ func updateProject(w http.ResponseWriter, r *http.Request, id int, db *sql.DB) {
 	}
 	defer r.Body.Close()
 
-	if len(updateData) == 0 {
-		utils.RespondWithError(w, http.StatusBadRequest, "No fields provided for update")
+	fieldsUpdated := false
+	if updateData.Name != "" {
+		fieldsUpdated = true
+	}
+	if !fieldsUpdated {
+		utils.RespondWithError(w, http.StatusBadRequest, "No fields provided in the update")
 		return
 	}
-
 	// Check if project exists
 	var exists bool
 	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", id).Scan(&exists)
@@ -237,18 +245,14 @@ func updateProject(w http.ResponseWriter, r *http.Request, id int, db *sql.DB) {
 	values := []interface{}{}
 	valueIndex := 1
 
-	if name, ok := updateData["name"].(string); ok {
-		if name == "" {
-			utils.RespondWithError(w, http.StatusBadRequest, "Project name cannot be empty")
-			return
-		}
+	if updateData.Name != "" {
 		updateFields = append(updateFields, fmt.Sprintf("name = $%d", valueIndex))
-		values = append(values, name)
+		values = append(values, updateData.Name)
 		valueIndex++
 	}
 
 	if len(updateFields) == 0 {
-		utils.RespondWithError(w, http.StatusBadRequest, "No valid fields provided for update")
+		utils.RespondWithError(w, http.StatusInternalServerError, "No valid fields provided")
 		return
 	}
 

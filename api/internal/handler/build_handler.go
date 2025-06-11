@@ -3,6 +3,7 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -12,6 +13,26 @@ import (
 	"github.com/BennyEisner/test-results/internal/models" // Using models for DB interaction
 	"github.com/BennyEisner/test-results/internal/utils"
 )
+
+// First, define XML-compatible structs that will be used for input parsing
+type BuildInput struct {
+	BuildNumber string `json:"build_number" xml:"build_number"`
+	CIProvider  string `json:"ci_provider" xml:"ci_provider"`
+	CIURL       string `json:"ci_url" xml:"ci_url"`
+}
+
+type BuildCreateInput struct {
+	ProjectID   int    `json:"project_id" xml:"project_id"`
+	BuildNumber string `json:"build_number" xml:"build_number"`
+	CIProvider  string `json:"ci_provider" xml:"ci_provider"`
+	CIURL       string `json:"ci_url" xml:"ci_url"`
+}
+
+type BuildUpdateInput struct {
+	BuildNumber *string `json:"build_number" xml:"build_number"`
+	CIProvider  *string `json:"ci_provider" xml:"ci_provider"`
+	CIURL       *string `json:"ci_url" xml:"ci_url"`
+}
 
 // HandleBuilds handles GET (all builds) and POST (create build) requests for /api/builds
 func HandleBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
@@ -55,7 +76,6 @@ func HandleBuildByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 // HandleProjectBuilds handles GET and POST for builds under a specific project: /api/projects/{projectID}/builds
 func HandleProjectBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/projects/"), "/")
-	// Expected path: /api/projects/{projectID}/builds
 	if len(pathSegments) < 2 || pathSegments[0] == "" || pathSegments[1] != "builds" {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid URL. Expected /api/projects/{projectID}/builds")
 		return
@@ -189,16 +209,22 @@ func getAllBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	utils.RespondWithJSON(w, http.StatusOK, buildsAPI)
 }
 
-// createBuildForProject creates a new build associated with a projectID from the URL path
+// Modified to support XML input
 func createBuildForProject(w http.ResponseWriter, r *http.Request, projectID int64, db *sql.DB) {
-	var input struct { // Define a specific input struct for clarity
-		BuildNumber string `json:"build_number"`
-		CIProvider  string `json:"ci_provider"`
-		CIURL       string `json:"ci_url"` // utils.Build uses string, models.Build uses *string
+	var input BuildInput
+
+	contentType := r.Header.Get("Content-Type")
+	var decodeErr error
+
+	if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
+		decodeErr = xml.NewDecoder(r.Body).Decode(&input)
+	} else {
+		// Default to JSON for other content types or if not specified
+		decodeErr = json.NewDecoder(r.Body).Decode(&input)
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
+	if decodeErr != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+decodeErr.Error())
 		return
 	}
 	defer r.Body.Close()
@@ -237,17 +263,27 @@ func createBuildForProject(w http.ResponseWriter, r *http.Request, projectID int
 	utils.RespondWithJSON(w, http.StatusCreated, createdAPIBuild)
 }
 
-// createBuild handles POST to /api/builds, creating a build with project_id in payload
+// Modified to support XML input
 func createBuild(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	var input utils.Build // Use utils.Build as it matches expected API payload structure
+	var input BuildCreateInput
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
+	contentType := r.Header.Get("Content-Type")
+	var decodeErr error
+
+	if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
+		decodeErr = xml.NewDecoder(r.Body).Decode(&input)
+	} else {
+		// Default to JSON
+		decodeErr = json.NewDecoder(r.Body).Decode(&input)
+	}
+
+	if decodeErr != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+decodeErr.Error())
 		return
 	}
 	defer r.Body.Close()
 
-	if input.ProjectID == 0 { // Assuming 0 is not a valid project ID from API
+	if input.ProjectID == 0 {
 		utils.RespondWithError(w, http.StatusBadRequest, "Project ID is required and must be valid")
 		return
 	}
@@ -319,17 +355,22 @@ func deleteBuild(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Build deleted successfully"})
 }
 
-// updateBuild updates an existing build by its ID
+// Supports xml and json
 func updateBuild(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
-	// Define input struct with pointers to distinguish between empty and not provided
-	var input struct {
-		BuildNumber *string `json:"build_number"`
-		CIProvider  *string `json:"ci_provider"`
-		CIURL       *string `json:"ci_url"` // Allow unsetting CIURL by passing empty string or null
+	var input BuildUpdateInput
+
+	contentType := r.Header.Get("Content-Type")
+	var decodeErr error
+
+	if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
+		decodeErr = xml.NewDecoder(r.Body).Decode(&input)
+	} else {
+		// Default to JSON
+		decodeErr = json.NewDecoder(r.Body).Decode(&input)
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
+	if decodeErr != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+decodeErr.Error())
 		return
 	}
 	defer r.Body.Close()
@@ -368,7 +409,7 @@ func updateBuild(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
 		args = append(args, *input.CIProvider)
 		argID++
 	}
-	if input.CIURL != nil { // If CIURL key is present in JSON
+	if input.CIURL != nil { // If CIURL key is present in JSON/XML
 		ciURLToUpdate := sql.NullString{String: *input.CIURL, Valid: strings.TrimSpace(*input.CIURL) != ""}
 		updateFields = append(updateFields, fmt.Sprintf("ci_url = $%d", argID))
 		args = append(args, ciURLToUpdate)
@@ -377,7 +418,6 @@ func updateBuild(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
 
 	if len(updateFields) == 0 {
 		utils.RespondWithError(w, http.StatusBadRequest, "No valid fields provided for update")
-		// Alternatively, could return 304 Not Modified or current resource
 		return
 	}
 
