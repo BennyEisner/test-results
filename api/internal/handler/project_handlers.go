@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -90,6 +91,11 @@ func getProjectByID(w http.ResponseWriter, r *http.Request, id int, db *sql.DB) 
 
 // Get all projects
 func getProjects(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	if db == nil {
+		log.Println("❌ DB is nil")
+	} else {
+		log.Printf("✅ DB is initialized in getProjects: %#v", db)
+	}
 	rows, err := db.Query("SELECT id, name FROM projects ORDER BY id")
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
@@ -104,6 +110,7 @@ func getProjects(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 			utils.RespondWithError(w, http.StatusInternalServerError, "Scan error: "+err.Error())
 			return
 		}
+
 		projects = append(projects, p)
 	}
 	utils.RespondWithJSON(w, http.StatusOK, projects)

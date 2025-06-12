@@ -4,14 +4,14 @@ import (
 	"database/sql"
 	_ "encoding/xml"
 	"fmt"
+	"github.com/BennyEisner/test-results/internal/routes"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
-	"time"
-
-	"github.com/BennyEisner/test-results/internal/routes"
-	_ "github.com/lib/pq"
+	_ "strconv"
+	_ "time"
 )
 
 func main() {
@@ -21,38 +21,27 @@ func main() {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 
-	// Parse port as integer
 	portInt, err := strconv.Atoi(dbPort)
 	if err != nil {
 		portInt = 5432 // Default if parsing fails
 	}
-
-	// Create the connection string with integer port
-	connStr := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
 		dbHost, portInt, dbUser, dbPassword, dbName)
 
-	var db *sql.DB
-	maxRetries := 10
-	for i := 0; i < maxRetries; i++ {
-		db, err := sql.Open("postgres", connStr)
-		if err == nil {
-			err = db.Ping()
-			if err == nil {
-				fmt.Printf("Connected to db")
-				break
-			}
-		}
-		if i < maxRetries-1 {
-			retryDelay := time.Duration(i+1) * time.Second
-			fmt.Printf("Connection failed: %v. Retrying in %s...\n", err, retryDelay)
-			time.Sleep(retryDelay)
-		}
-	}
-
+	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to connect to database: %v", err))
+		panic(err)
 	}
 	defer db.Close()
+
+	// Test db connection
+	err = db.Ping()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Connected to database")
 
 	addr := ":8080"
 	mux := http.NewServeMux()
@@ -64,7 +53,4 @@ func main() {
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
-
-	fmt.Println("Application running!")
-	select {}
 }

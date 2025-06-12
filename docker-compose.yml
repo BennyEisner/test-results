@@ -11,12 +11,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-    healthcheck:
-      test: curl --fail http://localhost:5432/ || exit 1
-      interval: 40s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
   api:
     build:
       context: ./api
@@ -30,7 +24,23 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgrespassword
       - DB_NAME=test_results
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/readyz"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 3s
     depends_on:
       - db
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8088:80"
+    depends_on:
+      - db
+      - api
 volumes:
   postgres_data:
