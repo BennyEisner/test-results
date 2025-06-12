@@ -1,17 +1,36 @@
-
 services:
   db:
     image: postgres:latest
     restart: always
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: test_results 
+      POSTGRES_DB: test_results
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-
+    healthcheck:
+      test: curl --fail http://localhost:5432/ || exit 1
+      interval: 40s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgrespassword
+      - DB_NAME=test_results
+    depends_on:
+      - db
 volumes:
   postgres_data:

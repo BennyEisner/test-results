@@ -1,27 +1,26 @@
-# Stage 1: Build the application
-FROM golang:1.22 AS builder
+# First stage: build the Go application
+FROM golang:1.24-alpine AS builder
 
-# Set working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy go.mod and go.sum first for better cache utilization
+# Copy the Go modules manifests
 COPY go.mod go.sum ./
+
+# Download the Go module dependencies
 RUN go mod download
 
-# Copy the rest of the application
+# Copy the source code
 COPY . .
 
-# Build the Go app
-RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/server
+# Build the Go application
+RUN go build -o /app/bin/app ./cmd/server
 
-# Stage 2: Create a minimal image
-FROM gcr.io/distroless/static:nonroot
+# Second stage: use a minimal base image
+FROM scratch
 
-# Set working directory
-WORKDIR /
+# Copy the built Go binary from the builder stage
+COPY --from=builder /app/bin/app /app/bin/app
 
-# Copy binary from builder
-COPY --from=builder /app/server .
-
-# Run the binary
-ENTRYPOINT ["/server"]
+# Set the entrypoint to the Go binary
+ENTRYPOINT ["/app/bin/app"]
