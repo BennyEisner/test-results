@@ -46,6 +46,17 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	})
 
 	mux.HandleFunc("/api/projects", func(w http.ResponseWriter, r *http.Request) {
+		// Add CORS headers to allow frontend access
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		// Handle preflight OPTIONS requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		handler.HandleProjects(w, r, db)
 	})
 
