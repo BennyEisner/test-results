@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import type { Project } from '../types';
 import { fetchProjects } from '../services/api';
 import './ProjectsTable.css';
+import './ProjectsTable.css';
+
 
 const ProjectsTable = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -33,10 +35,9 @@ const ProjectsTable = () => {
     return <div className="error">Error: {error}</div>;
   }
 
-  return (
-    <div className="projects-table-container">
-      <h2>Projects</h2>
-      <table className="projects-table">
+ return (
+    <div>
+      <table className="table table-striped table-bordered table-hover">
         <thead>
           <tr>
             <th>ID</th>
