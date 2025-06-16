@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Project } from '../types';
 import { fetchProjects } from '../services/api';
 import './ProjectsTable.css';
-import './ProjectsTable.css';
-
 
 const ProjectsTable = () => {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,9 +23,12 @@ const ProjectsTable = () => {
         setLoading(false);
       }
     };
-
     loadProjects();
   }, []);
+
+  const handleProjectClick = (projectId: string | number) => {
+    navigate(`/api/project/${projectId}/builds`);
+  };
 
   if (loading) {
     return <div className="loading">Loading projects...</div>;
@@ -35,7 +38,7 @@ const ProjectsTable = () => {
     return <div className="error">Error: {error}</div>;
   }
 
- return (
+  return (
     <div>
       <table className="table table-striped table-bordered table-hover">
         <thead>
@@ -46,7 +49,12 @@ const ProjectsTable = () => {
         </thead>
         <tbody>
           {projects.map((project) => (
-            <tr key={project.id}>
+            <tr 
+              key={project.id}
+              onClick={() => handleProjectClick(project.id)}
+              style={{ cursor: 'pointer' }}
+              className="clickable-row"
+            >
               <td>{project.id}</td>
               <td>{project.name}</td>
             </tr>

@@ -1,17 +1,17 @@
-import ProjectsTable from './components/ProjectsTable'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ProjectsTable from './components/ProjectsTable';
 
 function App() {
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>Test Results Dashboard</h1>
-      </header>
-      <main>
-        <ProjectsTable />
-      </main>
-    </div>
-  )
+    <Router>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<ProjectsTable />} />
+          {/* Add other routes here */}
+        </Routes>
+      </div>
+    </Router>
+  );
 }
 
-export default App
+export default App;

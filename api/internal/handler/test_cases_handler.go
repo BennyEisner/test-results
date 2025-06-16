@@ -25,6 +25,7 @@ type TestCaseCreateInput struct {
 func HandleSuiteTestCases(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/suites/"), "/")
 
+	// Request error handling 
 	if len(pathSegments) < 1 || pathSegments[0] == "" {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suite ID in URL for test cases")
 		return
@@ -39,6 +40,7 @@ func HandleSuiteTestCases(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suite ID format: "+err.Error())
 		return
 	}
+
 
 	// Check if the suite exists
 	var suiteExists bool
