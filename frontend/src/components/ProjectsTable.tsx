@@ -27,7 +27,7 @@ const ProjectsTable = () => {
   }, []);
 
   const handleProjectClick = (projectId: string | number) => {
-    navigate(`/api/project/${projectId}/builds`);
+    navigate(`/projects/${projectId}`);
   };
 
   if (loading) {

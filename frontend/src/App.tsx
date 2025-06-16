@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProjectsTable from './components/ProjectsTable';
+import ProjectDetail from './components/ProjectDetail';
 
 function App() {
   return (
@@ -7,7 +8,8 @@ function App() {
       <div className="App">
         <Routes>
           <Route path="/" element={<ProjectsTable />} />
-          {/* Add other routes here */}
+          <Route path="/projects" element={<ProjectsTable />} />
+          <Route path="/projects/:projectId" element={<ProjectDetail />} />
         </Routes>
       </div>
     </Router>
