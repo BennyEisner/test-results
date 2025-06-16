@@ -66,7 +66,27 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	})
 
 	mux.HandleFunc("/api/builds/", func(w http.ResponseWriter, r *http.Request) {
-		handler.HandleBuildByPath(w, r, db)
+		// Check if the path is for build test suites
+		if strings.Contains(r.URL.Path, "/suites") {
+			handler.HandleBuildTestSuites(w, r, db)
+		} else {
+			handler.HandleBuildByPath(w, r, db)
+		}
+	})
+
+	// Test Suite related endpoints
+	mux.HandleFunc("/api/suites/", func(w http.ResponseWriter, r *http.Request) {
+		// Check if the path is for suite test cases
+		if strings.Contains(r.URL.Path, "/cases") {
+			handler.HandleSuiteTestCases(w, r, db)
+		} else {
+			handler.HandleTestSuiteByPath(w, r, db)
+		}
+	})
+
+	// Test Case related endpoints
+	mux.HandleFunc("/api/cases/", func(w http.ResponseWriter, r *http.Request) {
+		handler.HandleTestCaseByPath(w, r, db)
 	})
 
 	// Note: This pattern will handle /api/projects/{id}/builds

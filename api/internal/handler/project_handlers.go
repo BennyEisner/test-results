@@ -134,7 +134,7 @@ func createProject(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	var p utils.Project
 	contentType := r.Header.Get("Content-Type")
 
-	if strings.Contains(contentType, "application/JSON") {
+	if strings.Contains(contentType, "application/json") {
 
 		if err := json.Unmarshal(body, &p); err != nil {
 			utils.RespondWithError(w, http.StatusBadRequest, "Invalid request: "+err.Error())
