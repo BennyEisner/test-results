@@ -17,7 +17,7 @@ const BuildsTable = ({ projectId, suiteId }: BuildsTableProps) => {
     const loadBuilds = async () => {
       try {
         setLoading(true);
-        // Pass both projectId and suiteId to fetchBuilds
+        // Pass projectId and suiteId to fetchBuilds
         const data = await fetchBuilds(projectId, suiteId);
         setBuilds(data);
         setError(null);
@@ -29,7 +29,7 @@ const BuildsTable = ({ projectId, suiteId }: BuildsTableProps) => {
     };
 
     loadBuilds();
-  }, [projectId, suiteId]); // Add suiteId to dependency array
+  }, [projectId, suiteId]); 
 
   if (loading) {
     return <div className="loading">Loading builds...</div>;

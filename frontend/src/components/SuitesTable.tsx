@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import type { Suite } from '../types';
 import { fetchSuites } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 interface SuitesTableProps {
   projectId: string;
 }
 
 const SuitesTable = ({ projectId }: SuitesTableProps) => {
+  const navigate = useNavigate();
   const [suites, setSuites] = useState<Suite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +29,10 @@ const SuitesTable = ({ projectId }: SuitesTableProps) => {
 
     loadSuites();
   }, [projectId]);
+
+  const handleSuiteClick = (suiteId: string | number) => {
+    navigate(`/projects/${projectId}/suites/${suiteId}/builds`);
+  };
 
   if (loading) {
     return <div className="loading">Loading suites...</div>;
@@ -49,7 +55,12 @@ const SuitesTable = ({ projectId }: SuitesTableProps) => {
         </thead>
         <tbody>
           {suites.map((suite) => (
-            <tr key={suite.id}>
+            <tr
+              key={suite.id}
+              onClick={() => handleSuiteClick(suite.id)}
+              style={{ cursor: 'pointer' }}
+              className="clickable-row"
+            >
               <td>#{suite.id}</td>
               <td>{suite.name}</td>
               <td>{new Date(suite.time).toLocaleString()}</td>
