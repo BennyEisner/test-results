@@ -46,11 +46,20 @@ class DatabaseSeeder:
             (test_suite_id, build_number, ci_provider, ci_url)
         )
 
-    def seed_data(self, num_projects: int, num_suites_per_project: int, num_builds_per_suite: int):
+    def create_test_case(self, suite_id: int, name: str, classname: str, time: float, status: Optional[str]) -> Optional[int]:
+        print(f"    Creating test case: {name} for test_suite_id: {suite_id}")
+        return self._execute_returning_id(
+            "INSERT INTO test_cases(suite_id, name, classname, time, status) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            (suite_id, name, classname, time,status)
+        )
+
+
+    def seed_data(self, num_projects: int, num_suites_per_project: int, num_builds_per_suite: int, num_test_cases_per_build: int):
         print("Starting database seeding...")
         project_count = 0
         suite_count = 0
         build_count = 0
+        test_case_count = 0
 
         for i in range(num_projects):
             project_name = fake.company() + " Project " + str(i+1)
@@ -77,12 +86,30 @@ class DatabaseSeeder:
                             build_id = self.create_build(test_suite_id, build_number_str, ci_provider_str, ci_url_str)
                             if build_id:
                                 build_count += 1
+                                for l in range(num_test_cases_per_build):
+                                    test_case_name = fake.sentence(nb_words=4) + f" TC {l+1}"
+                                    test_case_classname = fake.word().capitalize() + "." + fake.word().capitalize() + "Tests"
+                                    test_case_time = round(random.uniform(0.01, 10.0), 3)
+                                    statuses = ["passed", "failed", "skipped", "error"]
+                                    weights = [0.75, 0.10, 0.10, 0.05] 
+                                    test_case_status = random.choices(statuses, weights=weights, k=1)[0]
+                                    
+                                    test_case_id = self.create_test_case(
+                                        suite_id=test_suite_id, 
+                                        name=test_case_name,
+                                        classname=test_case_classname,
+                                        time=test_case_time,
+                                        status=test_case_status
+                                    )
+                                    if test_case_id:
+                                        test_case_count += 1
         
         self.connection.commit()
         print(f"\nSeeding complete!")
         print(f"  Total projects created: {project_count}")
         print(f"  Total test suites created: {suite_count}")
         print(f"  Total builds created: {build_count}")
+        print(f"  Total test cases created: {test_case_count}")
 
 
     def close_connection(self):
@@ -109,16 +136,19 @@ def main():
         num_projects_to_create = random.randint(10, 20)
         num_suites_per_project_to_create = random.randint(10, 20)
         num_builds_per_suite_to_create = random.randint(2, 5)
+        num_test_cases_per_build_to_create = 20 # As per user request
 
         print(f"Attempting to create:")
         print(f"  - {num_projects_to_create} projects")
         print(f"  - {num_suites_per_project_to_create} test suites per project")
         print(f"  - {num_builds_per_suite_to_create} builds per test suite")
+        print(f"  - {num_test_cases_per_build_to_create} test cases per build (associated with the suite)")
         
         seeder.seed_data(
             num_projects=num_projects_to_create,
             num_suites_per_project=num_suites_per_project_to_create,
-            num_builds_per_suite=num_builds_per_suite_to_create
+            num_builds_per_suite=num_builds_per_suite_to_create,
+            num_test_cases_per_build=num_test_cases_per_build_to_create
         )
 
     except psycopg2.OperationalError as e:

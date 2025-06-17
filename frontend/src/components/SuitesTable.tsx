@@ -31,7 +31,7 @@ const SuitesTable = ({ projectId }: SuitesTableProps) => {
   }, [projectId]);
 
   const handleSuiteClick = (suiteId: string | number) => {
-    navigate(`/projects/${projectId}/suites/${suiteId}/builds`);
+    navigate(`/projects/${projectId}/suites/${suiteId}`);
   };
 
   if (loading) {
