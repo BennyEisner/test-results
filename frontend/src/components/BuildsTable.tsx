@@ -4,10 +4,11 @@ import { fetchBuilds } from '../services/api';
 import './BuildsTable.css';
 
 interface BuildsTableProps {
-  projectId: string;
+  projectId: string | number;
+  suiteId: string | number;
 }
 
-const BuildsTable = ({ projectId }: BuildsTableProps) => {
+const BuildsTable = ({ projectId, suiteId }: BuildsTableProps) => {
   const [builds, setBuilds] = useState<Build[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +17,8 @@ const BuildsTable = ({ projectId }: BuildsTableProps) => {
     const loadBuilds = async () => {
       try {
         setLoading(true);
-        const data = await fetchBuilds(projectId);
+        // Pass both projectId and suiteId to fetchBuilds
+        const data = await fetchBuilds(projectId, suiteId);
         setBuilds(data);
         setError(null);
       } catch (err) {
@@ -27,7 +29,7 @@ const BuildsTable = ({ projectId }: BuildsTableProps) => {
     };
 
     loadBuilds();
-  }, [projectId]);
+  }, [projectId, suiteId]); // Add suiteId to dependency array
 
   if (loading) {
     return <div className="loading">Loading builds...</div>;

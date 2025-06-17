@@ -20,6 +20,7 @@ dependencies = [
     "beautifulsoup4",
     "psycopg[binary]",  # v3 driver for PostgreSQL
     "python-dotenv",
+    "Faker",
 ]
 
 [project.optional-dependencies]

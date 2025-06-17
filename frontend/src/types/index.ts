@@ -12,3 +12,11 @@ export interface Build {
   ci_url?: string;
   created_at: string;
 }
+
+export interface Suite {
+  id: number;
+  project_id: number;
+  name: string;
+  parent_id?: number;
+  time: number;
+}

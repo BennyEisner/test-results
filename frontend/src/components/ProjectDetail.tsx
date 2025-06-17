@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import BuildsTable from './BuildsTable';
+//import BuildsTable from './BuildsTable';
+import SuitesTable from './SuitesTable.tsx';
 
 const ProjectDetail = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -16,12 +17,12 @@ const ProjectDetail = () => {
           onClick={() => navigate('/projects')} 
           className="back-button"
         >
-          ← Back to Projects
+          Back to Projects
         </button>
         <h1>Project {projectId}</h1>
       </div>
 
-      <BuildsTable projectId={projectId} />
+      <SuitesTable projectId={projectId} />
     </div>
   );
 };
