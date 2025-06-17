@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/BennyEisner/test-results/internal/handler"
+	"github.com/BennyEisner/test-results/internal/utils"
 )
 
 // RegisterRoutes registers all routes to the provided ServeMux
@@ -66,12 +68,8 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	})
 
 	mux.HandleFunc("/api/builds/", func(w http.ResponseWriter, r *http.Request) {
-		// Check if the path is for build test suites
-		if strings.Contains(r.URL.Path, "/suites") {
-			handler.HandleBuildTestSuites(w, r, db)
-		} else {
-			handler.HandleBuildByPath(w, r, db)
-		}
+		// Specific build-related sub-resources (like test suites under a build) are removed from here.
+		handler.HandleBuildByPath(w, r, db)
 	})
 
 	// Test Suite related endpoints
@@ -89,15 +87,52 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 		handler.HandleTestCaseByPath(w, r, db)
 	})
 
-	// Note: This pattern will handle /api/projects/{id}/builds
-	// It needs to be specific enough not to clash with /api/projects/{id}
+	// This pattern handles /api/projects/{id}, /api/projects/{id}/suites,
+	// /api/projects/{id}/suites/{suiteID}, and /api/projects/{id}/suites/{suiteID}/builds
 	mux.HandleFunc("/api/projects/", func(w http.ResponseWriter, r *http.Request) {
-		// Check if the path is for project builds
-		if strings.HasSuffix(r.URL.Path, "/builds") || strings.Contains(r.URL.Path, "/builds/") {
-			handler.HandleProjectBuilds(w, r, db)
-		} else {
-			// Otherwise, it's a regular project path
+		// Add CORS headers to allow frontend access
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight OPTIONS requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		requestPath := r.URL.Path // Renamed to avoid conflict with 'path' module if ever imported
+		// parts are based on the path after "/api/projects/" and with leading/trailing slashes removed from that segment.
+		// e.g., for /api/projects/1/suites/2/builds/ -> parts = ["1", "suites", "2", "builds"]
+		parts := strings.Split(strings.Trim(strings.TrimPrefix(requestPath, "/api/projects/"), "/"), "/")
+
+		if len(parts) == 4 && parts[1] == "suites" && parts[3] == "builds" {
+			// Route: /api/projects/{projectID}/suites/{suiteID}/builds
+			// This now correctly matches the expectation of HandleTestSuiteBuilds
+			handler.HandleTestSuiteBuilds(w, r, db)
+		} else if len(parts) == 3 && parts[1] == "suites" {
+			// Route: /api/projects/{projectID}/suites/{suiteID}
+			if r.Method == http.MethodGet {
+				projectID, errP := strconv.ParseInt(parts[0], 10, 64)
+				suiteID, errS := strconv.ParseInt(parts[2], 10, 64)
+				if errP != nil || errS != nil {
+					utils.RespondWithError(w, http.StatusBadRequest, "Invalid project or suite ID format in path.")
+				} else {
+					handler.GetProjectTestSuiteByID(w, r, projectID, suiteID, db)
+				}
+			} else {
+				// For other methods like PUT, DELETE on this specific path
+				utils.RespondWithError(w, http.StatusMethodNotAllowed, fmt.Sprintf("Method %s not allowed on path %s. For GET, ensure IDs are valid.", r.Method, requestPath))
+			}
+		} else if len(parts) == 2 && parts[1] == "suites" {
+			// Route: /api/projects/{projectID}/suites
+			handler.HandleProjectTestSuites(w, r, db)
+		} else if len(parts) == 1 && parts[0] != "" { // parts[0] is the project id, ensure it's not empty
+			// Route: /api/projects/{projectID}
 			handler.HandleProjectByPath(w, r, db)
+		} else {
+			// Malformed path under /api/projects/ or path was just /api/projects/ (which is handled by another route)
+			utils.RespondWithError(w, http.StatusNotFound, "Resource not found or path malformed under /api/projects/ prefix.")
 		}
 	})
 }

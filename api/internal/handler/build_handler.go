@@ -22,7 +22,7 @@ type BuildInput struct {
 }
 
 type BuildCreateInput struct {
-	ProjectID   int    `json:"project_id" xml:"project_id"`
+	TestSuiteID int    `json:"test_suite_id" xml:"test_suite_id"`
 	BuildNumber string `json:"build_number" xml:"build_number"`
 	CIProvider  string `json:"ci_provider" xml:"ci_provider"`
 	CIURL       string `json:"ci_url" xml:"ci_url"`
@@ -73,46 +73,51 @@ func HandleBuildByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 }
 
-// HandleProjectBuilds handles GET and POST for builds under a specific project: /api/projects/{projectID}/builds
-func HandleProjectBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/projects/"), "/")
-	if len(pathSegments) < 2 || pathSegments[0] == "" || pathSegments[1] != "builds" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid URL. Expected /api/projects/{projectID}/builds")
+// HandleTestSuiteBuilds handles GET and POST for builds under a specific test suite: /api/projects/{projectID}/test_suites/{testSuiteID}/builds
+func HandleTestSuiteBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	// Example path: /api/projects/1/suites/2/builds
+	trimmedPath := strings.TrimPrefix(r.URL.Path, "/api/projects/")
+	// pathSegments for "1/suites/2/builds" will be ["1", "suites", "2", "builds"]
+	pathSegments := strings.Split(strings.Trim(trimmedPath, "/"), "/")
+
+	// Expected segments: {projectID}, "suites", {testSuiteID}, "builds"
+	if len(pathSegments) < 4 || pathSegments[1] != "suites" || pathSegments[3] != "builds" {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid URL. Expected /api/projects/{projectID}/suites/{testSuiteID}/builds")
 		return
 	}
 
-	projectIDStr := pathSegments[0]
-	projectID, err := strconv.ParseInt(projectIDStr, 10, 64) // Project ID is int64
+	testSuiteIDStr := pathSegments[2]
+	testSuiteID, err := strconv.ParseInt(testSuiteIDStr, 10, 64)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid test suite ID format: "+err.Error())
 		return
 	}
 
-	// Check if the project exists
+	// Check if the test suite exists
 	var exists bool
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&exists)
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM test_suites WHERE id = $1)", testSuiteID).Scan(&exists)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking project: "+err.Error())
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking test suite: "+err.Error())
 		return
 	}
 	if !exists {
-		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Project with ID %d not found", projectID))
+		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Test suite with ID %d not found", testSuiteID))
 		return
 	}
 
 	switch r.Method {
 	case http.MethodGet:
-		getBuildsByProjectID(w, r, projectID, db)
+		getBuildsByTestSuiteID(w, r, testSuiteID, db)
 	case http.MethodPost:
-		createBuildForProject(w, r, projectID, db)
+		createBuildForTestSuite(w, r, testSuiteID, db)
 	default:
 		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
-// getBuildsByProjectID fetches all builds for a given projectID
-func getBuildsByProjectID(w http.ResponseWriter, r *http.Request, projectID int64, db *sql.DB) {
-	rows, err := db.Query("SELECT id, project_id, build_number, ci_provider, ci_url, created_at FROM builds WHERE project_id = $1 ORDER BY created_at DESC", projectID)
+// getBuildsByTestSuiteID fetches all builds for a given testSuiteID
+func getBuildsByTestSuiteID(w http.ResponseWriter, r *http.Request, testSuiteID int64, db *sql.DB) {
+	rows, err := db.Query("SELECT id, test_suite_id, build_number, ci_provider, ci_url, created_at FROM builds WHERE test_suite_id = $1 ORDER BY created_at DESC", testSuiteID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching builds: "+err.Error())
 		return
@@ -123,13 +128,13 @@ func getBuildsByProjectID(w http.ResponseWriter, r *http.Request, projectID int6
 	for rows.Next() {
 		var b models.Build // Scan into models.Build to handle db types
 		var ciURL sql.NullString
-		if err := rows.Scan(&b.ID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
 			utils.RespondWithError(w, http.StatusInternalServerError, "Error scanning build: "+err.Error())
 			return
 		}
 		apiBuild := utils.Build{
-			ID:          int(b.ID),        // Convert int64 to int for API DTO
-			ProjectID:   int(b.ProjectID), // Convert int64 to int
+			ID:          int(b.ID),          // Convert int64 to int for API DTO
+			TestSuiteID: int(b.TestSuiteID), // Convert int64 to int
 			BuildNumber: b.BuildNumber,
 			CIProvider:  b.CIProvider,
 			CreatedAt:   b.CreatedAt,
@@ -150,8 +155,8 @@ func getBuildsByProjectID(w http.ResponseWriter, r *http.Request, projectID int6
 func getBuildByID(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
 	var b models.Build
 	var ciURL sql.NullString
-	err := db.QueryRow("SELECT id, project_id, build_number, ci_provider, ci_url, created_at FROM builds WHERE id = $1", id).Scan(
-		&b.ID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt)
+	err := db.QueryRow("SELECT id, test_suite_id, build_number, ci_provider, ci_url, created_at FROM builds WHERE id = $1", id).Scan(
+		&b.ID, &b.TestSuiteID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			utils.RespondWithError(w, http.StatusNotFound, "Build not found")
@@ -162,7 +167,7 @@ func getBuildByID(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) 
 	}
 	apiBuild := utils.Build{
 		ID:          int(b.ID),
-		ProjectID:   int(b.ProjectID),
+		TestSuiteID: int(b.TestSuiteID),
 		BuildNumber: b.BuildNumber,
 		CIProvider:  b.CIProvider,
 		CreatedAt:   b.CreatedAt,
@@ -175,7 +180,7 @@ func getBuildByID(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) 
 
 // getAllBuilds fetches all builds from the database
 func getAllBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	rows, err := db.Query("SELECT id, project_id, build_number, ci_provider, ci_url, created_at FROM builds ORDER BY created_at DESC")
+	rows, err := db.Query("SELECT id, test_suite_id, build_number, ci_provider, ci_url, created_at FROM builds ORDER BY created_at DESC")
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching all builds: "+err.Error())
 		return
@@ -186,13 +191,13 @@ func getAllBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	for rows.Next() {
 		var b models.Build
 		var ciURL sql.NullString
-		if err := rows.Scan(&b.ID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
 			utils.RespondWithError(w, http.StatusInternalServerError, "Error scanning build: "+err.Error())
 			return
 		}
 		apiBuild := utils.Build{
 			ID:          int(b.ID),
-			ProjectID:   int(b.ProjectID),
+			TestSuiteID: int(b.TestSuiteID),
 			BuildNumber: b.BuildNumber,
 			CIProvider:  b.CIProvider,
 			CreatedAt:   b.CreatedAt,
@@ -210,7 +215,7 @@ func getAllBuilds(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 }
 
 // Modified to support XML input
-func createBuildForProject(w http.ResponseWriter, r *http.Request, projectID int64, db *sql.DB) {
+func createBuildForTestSuite(w http.ResponseWriter, r *http.Request, testSuiteID int64, db *sql.DB) {
 	var input BuildInput
 
 	contentType := r.Header.Get("Content-Type")
@@ -243,8 +248,8 @@ func createBuildForProject(w http.ResponseWriter, r *http.Request, projectID int
 	ciURLNullStr := sql.NullString{String: input.CIURL, Valid: strings.TrimSpace(input.CIURL) != ""}
 
 	err := db.QueryRow(
-		"INSERT INTO builds(project_id, build_number, ci_provider, ci_url, created_at) VALUES($1, $2, $3, $4, NOW()) RETURNING id, created_at",
-		projectID, input.BuildNumber, input.CIProvider, ciURLNullStr,
+		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at) VALUES($1, $2, $3, $4, NOW()) RETURNING id, created_at",
+		testSuiteID, input.BuildNumber, input.CIProvider, ciURLNullStr,
 	).Scan(&newBuildID, &createdAt)
 
 	if err != nil {
@@ -254,7 +259,7 @@ func createBuildForProject(w http.ResponseWriter, r *http.Request, projectID int
 
 	createdAPIBuild := utils.Build{
 		ID:          int(newBuildID),
-		ProjectID:   int(projectID), // projectID from path
+		TestSuiteID: int(testSuiteID), // testSuiteID from path
 		BuildNumber: input.BuildNumber,
 		CIProvider:  input.CIProvider,
 		CIURL:       input.CIURL, // Return the string version
@@ -283,8 +288,8 @@ func createBuild(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 	defer r.Body.Close()
 
-	if input.ProjectID == 0 {
-		utils.RespondWithError(w, http.StatusBadRequest, "Project ID is required and must be valid")
+	if input.TestSuiteID == 0 {
+		utils.RespondWithError(w, http.StatusBadRequest, "Test Suite ID is required and must be valid")
 		return
 	}
 	if strings.TrimSpace(input.BuildNumber) == "" {
@@ -296,16 +301,16 @@ func createBuild(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	// Check if the referenced project exists
-	var projectExists bool
-	projectID64 := int64(input.ProjectID) // Convert API int to model int64
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID64).Scan(&projectExists)
+	// Check if the referenced test suite exists
+	var testSuiteExists bool
+	testSuiteID64 := int64(input.TestSuiteID) // Convert API int to model int64
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM test_suites WHERE id = $1)", testSuiteID64).Scan(&testSuiteExists)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking project: "+err.Error())
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking test suite: "+err.Error())
 		return
 	}
-	if !projectExists {
-		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Project with ID %d not found", input.ProjectID))
+	if !testSuiteExists {
+		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Test suite with ID %d not found", input.TestSuiteID))
 		return
 	}
 
@@ -314,8 +319,8 @@ func createBuild(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	ciURLNullStr := sql.NullString{String: input.CIURL, Valid: strings.TrimSpace(input.CIURL) != ""}
 
 	err = db.QueryRow(
-		"INSERT INTO builds(project_id, build_number, ci_provider, ci_url, created_at) VALUES($1, $2, $3, $4, NOW()) RETURNING id, created_at",
-		projectID64, input.BuildNumber, input.CIProvider, ciURLNullStr,
+		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at) VALUES($1, $2, $3, $4, NOW()) RETURNING id, created_at",
+		testSuiteID64, input.BuildNumber, input.CIProvider, ciURLNullStr,
 	).Scan(&newBuildID, &createdAt)
 
 	if err != nil {
@@ -325,7 +330,7 @@ func createBuild(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	createdAPIBuild := utils.Build{
 		ID:          int(newBuildID),
-		ProjectID:   input.ProjectID,
+		TestSuiteID: input.TestSuiteID,
 		BuildNumber: input.BuildNumber,
 		CIProvider:  input.CIProvider,
 		CIURL:       input.CIURL,
@@ -422,14 +427,14 @@ func updateBuild(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
 	}
 
 	args = append(args, id) // Add ID for WHERE clause
-	query := fmt.Sprintf("UPDATE builds SET %s WHERE id = $%d RETURNING id, project_id, build_number, ci_provider, ci_url, created_at",
+	query := fmt.Sprintf("UPDATE builds SET %s WHERE id = $%d RETURNING id, test_suite_id, build_number, ci_provider, ci_url, created_at",
 		strings.Join(updateFields, ", "), argID)
 
 	var updatedBuildModel models.Build
 	var updatedCIURL sql.NullString
 	err = db.QueryRow(query, args...).Scan(
 		&updatedBuildModel.ID,
-		&updatedBuildModel.ProjectID,
+		&updatedBuildModel.TestSuiteID,
 		&updatedBuildModel.BuildNumber,
 		&updatedBuildModel.CIProvider,
 		&updatedCIURL,
@@ -442,7 +447,7 @@ func updateBuild(w http.ResponseWriter, r *http.Request, id int64, db *sql.DB) {
 
 	responseAPIBuild := utils.Build{
 		ID:          int(updatedBuildModel.ID),
-		ProjectID:   int(updatedBuildModel.ProjectID),
+		TestSuiteID: int(updatedBuildModel.TestSuiteID),
 		BuildNumber: updatedBuildModel.BuildNumber,
 		CIProvider:  updatedBuildModel.CIProvider,
 		CreatedAt:   updatedBuildModel.CreatedAt,

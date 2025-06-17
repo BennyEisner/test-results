@@ -19,53 +19,54 @@ type TestSuiteCreateInput struct {
 	Time     float64 `json:"time"`
 }
 
-// HandleBuildTestSuites handles GET and POST requests for test suites associated with a specific build.
-// Expected path: /api/builds/{buildId}/suites
-func HandleBuildTestSuites(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	// Path segments for /api/builds/{buildId}/suites will be:
-	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/builds/"), "/")
+// HandleProjectTestSuites handles GET and POST requests for test suites associated with a specific project.
+// Expected path: /api/projects/{projectID}/suites
+func HandleProjectTestSuites(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	// Path segments for /api/projects/{projectID}/suites will be:
+	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/projects/"), "/")
 
 	if len(pathSegments) < 1 || pathSegments[0] == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID in URL for suites")
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID in URL for suites")
 		return
 	}
-	if len(pathSegments) > 1 && pathSegments[1] != "suites" {
-		// This case should ideally be caught by router logic, but good to double check.
-		utils.RespondWithError(w, http.StatusBadRequest, "URL path for build suites is malformed, expected /api/builds/{buildId}/suites")
-		return
-	}
-
-	buildIDStr := pathSegments[0]
-	buildID, err := strconv.ParseInt(buildIDStr, 10, 64)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID format: "+err.Error())
+	// Example: /api/projects/1/suites -> pathSegments = ["1", "suites"]
+	// Example: /api/projects/1/suites/ -> pathSegments = ["1", "suites", ""]
+	if len(pathSegments) < 2 || pathSegments[1] != "suites" {
+		utils.RespondWithError(w, http.StatusBadRequest, "URL path for project suites is malformed, expected /api/projects/{projectID}/suites")
 		return
 	}
 
-	// Check if the build exists
-	var buildExists bool
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM builds WHERE id = $1)", buildID).Scan(&buildExists)
+	projectIDStr := pathSegments[0]
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking build existence: "+err.Error())
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
 		return
 	}
-	if !buildExists {
-		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Build with ID %d not found", buildID))
+
+	// Check if the project exists
+	var projectExists bool
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&projectExists)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking project existence: "+err.Error())
+		return
+	}
+	if !projectExists {
+		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Project with ID %d not found", projectID))
 		return
 	}
 
 	switch r.Method {
 	case http.MethodGet:
-		getTestSuitesByBuildID(w, r, buildID, db)
+		getTestSuitesByProjectID(w, r, projectID, db)
 	case http.MethodPost:
-		createTestSuiteForBuild(w, r, buildID, db)
+		createTestSuiteForProject(w, r, projectID, db)
 	default:
 		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed for this endpoint")
 	}
 }
 
-func getTestSuitesByBuildID(w http.ResponseWriter, r *http.Request, buildID int64, db *sql.DB) {
-	rows, err := db.Query("SELECT id, build_id, name, parent_id, time FROM test_suites WHERE build_id = $1 ORDER BY name", buildID)
+func getTestSuitesByProjectID(w http.ResponseWriter, r *http.Request, projectID int64, db *sql.DB) {
+	rows, err := db.Query("SELECT id, project_id, name, parent_id, time FROM test_suites WHERE project_id = $1 ORDER BY name", projectID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching test suites: "+err.Error())
 		return
@@ -77,7 +78,7 @@ func getTestSuitesByBuildID(w http.ResponseWriter, r *http.Request, buildID int6
 		var ts models.TestSuite
 		// Need to handle nullable ParentID
 		var parentID sql.NullInt64
-		if err := rows.Scan(&ts.ID, &ts.BuildID, &ts.Name, &parentID, &ts.Time); err != nil {
+		if err := rows.Scan(&ts.ID, &ts.ProjectID, &ts.Name, &parentID, &ts.Time); err != nil {
 			utils.RespondWithError(w, http.StatusInternalServerError, "Error scanning test suite: "+err.Error())
 			return
 		}
@@ -95,7 +96,7 @@ func getTestSuitesByBuildID(w http.ResponseWriter, r *http.Request, buildID int6
 	utils.RespondWithJSON(w, http.StatusOK, suites)
 }
 
-func createTestSuiteForBuild(w http.ResponseWriter, r *http.Request, buildID int64, db *sql.DB) {
+func createTestSuiteForProject(w http.ResponseWriter, r *http.Request, projectID int64, db *sql.DB) {
 	var input TestSuiteCreateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
@@ -112,16 +113,16 @@ func createTestSuiteForBuild(w http.ResponseWriter, r *http.Request, buildID int
 	var createdSuite models.TestSuite
 	var parentIDArg sql.NullInt64
 	if input.ParentID != nil {
-		// Optional: Check if parent suite ID exists and belongs to the same build
+		// Optional: Check if parent suite ID exists and belongs to the same project
 		parentIDArg = sql.NullInt64{Int64: *input.ParentID, Valid: true}
 	} else {
 		parentIDArg = sql.NullInt64{Valid: false}
 	}
 
 	err := db.QueryRow(
-		"INSERT INTO test_suites(build_id, name, parent_id, time) VALUES($1, $2, $3, $4) RETURNING id, build_id, name, parent_id, time",
-		buildID, input.Name, parentIDArg, input.Time,
-	).Scan(&createdSuite.ID, &createdSuite.BuildID, &createdSuite.Name, &parentIDArg, &createdSuite.Time)
+		"INSERT INTO test_suites(project_id, name, parent_id, time) VALUES($1, $2, $3, $4) RETURNING id, project_id, name, parent_id, time",
+		projectID, input.Name, parentIDArg, input.Time,
+	).Scan(&createdSuite.ID, &createdSuite.ProjectID, &createdSuite.Name, &parentIDArg, &createdSuite.Time)
 
 	if err != nil {
 		// More specific error for foreign key violation on parent_id if possible
@@ -135,6 +136,44 @@ func createTestSuiteForBuild(w http.ResponseWriter, r *http.Request, buildID int
 	}
 
 	utils.RespondWithJSON(w, http.StatusCreated, createdSuite)
+}
+
+// GetProjectTestSuiteByID fetches a specific test suite by its ID and projectID.
+func GetProjectTestSuiteByID(w http.ResponseWriter, r *http.Request, projectID int64, suiteID int64, db *sql.DB) {
+	var ts models.TestSuite
+	var parentID sql.NullInt64
+
+	// First, verify the project exists to give a more specific error if project_id is wrong.
+	var projectExists bool
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", projectID).Scan(&projectExists)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking project existence: "+err.Error())
+		return
+	}
+	if !projectExists {
+		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Project with ID %d not found", projectID))
+		return
+	}
+
+	// Now fetch the test suite, ensuring it belongs to the specified project.
+	err = db.QueryRow("SELECT id, project_id, name, parent_id, time FROM test_suites WHERE id = $1 AND project_id = $2", suiteID, projectID).Scan(
+		&ts.ID, &ts.ProjectID, &ts.Name, &parentID, &ts.Time)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Test suite with ID %d not found in project %d", suiteID, projectID))
+		} else {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching test suite: "+err.Error())
+		}
+		return
+	}
+
+	if parentID.Valid {
+		ts.ParentID = &parentID.Int64
+	} else {
+		ts.ParentID = nil
+	}
+	utils.RespondWithJSON(w, http.StatusOK, ts)
 }
 
 // HandleTestSuiteByPath handles GET requests for a specific test suite.
@@ -165,8 +204,8 @@ func HandleTestSuiteByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 func getTestSuiteByID(w http.ResponseWriter, r *http.Request, suiteID int64, db *sql.DB) {
 	var ts models.TestSuite
 	var parentID sql.NullInt64
-	err := db.QueryRow("SELECT id, build_id, name, parent_id, time FROM test_suites WHERE id = $1", suiteID).Scan(
-		&ts.ID, &ts.BuildID, &ts.Name, &parentID, &ts.Time)
+	err := db.QueryRow("SELECT id, project_id, name, parent_id, time FROM test_suites WHERE id = $1", suiteID).Scan(
+		&ts.ID, &ts.ProjectID, &ts.Name, &parentID, &ts.Time)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			utils.RespondWithError(w, http.StatusNotFound, "Test suite not found")
