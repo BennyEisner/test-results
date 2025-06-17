@@ -12,8 +12,8 @@ type Project struct {
 }
 
 type Build struct {
-	ID          int       `json:id`
-	ProjectID   int       `json:"project_id"`
+	ID          int       `json:"id"`
+	TestSuiteID int       `json:"test_suite_id"`
 	BuildNumber string    `json:"build_number"`
 	CIProvider  string    `json:"ci_provider"`
 	CIURL       string    `json:"ci_url, omitempty"`
