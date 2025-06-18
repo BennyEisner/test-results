@@ -68,8 +68,38 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	})
 
 	mux.HandleFunc("/api/builds/", func(w http.ResponseWriter, r *http.Request) {
-		// Specific build-related sub-resources (like test suites under a build) are removed from here.
-		handler.HandleBuildByPath(w, r, db)
+		// Add CORS headers to allow frontend access - anticipating direct calls
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS") // Adjusted for potential methods
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Handle preflight OPTIONS requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		requestPath := r.URL.Path
+		trimmedPath := strings.Trim(strings.TrimPrefix(requestPath, "/api/builds/"), "/")
+		parts := strings.Split(trimmedPath, "/")
+
+		// Logging for debugging
+		fmt.Printf("Router /api/builds/: requestPath='%s', trimmedPath='%s', parts=%v, len(parts)=%d\n", requestPath, trimmedPath, parts, len(parts))
+
+		// Expected: /api/builds/{build_id} -> parts = ["{build_id}"]
+		// Expected: /api/builds/{build_id}/executions -> parts = ["{build_id}", "executions"]
+		if len(parts) == 2 && parts[1] == "executions" && parts[0] != "" {
+			fmt.Println("Router /api/builds/: Matched /api/builds/{id}/executions")
+			// Route: /api/builds/{build_id}/executions
+			handler.HandleBuildExecutions(w, r, db)
+		} else if len(parts) == 1 && parts[0] != "" {
+			fmt.Println("Router /api/builds/: Matched /api/builds/{id}")
+			// Route: /api/builds/{build_id}
+			handler.HandleBuildByPath(w, r, db)
+		} else {
+			fmt.Println("Router /api/builds/: No match, responding 404")
+			utils.RespondWithError(w, http.StatusNotFound, "Resource not found or path malformed under /api/builds/ prefix.")
+		}
 	})
 
 	// Test Suite related endpoints

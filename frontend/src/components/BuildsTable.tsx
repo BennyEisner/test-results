@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Added import
 import type { Build } from '../types';
 import { fetchBuilds } from '../services/api';
 import './BuildsTable.css';
@@ -12,6 +13,7 @@ const BuildsTable = ({ projectId, suiteId }: BuildsTableProps) => {
   const [builds, setBuilds] = useState<Build[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate(); // Initialize navigate
 
   useEffect(() => {
     const loadBuilds = async () => {
@@ -31,6 +33,11 @@ const BuildsTable = ({ projectId, suiteId }: BuildsTableProps) => {
     loadBuilds();
   }, [projectId, suiteId]); 
 
+  const handleBuildClick = (buildId: string | number) => {
+    // Navigate to the executions page for the clicked build
+    navigate(`/builds/${buildId}/executions`); 
+  };
+
   if (loading) {
     return <div className="loading">Loading builds...</div>;
   }
@@ -48,29 +55,15 @@ const BuildsTable = ({ projectId, suiteId }: BuildsTableProps) => {
             <th>Build ID</th>
             <th>Build Number</th>
             <th>CI Provider</th>
-            <th>CI URL</th>
             <th>Created</th>
           </tr>
         </thead>
         <tbody>
           {builds.map((build) => (
-            <tr key={build.id}>
+            <tr key={build.id} onClick={() => handleBuildClick(build.id)} style={{ cursor: 'pointer' }}>
               <td>#{build.id}</td>
               <td>{build.build_number}</td>
               <td>{build.ci_provider}</td>
-              <td>
-                {build.ci_url ? (
-                  <a 
-                    href={build.ci_url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                  >
-                    View Build
-                  </a>
-                ) : (
-                  '-'
-                )}
-              </td>
               <td>{new Date(build.created_at).toLocaleString()}</td>
             </tr>
           ))}

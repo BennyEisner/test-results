@@ -12,20 +12,19 @@ import (
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 
-// TestCaseCreateInput defines the expected structure for creating a new test case.
+// TestCaseCreateInput defines the expected structure for creating a new test case definition.
 type TestCaseCreateInput struct {
-	Name      string  `json:"name"`
-	Classname string  `json:"classname"`
-	Time      float64 `json:"time"`
-	Status    string  `json:"status"` // "passed", "failed", "skipped"
+	Name      string `json:"name"`
+	Classname string `json:"classname"`
+	// Time and Status are not part of the definition anymore, they belong to BuildTestCaseExecution
 }
 
-// HandleSuiteTestCases handles GET and POST requests for test cases associated with a specific test suite.
+// HandleSuiteTestCases handles GET and POST requests for test case definitions associated with a specific test suite.
 // Expected path: /api/suites/{suiteId}/cases
 func HandleSuiteTestCases(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/suites/"), "/")
 
-	// Request error handling 
+	// Request error handling
 	if len(pathSegments) < 1 || pathSegments[0] == "" {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suite ID in URL for test cases")
 		return
@@ -40,7 +39,6 @@ func HandleSuiteTestCases(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suite ID format: "+err.Error())
 		return
 	}
-
 
 	// Check if the suite exists
 	var suiteExists bool
@@ -65,9 +63,9 @@ func HandleSuiteTestCases(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 }
 
 func getTestCasesBySuiteID(w http.ResponseWriter, r *http.Request, suiteID int64, db *sql.DB) {
-	rows, err := db.Query("SELECT id, suite_id, name, classname, time, status FROM test_cases WHERE suite_id = $1 ORDER BY name", suiteID)
+	rows, err := db.Query("SELECT id, suite_id, name, classname FROM test_cases WHERE suite_id = $1 ORDER BY name", suiteID)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching test cases: "+err.Error())
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching test case definitions: "+err.Error())
 		return
 	}
 	defer rows.Close()
@@ -75,14 +73,14 @@ func getTestCasesBySuiteID(w http.ResponseWriter, r *http.Request, suiteID int64
 	cases := []models.TestCase{}
 	for rows.Next() {
 		var tc models.TestCase
-		if err := rows.Scan(&tc.ID, &tc.SuiteID, &tc.Name, &tc.Classname, &tc.Time, &tc.Status); err != nil {
-			utils.RespondWithError(w, http.StatusInternalServerError, "Error scanning test case: "+err.Error())
+		if err := rows.Scan(&tc.ID, &tc.SuiteID, &tc.Name, &tc.Classname); err != nil {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Error scanning test case definition: "+err.Error())
 			return
 		}
 		cases = append(cases, tc)
 	}
 	if err = rows.Err(); err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Error iterating test case rows: "+err.Error())
+		utils.RespondWithError(w, http.StatusInternalServerError, "Error iterating test case definition rows: "+err.Error())
 		return
 	}
 	utils.RespondWithJSON(w, http.StatusOK, cases)
@@ -105,30 +103,23 @@ func createTestCaseForSuite(w http.ResponseWriter, r *http.Request, suiteID int6
 		return
 	}
 
-	// Validate status if provided
-	validStatuses := map[string]bool{"passed": true, "failed": true, "skipped": true}
-	statusToInsert := strings.ToLower(input.Status)
-	if statusToInsert == "" {
-		statusToInsert = "passed" // Use default if empty
-	} else if !validStatuses[statusToInsert] {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid status. Must be one of: passed, failed, skipped")
-		return
-	}
+	// Status and Time are no longer part of creating a test case definition.
+	// They are recorded with BuildTestCaseExecution.
 
 	var createdCase models.TestCase
 	err := db.QueryRow(
-		"INSERT INTO test_cases(suite_id, name, classname, time, status) VALUES($1, $2, $3, $4, $5) RETURNING id, suite_id, name, classname, time, status",
-		suiteID, input.Name, input.Classname, input.Time, statusToInsert,
-	).Scan(&createdCase.ID, &createdCase.SuiteID, &createdCase.Name, &createdCase.Classname, &createdCase.Time, &createdCase.Status)
+		"INSERT INTO test_cases(suite_id, name, classname) VALUES($1, $2, $3) RETURNING id, suite_id, name, classname",
+		suiteID, input.Name, input.Classname,
+	).Scan(&createdCase.ID, &createdCase.SuiteID, &createdCase.Name, &createdCase.Classname)
 
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error creating test case: "+err.Error())
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error creating test case definition: "+err.Error())
 		return
 	}
 	utils.RespondWithJSON(w, http.StatusCreated, createdCase)
 }
 
-// HandleTestCaseByPath handles GET requests for a specific test case.
+// HandleTestCaseByPath handles GET requests for a specific test case definition.
 // Expected path: /api/cases/{caseId}
 func HandleTestCaseByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/cases/"), "/")
@@ -154,13 +145,13 @@ func HandleTestCaseByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 func getTestCaseByID(w http.ResponseWriter, r *http.Request, caseID int64, db *sql.DB) {
 	var tc models.TestCase
-	err := db.QueryRow("SELECT id, suite_id, name, classname, time, status FROM test_cases WHERE id = $1", caseID).Scan(
-		&tc.ID, &tc.SuiteID, &tc.Name, &tc.Classname, &tc.Time, &tc.Status)
+	err := db.QueryRow("SELECT id, suite_id, name, classname FROM test_cases WHERE id = $1", caseID).Scan(
+		&tc.ID, &tc.SuiteID, &tc.Name, &tc.Classname)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			utils.RespondWithError(w, http.StatusNotFound, "Test case not found")
+			utils.RespondWithError(w, http.StatusNotFound, "Test case definition not found")
 		} else {
-			utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching test case: "+err.Error())
+			utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching test case definition: "+err.Error())
 		}
 		return
 	}

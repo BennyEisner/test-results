@@ -19,12 +19,12 @@ if (!projectId) {
     <div className="project-detail">
       <div className="project-header">
         <button 
-          onClick={() => navigate(`/projects/${projectId}/suites`)} 
+          onClick={() => navigate(`/projects/${projectId}`)} 
           className="back-button"
         >
           Back to Suites
         </button>
-        <h1>Project {suiteId}</h1>
+        <h1>Suite {suiteId}</h1>
       </div>
 
       <BuildsTable  projectId={projectId} suiteId={suiteId}/>

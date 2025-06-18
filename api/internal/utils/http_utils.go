@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -28,4 +29,34 @@ func RespondWithJSON(w http.ResponseWriter, status int, data interface{}) {
 
 func RespondWithError(w http.ResponseWriter, status int, message string) {
 	RespondWithJSON(w, status, map[string]string{"error": message})
+}
+
+// NullStringToStringPtr converts a sql.NullString to a *string.
+// If the NullString is valid, it returns a pointer to its string value.
+// Otherwise, it returns nil.
+func NullStringToStringPtr(ns sql.NullString) *string {
+	if ns.Valid {
+		return &ns.String
+	}
+	return nil
+}
+
+// NullInt64ToIntPtr converts a sql.NullInt64 to a *int64.
+// If the NullInt64 is valid, it returns a pointer to its int64 value.
+// Otherwise, it returns nil.
+func NullInt64ToIntPtr(ni sql.NullInt64) *int64 {
+	if ni.Valid {
+		return &ni.Int64
+	}
+	return nil
+}
+
+// NullFloat64ToFloat64Ptr converts a sql.NullFloat64 to a *float64.
+// If the NullFloat64 is valid, it returns a pointer to its float64 value.
+// Otherwise, it returns nil.
+func NullFloat64ToFloat64Ptr(nf sql.NullFloat64) *float64 {
+	if nf.Valid {
+		return &nf.Float64
+	}
+	return nil
 }

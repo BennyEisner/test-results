@@ -29,7 +29,6 @@ CREATE TABLE test_cases (
     suite_id INTEGER NOT NULL REFERENCES test_suites(id) ON DELETE CASCADE, -- Defines which suite this test case belongs to
     name TEXT NOT NULL,
     classname TEXT NOT NULL
-    -- 'time' (execution time) and 'status' are moved to build_test_case_executions
 );
 
 -- Table: build_test_case_executions

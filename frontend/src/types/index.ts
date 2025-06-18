@@ -20,3 +20,12 @@ export interface Suite {
   parent_id?: number;
   time: number;
 }
+
+export interface TestCaseExecution { // Added TestCaseExecution interface
+  id: number;
+  build_id: number;
+  test_case_id: number;
+  status: string;
+  execution_time: number;
+  created_at: string;
+}

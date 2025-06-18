@@ -46,20 +46,35 @@ class DatabaseSeeder:
             (test_suite_id, build_number, ci_provider, ci_url)
         )
 
-    def create_test_case(self, suite_id: int, name: str, classname: str, time: float, status: Optional[str]) -> Optional[int]:
-        print(f"    Creating test case: {name} for test_suite_id: {suite_id}")
+    def create_test_case(self, suite_id: int, name: str, classname: str) -> Optional[int]:
+        print(f"      Creating test case definition: {name} for suite_id: {suite_id}")
         return self._execute_returning_id(
-            "INSERT INTO test_cases(suite_id, name, classname, time, status) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-            (suite_id, name, classname, time,status)
+            "INSERT INTO test_cases(suite_id, name, classname) VALUES (%s, %s, %s) RETURNING id",
+            (suite_id, name, classname)
         )
 
+    def create_build_test_case_execution(self, build_id: int, test_case_id: int, status: str, execution_time: float) -> Optional[int]:
+        print(f"        Creating execution for build_id: {build_id}, test_case_id: {test_case_id}")
+        return self._execute_returning_id(
+            "INSERT INTO build_test_case_executions (build_id, test_case_id, status, execution_time) VALUES (%s, %s, %s, %s) RETURNING id",
+            (build_id, test_case_id, status, execution_time)
+        )
 
-    def seed_data(self, num_projects: int, num_suites_per_project: int, num_builds_per_suite: int, num_test_cases_per_build: int):
+    def create_failure(self, build_test_case_execution_id: int, message: str, type: str, details: str) -> Optional[int]:
+        print(f"          Creating failure for execution_id: {build_test_case_execution_id}")
+        return self._execute_returning_id(
+            "INSERT INTO failures (build_test_case_execution_id, message, type, details) VALUES (%s, %s, %s, %s) RETURNING id",
+            (build_test_case_execution_id, message, type, details)
+        )
+
+    def seed_data(self, num_projects: int, num_suites_per_project: int, num_builds_per_suite: int, num_test_case_definitions_per_suite: int):
         print("Starting database seeding...")
         project_count = 0
         suite_count = 0
         build_count = 0
-        test_case_count = 0
+        test_case_definitions_count = 0
+        build_test_case_executions_count = 0
+        failures_count = 0
 
         for i in range(num_projects):
             project_name = fake.company() + " Project " + str(i+1)
@@ -69,48 +84,67 @@ class DatabaseSeeder:
                 project_id = self.cursor.fetchone()[0]
             
             if project_id:
-                project_count +=1
+                project_count += 1
                 for j in range(num_suites_per_project):
                     suite_name = fake.bs().capitalize() + " Test Suite " + str(j+1)
-                    suite_time = round(random.uniform(1.0, 100.0), 2)
+                    suite_time = round(random.uniform(1.0, 100.0), 2) 
                     test_suite_id = self.create_test_suite(project_id, suite_name, suite_time)
                     
                     if test_suite_id:
                         suite_count += 1
+                        
+                        # Create test case definitions for this suite
+                        current_suite_test_case_ids = []
+                        for tc_idx in range(num_test_case_definitions_per_suite):
+                            tc_name = fake.sentence(nb_words=3).replace('.', '') + f" Def {tc_idx+1}"
+                            tc_classname = fake.word().capitalize() + "." + fake.word().capitalize() + "Tests"
+                            test_case_definition_id = self.create_test_case(test_suite_id, tc_name, tc_classname)
+                            if test_case_definition_id:
+                                test_case_definitions_count += 1
+                                current_suite_test_case_ids.append(test_case_definition_id)
+
+                        # Create builds for this suite
                         for k in range(num_builds_per_suite):
                             build_number_str = str(fake.random_int(min=1000, max=9999)) + "-" + fake.lexify(text="??????", letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-                            ci_providers = ["GitHub Actions", "Jenkins", "Travis CI"]
+                            ci_providers = ["GitHub Actions", "Jenkins", "Travis CI"] 
                             ci_provider_str = random.choice(ci_providers)
                             ci_url_str = fake.url() if random.choice([True, False]) else None
                             
                             build_id = self.create_build(test_suite_id, build_number_str, ci_provider_str, ci_url_str)
                             if build_id:
                                 build_count += 1
-                                for l in range(num_test_cases_per_build):
-                                    test_case_name = fake.sentence(nb_words=4) + f" TC {l+1}"
-                                    test_case_classname = fake.word().capitalize() + "." + fake.word().capitalize() + "Tests"
-                                    test_case_time = round(random.uniform(0.01, 10.0), 3)
+                                
+                                # Create executions for each test case definition in this build
+                                for test_case_def_id in current_suite_test_case_ids:
+                                    exec_time = round(random.uniform(0.01, 15.0), 3)
                                     statuses = ["passed", "failed", "skipped", "error"]
-                                    weights = [0.75, 0.10, 0.10, 0.05] 
-                                    test_case_status = random.choices(statuses, weights=weights, k=1)[0]
+                                    weights = [0.70, 0.15, 0.10, 0.05] 
+                                    exec_status = random.choices(statuses, weights=weights, k=1)[0]
                                     
-                                    test_case_id = self.create_test_case(
-                                        suite_id=test_suite_id, 
-                                        name=test_case_name,
-                                        classname=test_case_classname,
-                                        time=test_case_time,
-                                        status=test_case_status
+                                    execution_id = self.create_build_test_case_execution(
+                                        build_id=build_id,
+                                        test_case_id=test_case_def_id,
+                                        status=exec_status,
+                                        execution_time=exec_time
                                     )
-                                    if test_case_id:
-                                        test_case_count += 1
+                                    if execution_id:
+                                        build_test_case_executions_count += 1
+                                        if exec_status == "failed" or exec_status == "error":
+                                            failure_message = fake.sentence(nb_words=10)
+                                            failure_type = fake.word().capitalize() + "Error"
+                                            failure_details = fake.text(max_nb_chars=500)
+                                            failure_id = self.create_failure(execution_id, failure_message, failure_type, failure_details)
+                                            if failure_id:
+                                                failures_count +=1
         
         self.connection.commit()
         print(f"\nSeeding complete!")
         print(f"  Total projects created: {project_count}")
         print(f"  Total test suites created: {suite_count}")
+        print(f"  Total test case definitions created: {test_case_definitions_count}")
         print(f"  Total builds created: {build_count}")
-        print(f"  Total test cases created: {test_case_count}")
-
+        print(f"  Total build test case executions created: {build_test_case_executions_count}")
+        print(f"  Total failures created: {failures_count}")
 
     def close_connection(self):
         if self.connection:
@@ -133,22 +167,22 @@ def main():
         seeder = DatabaseSeeder(connection_url)
 
         # Define how much data to generate
-        num_projects_to_create = random.randint(10, 20)
-        num_suites_per_project_to_create = random.randint(10, 20)
-        num_builds_per_suite_to_create = random.randint(2, 5)
-        num_test_cases_per_build_to_create = 20 # As per user request
+        num_projects_to_create = random.randint(5, 10)
+        num_suites_per_project_to_create = random.randint(3, 7) 
+        num_builds_per_suite_to_create = random.randint(2, 4) # Reduced
+        num_test_case_definitions_per_suite_to_create = random.randint(15, 30)
 
         print(f"Attempting to create:")
         print(f"  - {num_projects_to_create} projects")
         print(f"  - {num_suites_per_project_to_create} test suites per project")
-        print(f"  - {num_builds_per_suite_to_create} builds per test suite")
-        print(f"  - {num_test_cases_per_build_to_create} test cases per build (associated with the suite)")
+        print(f"  - {num_test_case_definitions_per_suite_to_create} test case definitions per suite")
+        print(f"  - {num_builds_per_suite_to_create} builds per test suite (each executing all test cases defined for the suite)")
         
         seeder.seed_data(
             num_projects=num_projects_to_create,
             num_suites_per_project=num_suites_per_project_to_create,
             num_builds_per_suite=num_builds_per_suite_to_create,
-            num_test_cases_per_build=num_test_cases_per_build_to_create
+            num_test_case_definitions_per_suite=num_test_case_definitions_per_suite_to_create
         )
 
     except psycopg2.OperationalError as e:
