@@ -44,7 +44,7 @@ const ExecutionsTable = ({ buildId }: ExecutionsTableProps) => {
         <thead>
           <tr>
             <th>Execution ID</th>
-            <th>Test Case ID </th>
+            <th>Test Case Name</th>
             <th>Status</th>
             <th>Execution Time</th>
             <th>Created At</th>
@@ -52,10 +52,16 @@ const ExecutionsTable = ({ buildId }: ExecutionsTableProps) => {
         </thead>
         <tbody>
           {executions.map((execution) => (
-            <tr key={execution.id}>
-              <td>#{execution.id}</td> 
-              <td>{execution.test_case_id}</td>
-              <td>{execution.status}</td>
+            <tr key={execution.id} className={execution.failure ? 'table-danger' : ''}>
+              <td>#{execution.id}</td>
+              <td>{execution.test_case_name || `Test Case ${execution.test_case_id}`}</td>
+              <td>
+                {execution.status}
+                {execution.failure && (
+                  <span title={`Failure: ${execution.failure.message || 'No message'}`} style={{ marginLeft: '8px', color: 'red', cursor: 'help' }}>
+                  </span>
+                )}
+              </td>
               <td>{execution.execution_time}</td>
               <td>{new Date(execution.created_at).toLocaleString()}</td>
             </tr>

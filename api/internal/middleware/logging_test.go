@@ -10,7 +10,7 @@ import (
 	"testing"
 	_ "time"
 
-	"github.com/BennyEisner/test-results/middleware"
+	"github.com/BennyEisner/test-results/internal/middleware"
 )
 
 func TestLoggingMiddleware(t *testing.T) {

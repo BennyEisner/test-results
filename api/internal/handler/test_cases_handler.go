@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BennyEisner/test-results/internal/models"
+	"github.com/BennyEisner/test-results/internal/service"
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 
@@ -16,21 +16,25 @@ import (
 type TestCaseCreateInput struct {
 	Name      string `json:"name"`
 	Classname string `json:"classname"`
-	// Time and Status are not part of the definition anymore, they belong to BuildTestCaseExecution
+}
+
+// TestCaseHandler holds the test case service.
+type TestCaseHandler struct {
+	service service.TestCaseServiceInterface
+}
+
+// NewTestCaseHandler creates a new TestCaseHandler.
+func NewTestCaseHandler(s service.TestCaseServiceInterface) *TestCaseHandler {
+	return &TestCaseHandler{service: s}
 }
 
 // HandleSuiteTestCases handles GET and POST requests for test case definitions associated with a specific test suite.
 // Expected path: /api/suites/{suiteId}/cases
-func HandleSuiteTestCases(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (tch *TestCaseHandler) HandleSuiteTestCases(w http.ResponseWriter, r *http.Request) {
 	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/suites/"), "/")
 
-	// Request error handling
-	if len(pathSegments) < 1 || pathSegments[0] == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suite ID in URL for test cases")
-		return
-	}
-	if len(pathSegments) > 1 && pathSegments[1] != "cases" {
-		utils.RespondWithError(w, http.StatusBadRequest, "URL path for suite test cases is malformed, expected /api/suites/{suiteId}/cases")
+	if len(pathSegments) < 2 || pathSegments[0] == "" || pathSegments[1] != "cases" {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid URL path for suite test cases. Expected /api/suites/{suiteId}/cases")
 		return
 	}
 	suiteIDStr := pathSegments[0]
@@ -40,9 +44,7 @@ func HandleSuiteTestCases(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		return
 	}
 
-	// Check if the suite exists
-	var suiteExists bool
-	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM test_suites WHERE id = $1)", suiteID).Scan(&suiteExists)
+	suiteExists, err := tch.service.CheckTestSuiteExists(suiteID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking suite existence: "+err.Error())
 		return
@@ -54,39 +56,24 @@ func HandleSuiteTestCases(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	switch r.Method {
 	case http.MethodGet:
-		getTestCasesBySuiteID(w, r, suiteID, db)
+		tch.getTestCasesBySuiteID(w, r, suiteID)
 	case http.MethodPost:
-		createTestCaseForSuite(w, r, suiteID, db)
+		tch.createTestCaseForSuite(w, r, suiteID)
 	default:
 		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed for this endpoint")
 	}
 }
 
-func getTestCasesBySuiteID(w http.ResponseWriter, r *http.Request, suiteID int64, db *sql.DB) {
-	rows, err := db.Query("SELECT id, suite_id, name, classname FROM test_cases WHERE suite_id = $1 ORDER BY name", suiteID)
+func (tch *TestCaseHandler) getTestCasesBySuiteID(w http.ResponseWriter, r *http.Request, suiteID int64) {
+	cases, err := tch.service.GetTestCasesBySuiteID(suiteID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching test case definitions: "+err.Error())
-		return
-	}
-	defer rows.Close()
-
-	cases := []models.TestCase{}
-	for rows.Next() {
-		var tc models.TestCase
-		if err := rows.Scan(&tc.ID, &tc.SuiteID, &tc.Name, &tc.Classname); err != nil {
-			utils.RespondWithError(w, http.StatusInternalServerError, "Error scanning test case definition: "+err.Error())
-			return
-		}
-		cases = append(cases, tc)
-	}
-	if err = rows.Err(); err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Error iterating test case definition rows: "+err.Error())
 		return
 	}
 	utils.RespondWithJSON(w, http.StatusOK, cases)
 }
 
-func createTestCaseForSuite(w http.ResponseWriter, r *http.Request, suiteID int64, db *sql.DB) {
+func (tch *TestCaseHandler) createTestCaseForSuite(w http.ResponseWriter, r *http.Request, suiteID int64) {
 	var input TestCaseCreateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
@@ -103,15 +90,7 @@ func createTestCaseForSuite(w http.ResponseWriter, r *http.Request, suiteID int6
 		return
 	}
 
-	// Status and Time are no longer part of creating a test case definition.
-	// They are recorded with BuildTestCaseExecution.
-
-	var createdCase models.TestCase
-	err := db.QueryRow(
-		"INSERT INTO test_cases(suite_id, name, classname) VALUES($1, $2, $3) RETURNING id, suite_id, name, classname",
-		suiteID, input.Name, input.Classname,
-	).Scan(&createdCase.ID, &createdCase.SuiteID, &createdCase.Name, &createdCase.Classname)
-
+	createdCase, err := tch.service.CreateTestCase(suiteID, input.Name, input.Classname)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error creating test case definition: "+err.Error())
 		return
@@ -121,7 +100,7 @@ func createTestCaseForSuite(w http.ResponseWriter, r *http.Request, suiteID int6
 
 // HandleTestCaseByPath handles GET requests for a specific test case definition.
 // Expected path: /api/cases/{caseId}
-func HandleTestCaseByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (tch *TestCaseHandler) HandleTestCaseByPath(w http.ResponseWriter, r *http.Request) {
 	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/cases/"), "/")
 	if len(pathSegments) != 1 || pathSegments[0] == "" {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid test case ID in URL")
@@ -137,16 +116,14 @@ func HandleTestCaseByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	switch r.Method {
 	case http.MethodGet:
-		getTestCaseByID(w, r, caseID, db)
+		tch.getTestCaseByID(w, r, caseID)
 	default:
 		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed for this endpoint")
 	}
 }
 
-func getTestCaseByID(w http.ResponseWriter, r *http.Request, caseID int64, db *sql.DB) {
-	var tc models.TestCase
-	err := db.QueryRow("SELECT id, suite_id, name, classname FROM test_cases WHERE id = $1", caseID).Scan(
-		&tc.ID, &tc.SuiteID, &tc.Name, &tc.Classname)
+func (tch *TestCaseHandler) getTestCaseByID(w http.ResponseWriter, r *http.Request, caseID int64) {
+	tc, err := tch.service.GetTestCaseByID(caseID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			utils.RespondWithError(w, http.StatusNotFound, "Test case definition not found")

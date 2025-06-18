@@ -10,11 +10,30 @@ import (
 	"time"
 
 	"github.com/BennyEisner/test-results/internal/handler"
+	"github.com/BennyEisner/test-results/internal/service" // Added service import
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 
 // RegisterRoutes registers all routes to the provided ServeMux
+// RegisterRoutes registers all routes to the provided ServeMux
 func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
+	// Instantiate services and handlers
+	buildService := service.NewBuildService(db)
+	buildHandler := handler.NewBuildHandler(buildService)
+
+	buildExecutionService := service.NewBuildExecutionService(db)
+	buildExecutionHandler := handler.NewBuildExecutionHandler(buildExecutionService)
+
+	projectService := service.NewProjectService(db)
+	projectHandler := handler.NewProjectHandler(projectService)
+
+	testSuiteService := service.NewTestSuiteService(db)
+	testSuiteHandler := handler.NewTestSuiteHandler(testSuiteService)
+
+	testCaseService := service.NewTestCaseService(db)
+	testCaseHandler := handler.NewTestCaseHandler(testCaseService)
+	// TODO: Instantiate other services and handlers as they are created
+
 	// Home Page
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Home Page")
@@ -42,30 +61,13 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 		fmt.Fprintf(w, "Hello from %s at %s\n", os.Getenv("HOSTNAME"), time.Now().Format(time.RFC3339))
 	})
 
-	// Project-related endpoints - note we're using closures to inject the DB connection
-	mux.HandleFunc("/api/db-test", func(w http.ResponseWriter, r *http.Request) {
-		handler.HandleDBTest(w, r, db)
-	})
+	// Project-related endpoints
+	mux.HandleFunc("/api/db-test", projectHandler.HandleDBTest)
 
-	mux.HandleFunc("/api/projects", func(w http.ResponseWriter, r *http.Request) {
-		// Add CORS headers to allow frontend access
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-		// Handle preflight OPTIONS requests
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		handler.HandleProjects(w, r, db)
-	})
+	mux.HandleFunc("/api/projects", projectHandler.HandleProjects)
 
 	// Build-related endpoints
-	mux.HandleFunc("/api/builds", func(w http.ResponseWriter, r *http.Request) {
-		handler.HandleBuilds(w, r, db)
-	})
+	mux.HandleFunc("/api/builds", buildHandler.HandleBuilds)
 
 	mux.HandleFunc("/api/builds/", func(w http.ResponseWriter, r *http.Request) {
 		// Add CORS headers to allow frontend access - anticipating direct calls
@@ -91,11 +93,11 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 		if len(parts) == 2 && parts[1] == "executions" && parts[0] != "" {
 			fmt.Println("Router /api/builds/: Matched /api/builds/{id}/executions")
 			// Route: /api/builds/{build_id}/executions
-			handler.HandleBuildExecutions(w, r, db)
+			buildExecutionHandler.HandleBuildExecutions(w, r)
 		} else if len(parts) == 1 && parts[0] != "" {
 			fmt.Println("Router /api/builds/: Matched /api/builds/{id}")
 			// Route: /api/builds/{build_id}
-			handler.HandleBuildByPath(w, r, db)
+			buildHandler.HandleBuildByPath(w, r)
 		} else {
 			fmt.Println("Router /api/builds/: No match, responding 404")
 			utils.RespondWithError(w, http.StatusNotFound, "Resource not found or path malformed under /api/builds/ prefix.")
@@ -106,16 +108,14 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("/api/suites/", func(w http.ResponseWriter, r *http.Request) {
 		// Check if the path is for suite test cases
 		if strings.Contains(r.URL.Path, "/cases") {
-			handler.HandleSuiteTestCases(w, r, db)
+			testCaseHandler.HandleSuiteTestCases(w, r)
 		} else {
-			handler.HandleTestSuiteByPath(w, r, db)
+			testSuiteHandler.HandleTestSuiteByPath(w, r)
 		}
 	})
 
 	// Test Case related endpoints
-	mux.HandleFunc("/api/cases/", func(w http.ResponseWriter, r *http.Request) {
-		handler.HandleTestCaseByPath(w, r, db)
-	})
+	mux.HandleFunc("/api/cases/", testCaseHandler.HandleTestCaseByPath)
 
 	// This pattern handles /api/projects/{id}, /api/projects/{id}/suites,
 	// /api/projects/{id}/suites/{suiteID}, and /api/projects/{id}/suites/{suiteID}/builds
@@ -139,7 +139,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 		if len(parts) == 4 && parts[1] == "suites" && parts[3] == "builds" {
 			// Route: /api/projects/{projectID}/suites/{suiteID}/builds
 			// This now correctly matches the expectation of HandleTestSuiteBuilds
-			handler.HandleTestSuiteBuilds(w, r, db)
+			buildHandler.HandleTestSuiteBuilds(w, r)
 		} else if len(parts) == 3 && parts[1] == "suites" {
 			// Route: /api/projects/{projectID}/suites/{suiteID}
 			if r.Method == http.MethodGet {
@@ -148,7 +148,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 				if errP != nil || errS != nil {
 					utils.RespondWithError(w, http.StatusBadRequest, "Invalid project or suite ID format in path.")
 				} else {
-					handler.GetProjectTestSuiteByID(w, r, projectID, suiteID, db)
+					testSuiteHandler.GetProjectTestSuiteByID(w, r, projectID, suiteID)
 				}
 			} else {
 				// For other methods like PUT, DELETE on this specific path
@@ -156,10 +156,10 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 			}
 		} else if len(parts) == 2 && parts[1] == "suites" {
 			// Route: /api/projects/{projectID}/suites
-			handler.HandleProjectTestSuites(w, r, db)
+			testSuiteHandler.HandleProjectTestSuites(w, r)
 		} else if len(parts) == 1 && parts[0] != "" { // parts[0] is the project id, ensure it's not empty
 			// Route: /api/projects/{projectID}
-			handler.HandleProjectByPath(w, r, db)
+			projectHandler.HandleProjectByPath(w, r)
 		} else {
 			// Malformed path under /api/projects/ or path was just /api/projects/ (which is handled by another route)
 			utils.RespondWithError(w, http.StatusNotFound, "Resource not found or path malformed under /api/projects/ prefix.")

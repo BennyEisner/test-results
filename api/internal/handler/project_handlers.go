@@ -11,14 +11,41 @@ import (
 	"strconv"
 	"strings"
 
-	_ "github.com/BennyEisner/test-results/internal/models"
+	"github.com/BennyEisner/test-results/internal/models"
+	"github.com/BennyEisner/test-results/internal/service"
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 
+// ProjectHandler holds the project service.
+type ProjectHandler struct {
+	service service.ProjectServiceInterface
+}
+
+// NewProjectHandler creates a new ProjectHandler.
+func NewProjectHandler(s service.ProjectServiceInterface) *ProjectHandler {
+	return &ProjectHandler{service: s}
+}
+
+// Helper to convert models.Project to utils.Project DTO
+func toAPIProject(m *models.Project) utils.Project {
+	return utils.Project{
+		ID:   int(m.ID), // Convert int64 to int
+		Name: m.Name,
+	}
+}
+
+// Helper to convert slice of models.Project to slice of utils.Project DTO
+func toAPIProjects(ms []models.Project) []utils.Project {
+	apiProjects := make([]utils.Project, len(ms))
+	for i, m := range ms {
+		apiProjects[i] = toAPIProject(&m)
+	}
+	return apiProjects
+}
+
 // HandleDBTest handles database test endpoint
-func HandleDBTest(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM projects").Scan(&count)
+func (ph *ProjectHandler) HandleDBTest(w http.ResponseWriter, r *http.Request) {
+	count, err := ph.service.GetDBTestProjectCount()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Database error: %v", err)
@@ -29,26 +56,36 @@ func HandleDBTest(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 }
 
 // HandleProjects handles project collection endpoints
-func HandleProjects(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func (ph *ProjectHandler) HandleProjects(w http.ResponseWriter, r *http.Request) {
+	// Add CORS headers to allow frontend access
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS") // Add other methods if needed for this specific path
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+	// Handle preflight OPTIONS requests
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet:
-		getProjects(w, r, db)
+		ph.getProjects(w, r)
 	case http.MethodPost:
-		createProject(w, r, db)
+		ph.createProject(w, r)
 	default:
 		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
 // HandleProjectByPath handles operations on specific projects
-func HandleProjectByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	// Special case for create endpoint
-	if r.URL.Path == "/api/projects/create" && r.Method == http.MethodPost {
-		createProject(w, r, db)
-		return
-	}
+func (ph *ProjectHandler) HandleProjectByPath(w http.ResponseWriter, r *http.Request) {
+	// Special case for create endpoint - this logic might be better handled by distinct routing
+	// if r.URL.Path == "/api/projects/create" && r.Method == http.MethodPost {
+	// 	ph.createProject(w, r) // createProject is now part of HandleProjects
+	// 	return
+	// }
 
-	// Extract ID from the path
 	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/projects/"), "/")
 	if len(pathSegments) != 1 || pathSegments[0] == "" {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID in URL")
@@ -56,7 +93,9 @@ func HandleProjectByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	idStr := pathSegments[0]
-	id, err := strconv.Atoi(idStr)
+	// Project ID in models.Project is int64, but utils.Project and current path parsing use int.
+	// For consistency with service layer, parse to int64.
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format")
 		return
@@ -64,20 +103,18 @@ func HandleProjectByPath(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 
 	switch r.Method {
 	case http.MethodGet:
-		getProjectByID(w, r, id, db)
-	case http.MethodPatch:
-		updateProject(w, r, id, db)
+		ph.getProjectByID(w, r, id)
+	case http.MethodPatch: // Assuming PATCH for updates
+		ph.updateProject(w, r, id)
 	case http.MethodDelete:
-		deleteProject(w, r, id, db)
+		ph.deleteProject(w, r, id)
 	default:
 		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
-// Get a project by ID
-func getProjectByID(w http.ResponseWriter, r *http.Request, id int, db *sql.DB) {
-	var p utils.Project
-	err := db.QueryRow("SELECT id, name FROM projects WHERE id = $1", id).Scan(&p.ID, &p.Name)
+func (ph *ProjectHandler) getProjectByID(w http.ResponseWriter, r *http.Request, id int64) {
+	projectModel, err := ph.service.GetProjectByID(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			utils.RespondWithError(w, http.StatusNotFound, "Project not found")
@@ -86,43 +123,21 @@ func getProjectByID(w http.ResponseWriter, r *http.Request, id int, db *sql.DB) 
 		}
 		return
 	}
-	utils.RespondWithJSON(w, http.StatusOK, p)
+	utils.RespondWithJSON(w, http.StatusOK, toAPIProject(projectModel))
 }
 
-// Get all projects
-func getProjects(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	if db == nil {
-		log.Println("❌ DB is nil")
-	} else {
-		log.Printf("✅ DB is initialized in getProjects: %#v", db)
-	}
-	rows, err := db.Query("SELECT id, name FROM projects ORDER BY id")
+func (ph *ProjectHandler) getProjects(w http.ResponseWriter, r *http.Request) {
+	log.Println("✅ getProjects called via ProjectHandler") // Keep log for now
+	projectModels, err := ph.service.GetAllProjects()
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
 		return
 	}
-	defer rows.Close()
-
-	projects := []utils.Project{}
-	for rows.Next() {
-		var p utils.Project
-		if err := rows.Scan(&p.ID, &p.Name); err != nil {
-			utils.RespondWithError(w, http.StatusInternalServerError, "Scan error: "+err.Error())
-			return
-		}
-
-		projects = append(projects, p)
-	}
-	utils.RespondWithJSON(w, http.StatusOK, projects)
+	utils.RespondWithJSON(w, http.StatusOK, toAPIProjects(projectModels))
 }
 
-// Create a new project
-func createProject(w http.ResponseWriter, r *http.Request, db *sql.DB) {
-	if r.Method != http.MethodPost {
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Only POST method is allowed")
-		return
-	}
-
+func (ph *ProjectHandler) createProject(w http.ResponseWriter, r *http.Request) {
+	// POST is already checked by HandleProjects method or router
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Error reading request body", http.StatusBadRequest)
@@ -130,148 +145,114 @@ func createProject(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 	defer r.Body.Close()
 
-	// Handle content of request
-	var p utils.Project
+	var projectName string
 	contentType := r.Header.Get("Content-Type")
 
 	if strings.Contains(contentType, "application/json") {
-
-		if err := json.Unmarshal(body, &p); err != nil {
-			utils.RespondWithError(w, http.StatusBadRequest, "Invalid request: "+err.Error())
+		var payload struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid JSON request: "+err.Error())
 			return
 		}
+		projectName = payload.Name
 	} else if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
 		var projectXML struct {
 			XMLName xml.Name `xml:"project"`
 			Name    string   `xml:"name"`
 		}
-
 		if err := xml.Unmarshal(body, &projectXML); err != nil {
-			utils.RespondWithError(w, http.StatusBadRequest, "Invalid XML: "+err.Error())
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid XML request: "+err.Error())
 			return
 		}
-		p.Name = projectXML.Name
+		projectName = projectXML.Name
 	} else {
-		utils.RespondWithError(w, http.StatusBadRequest, "Content type must be application/xml or application/json: ")
-		return
-	}
-	if p.Name == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Project Name Required")
+		utils.RespondWithError(w, http.StatusUnsupportedMediaType, "Content type must be application/xml or application/json")
 		return
 	}
 
-	//Add to db
-	var id int
-	err = db.QueryRow("INSERT INTO projects(name) VALUES($1) RETURNING id", p.Name).Scan(&id)
+	if strings.TrimSpace(projectName) == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "Project Name is required")
+		return
+	}
+
+	createdProjectModel, err := ph.service.CreateProject(projectName)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Database Error: "+err.Error())
+		// Consider more specific error mapping if service returns typed errors
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database Error: "+err.Error())
 		return
 	}
-	p.ID = id
 
-	//Determine response XML or JSON from Accept header
+	apiProject := toAPIProject(createdProjectModel)
 
 	acceptHeader := r.Header.Get("Accept")
 	if strings.Contains(acceptHeader, "application/xml") {
 		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusCreated)
-		xml.NewEncoder(w).Encode(struct {
-			XMLName xml.Name `xml:"project"`
-			Name    string   `xml:"name"`
-			ID      int      `xml:"id"`
-		}{
-			ID:   p.ID,
-			Name: p.Name,
-		})
+		// Using models.ProjectXML for consistency if it's defined for XML marshalling
+		xmlResponse := models.ProjectXML{Project: models.Project{ID: createdProjectModel.ID, Name: createdProjectModel.Name}}
+		xml.NewEncoder(w).Encode(xmlResponse)
 	} else {
-		utils.RespondWithJSON(w, http.StatusCreated, p)
+		utils.RespondWithJSON(w, http.StatusCreated, apiProject)
 	}
 }
 
-// Delete a project by ID
-func deleteProject(w http.ResponseWriter, r *http.Request, id int, db *sql.DB) {
-	result, err := db.Exec("DELETE FROM projects WHERE id = $1", id)
+func (ph *ProjectHandler) deleteProject(w http.ResponseWriter, r *http.Request, id int64) {
+	rowsAffected, err := ph.service.DeleteProject(id)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
+		if err == sql.ErrNoRows { // Service might not return this directly, depends on its impl.
+			utils.RespondWithError(w, http.StatusNotFound, "Project not found")
+		} else {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
+		}
 		return
 	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Error checking delete result: "+err.Error())
-		return
-	}
-
 	if rowsAffected == 0 {
-		utils.RespondWithError(w, http.StatusNotFound, "Project not found")
+		utils.RespondWithError(w, http.StatusNotFound, "Project not found or already deleted")
 		return
 	}
-
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Project deleted successfully"})
 }
 
-// Update a project by ID
-func updateProject(w http.ResponseWriter, r *http.Request, id int, db *sql.DB) {
-
-	type ProjectUpdate struct {
-		Name string `xml:"name"`
+func (ph *ProjectHandler) updateProject(w http.ResponseWriter, r *http.Request, id int64) {
+	// Assuming PATCH, body parsing for name
+	var payload struct {
+		Name string `json:"name" xml:"name"` // Support both JSON and XML for update
 	}
 
-	var updateData ProjectUpdate
-	decoder := xml.NewDecoder(r.Body)
-
-	if err := decoder.Decode(&updateData); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request: "+err.Error())
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid JSON request: "+err.Error())
+			return
+		}
+	} else if strings.Contains(contentType, "application/xml") {
+		if err := xml.NewDecoder(r.Body).Decode(&payload); err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid XML request: "+err.Error())
+			return
+		}
+	} else {
+		utils.RespondWithError(w, http.StatusUnsupportedMediaType, "Content type must be application/xml or application/json for update")
 		return
 	}
 	defer r.Body.Close()
 
-	fieldsUpdated := false
-	if updateData.Name != "" {
-		fieldsUpdated = true
-	}
-	if !fieldsUpdated {
-		utils.RespondWithError(w, http.StatusBadRequest, "No fields provided in the update")
+	if strings.TrimSpace(payload.Name) == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "Project Name is required for update")
 		return
 	}
-	// Check if project exists
-	var exists bool
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM projects WHERE id = $1)", id).Scan(&exists)
+
+	updatedProjectModel, err := ph.service.UpdateProject(id, payload.Name)
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
+		if err == sql.ErrNoRows {
+			utils.RespondWithError(w, http.StatusNotFound, "Project not found")
+		} else {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Update failed: "+err.Error())
+		}
 		return
 	}
 
-	if !exists {
-		utils.RespondWithError(w, http.StatusNotFound, "Project not found")
-		return
-	}
-
-	// SQL Update from provided parameters
-	updateFields := []string{}
-	values := []interface{}{}
-	valueIndex := 1
-
-	if updateData.Name != "" {
-		updateFields = append(updateFields, fmt.Sprintf("name = $%d", valueIndex))
-		values = append(values, updateData.Name)
-		valueIndex++
-	}
-
-	if len(updateFields) == 0 {
-		utils.RespondWithError(w, http.StatusInternalServerError, "No valid fields provided")
-		return
-	}
-
-	query := fmt.Sprintf("UPDATE projects SET %s WHERE id=$%d RETURNING id, name",
-		strings.Join(updateFields, ", "), valueIndex)
-	values = append(values, id)
-
-	var updatedProject utils.Project
-	err = db.QueryRow(query, values...).Scan(&updatedProject.ID, &updatedProject.Name)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Update failed: "+err.Error())
-		return
-	}
-	utils.RespondWithJSON(w, http.StatusOK, updatedProject)
+	apiProject := toAPIProject(updatedProjectModel)
+	utils.RespondWithJSON(w, http.StatusOK, apiProject)
 }
