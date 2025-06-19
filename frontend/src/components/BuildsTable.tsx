@@ -35,7 +35,7 @@ const BuildsTable = ({ projectId, suiteId }: BuildsTableProps) => {
 
   const handleBuildClick = (buildId: string | number) => {
     // Navigate to the executions page for the clicked build
-    navigate(`/builds/${buildId}/executions`); 
+  navigate(`/projects/${projectId}/suites/${suiteId}/builds/${buildId}`);
   };
 
   if (loading) {

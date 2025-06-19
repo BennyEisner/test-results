@@ -11,8 +11,10 @@ import (
 type TestSuiteServiceInterface interface {
 	GetTestSuitesByProjectID(projectID int64) ([]models.TestSuite, error)
 	CreateTestSuite(projectID int64, name string, parentID *int64, time float64) (*models.TestSuite, error)
+	// Add other transactional methods as needed, e.g., CreateTestSuiteWithTx
 	GetTestSuiteByID(suiteID int64) (*models.TestSuite, error)
 	GetProjectTestSuiteByID(projectID int64, suiteID int64) (*models.TestSuite, error)
+	GetProjectTestSuiteByIDWithTx(tx *sql.Tx, projectID int64, suiteID int64) (*models.TestSuite, error) // New transactional method
 	CheckProjectExists(projectID int64) (bool, error)
 	CheckTestSuiteExists(suiteID int64) (bool, error) // For validating parent_id
 }
@@ -111,6 +113,27 @@ func (s *TestSuiteService) GetTestSuiteByID(suiteID int64) (*models.TestSuite, e
 		}
 		return nil, fmt.Errorf("database error fetching test suite by ID %d: %w", suiteID, err)
 	}
+	if parentID.Valid {
+		ts.ParentID = &parentID.Int64
+	}
+	return &ts, nil
+}
+
+// GetProjectTestSuiteByIDWithTx fetches a specific test suite by its ID and projectID within an existing transaction.
+func (s *TestSuiteService) GetProjectTestSuiteByIDWithTx(tx *sql.Tx, projectID int64, suiteID int64) (*models.TestSuite, error) {
+	var ts models.TestSuite
+	var parentID sql.NullInt64
+
+	err := tx.QueryRow("SELECT id, project_id, name, parent_id, time FROM test_suites WHERE id = $1 AND project_id = $2", suiteID, projectID).Scan(
+		&ts.ID, &ts.ProjectID, &ts.Name, &parentID, &ts.Time)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, err
+		}
+		return nil, fmt.Errorf("database error fetching test suite ID %d for project ID %d with tx: %w", suiteID, projectID, err)
+	}
+
 	if parentID.Valid {
 		ts.ParentID = &parentID.Int64
 	}

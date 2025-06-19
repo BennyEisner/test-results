@@ -32,6 +32,11 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 
 	testCaseService := service.NewTestCaseService(db)
 	testCaseHandler := handler.NewTestCaseHandler(testCaseService)
+
+	// Instantiate JUnitImportService and JUnitImportHandler
+	// Note: buildService, testSuiteService, testCaseService, buildExecutionService are already instantiated above
+	junitImportService := service.NewJUnitImportService(db, buildService, testSuiteService, testCaseService, buildExecutionService)
+	junitImportHandler := handler.NewJUnitImportHandler(junitImportService)
 	// TODO: Instantiate other services and handlers as they are created
 
 	// Home Page
@@ -118,7 +123,8 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("/api/cases/", testCaseHandler.HandleTestCaseByPath)
 
 	// This pattern handles /api/projects/{id}, /api/projects/{id}/suites,
-	// /api/projects/{id}/suites/{suiteID}, and /api/projects/{id}/suites/{suiteID}/builds
+	// /api/projects/{id}/suites/{suiteID}, /api/projects/{id}/suites/{suiteID}/builds,
+	// and now /api/projects/{projectID}/suites/{suiteID}/junit_imports
 	mux.HandleFunc("/api/projects/", func(w http.ResponseWriter, r *http.Request) {
 		// Add CORS headers to allow frontend access
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -136,7 +142,14 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 		// e.g., for /api/projects/1/suites/2/builds/ -> parts = ["1", "suites", "2", "builds"]
 		parts := strings.Split(strings.Trim(strings.TrimPrefix(requestPath, "/api/projects/"), "/"), "/")
 
-		if len(parts) == 4 && parts[1] == "suites" && parts[3] == "builds" {
+		// Check for /api/projects/{projectID}/suites/{suiteID}/junit_imports
+		if len(parts) == 4 && parts[1] == "suites" && parts[3] == "junit_imports" {
+			if r.Method == http.MethodPost {
+				junitImportHandler.HandleJUnitImport(w, r)
+			} else {
+				utils.RespondWithError(w, http.StatusMethodNotAllowed, "Only POST is allowed for JUnit imports.")
+			}
+		} else if len(parts) == 4 && parts[1] == "suites" && parts[3] == "builds" {
 			// Route: /api/projects/{projectID}/suites/{suiteID}/builds
 			// This now correctly matches the expectation of HandleTestSuiteBuilds
 			buildHandler.HandleTestSuiteBuilds(w, r)

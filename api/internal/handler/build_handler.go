@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/BennyEisner/test-results/internal/models"
-	"github.com/BennyEisner/test-results/internal/service" // Import the service package
+	"github.com/BennyEisner/test-results/internal/service"
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 

@@ -11,8 +11,10 @@ import (
 type TestCaseServiceInterface interface {
 	GetTestCasesBySuiteID(suiteID int64) ([]models.TestCase, error)
 	CreateTestCase(suiteID int64, name string, classname string) (*models.TestCase, error)
+	FindOrCreateTestCaseWithTx(tx *sql.Tx, suiteID int64, name string, classname string) (*models.TestCase, error) // New
 	GetTestCaseByID(caseID int64) (*models.TestCase, error)
 	CheckTestSuiteExists(suiteID int64) (bool, error) // To validate suite_id before creation
+	// Consider if CheckTestSuiteExists also needs a transactional version
 }
 
 // TestCaseService provides services related to test cases.
@@ -91,4 +93,45 @@ func (s *TestCaseService) GetTestCaseByID(caseID int64) (*models.TestCase, error
 		return nil, fmt.Errorf("database error fetching test case by ID %d: %w", caseID, err)
 	}
 	return &tc, nil
+}
+
+// FindOrCreateTestCaseWithTx finds an existing test case by suite_id, name, and classname,
+// or creates a new one if it doesn't exist, within an existing transaction.
+func (s *TestCaseService) FindOrCreateTestCaseWithTx(tx *sql.Tx, suiteID int64, name string, classname string) (*models.TestCase, error) {
+	var tc models.TestCase
+
+	// Try to find existing test case
+	// It's important that (suite_id, name, classname) is unique if we want this to be robust.
+	// If classname can be empty or is not always reliable, the query might need adjustment or a unique constraint on (suite_id, name).
+	// For now, assuming classname is significant.
+	err := tx.QueryRow(
+		"SELECT id, suite_id, name, classname FROM test_cases WHERE suite_id = $1 AND name = $2 AND classname = $3",
+		suiteID, name, classname,
+	).Scan(&tc.ID, &tc.SuiteID, &tc.Name, &tc.Classname)
+
+	if err == nil {
+		// Found existing test case
+		return &tc, nil
+	}
+
+	if err != sql.ErrNoRows {
+		// An actual error occurred during the query
+		return nil, fmt.Errorf("error querying for test case (suite: %d, name: %s, class: %s) with tx: %w", suiteID, name, classname, err)
+	}
+
+	// Test case not found, so create it (err == sql.ErrNoRows)
+	// Optional: Validate suiteID exists using CheckTestSuiteExistsWithTx if that method is added.
+	// For now, relying on foreign key constraints or prior validation.
+
+	var createdCase models.TestCase
+	insertErr := tx.QueryRow(
+		"INSERT INTO test_cases(suite_id, name, classname) VALUES($1, $2, $3) RETURNING id, suite_id, name, classname",
+		suiteID, name, classname,
+	).Scan(&createdCase.ID, &createdCase.SuiteID, &createdCase.Name, &createdCase.Classname)
+
+	if insertErr != nil {
+		return nil, fmt.Errorf("error creating test case (suite: %d, name: %s, class: %s) with tx: %w", suiteID, name, classname, insertErr)
+	}
+
+	return &createdCase, nil
 }

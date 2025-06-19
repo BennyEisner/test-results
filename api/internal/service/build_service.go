@@ -15,9 +15,11 @@ type BuildServiceInterface interface {
 	GetBuildByID(id int64) (*models.Build, error)
 	GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build, error)
 	CreateBuild(build *models.Build) (*models.Build, error)
+	CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*models.Build, error) // New transactional method
 	UpdateBuild(id int64, buildNumber, ciProvider, ciURL *string) (*models.Build, error)
 	DeleteBuild(id int64) (int64, error)
 	CheckTestSuiteExists(testSuiteID int64) (bool, error)
+	// Consider if CheckTestSuiteExists also needs a transactional version if called within a tx
 }
 
 // BuildService provides services related to builds.
@@ -141,6 +143,40 @@ func (s *BuildService) CreateBuild(build *models.Build) (*models.Build, error) {
 		BuildNumber: build.BuildNumber,
 		CIProvider:  build.CIProvider,
 		CIURL:       build.CIURL, // Assign the pointer directly
+		CreatedAt:   createdAt,
+	}
+	return createdBuild, nil
+}
+
+// CreateBuildWithTx creates a new build in the database within an existing transaction.
+// The input models.Build should have TestSuiteID, BuildNumber, CIProvider, and optionally CIURL populated.
+// CreatedAt will be set by the database (NOW()). ID will be set from RETURNING.
+func (s *BuildService) CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*models.Build, error) {
+	var newBuildID int64
+	var createdAt time.Time
+	var ciURLNullStr sql.NullString
+	if build.CIURL != nil && strings.TrimSpace(*build.CIURL) != "" {
+		ciURLNullStr = sql.NullString{String: *build.CIURL, Valid: true}
+	} else {
+		ciURLNullStr = sql.NullString{String: "", Valid: false}
+	}
+
+	// Use tx.QueryRow instead of s.DB.QueryRow
+	err := tx.QueryRow(
+		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at) VALUES($1, $2, $3, $4, NOW()) RETURNING id, created_at",
+		build.TestSuiteID, build.BuildNumber, build.CIProvider, ciURLNullStr,
+	).Scan(&newBuildID, &createdAt)
+
+	if err != nil {
+		return nil, fmt.Errorf("database error creating build with tx: %w", err)
+	}
+
+	createdBuild := &models.Build{
+		ID:          newBuildID,
+		TestSuiteID: build.TestSuiteID,
+		BuildNumber: build.BuildNumber,
+		CIProvider:  build.CIProvider,
+		CIURL:       build.CIURL,
 		CreatedAt:   createdAt,
 	}
 	return createdBuild, nil

@@ -21,16 +21,16 @@ export interface Suite {
   time: number;
 }
 
-export interface TestCaseExecution { 
+export interface TestCaseExecution {
   id: number;
   build_id: number;
   test_case_id: number;
   status: string;
   execution_time: number;
   created_at: string;
-  test_case_name?: string; // Added from backend's BuildExecutionDetail
-  class_name?: string;   // Added from backend's BuildExecutionDetail
-  failure?: Failure | null; // Added from backend's BuildExecutionDetail
+  test_case_name?: string;
+  class_name?: string;
+  failure?: Failure | null;
 }
 
 // Added Failure interface to match backend's models.Failure (simplified for frontend)

@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"strings"
 
-	// "github.com/BennyEisner/test-results/internal/handler" // No longer needed for DTOs
 	"github.com/BennyEisner/test-results/internal/models"
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 
 // BuildExecutionServiceInterface defines the interface for build execution service operations.
 type BuildExecutionServiceInterface interface {
-	GetBuildExecutions(buildID int64) ([]models.BuildExecutionDetail, error)                                                     // Changed to models.BuildExecutionDetail
-	CreateBuildExecutions(buildID int64, inputs []models.BuildExecutionInput) ([]models.BuildTestCaseExecution, []string, error) // Changed to models.BuildExecutionInput
+	GetBuildExecutions(buildID int64) ([]models.BuildExecutionDetail, error)
+	CreateBuildExecutions(buildID int64, inputs []models.BuildExecutionInput) ([]models.BuildTestCaseExecution, []string, error)
+	CreateBuildExecutionsWithTx(tx *sql.Tx, buildID int64, inputs []models.BuildExecutionInput) ([]models.BuildTestCaseExecution, []string, error) // New
 	CheckBuildExists(buildID int64) (bool, error)
 	CheckTestCaseExists(testCaseID int64) (bool, error)
+	// Consider if CheckBuildExists and CheckTestCaseExists also need transactional versions
 }
 
 // BuildExecutionService provides services related to build executions.
@@ -195,5 +196,85 @@ func (s *BuildExecutionService) CreateBuildExecutions(buildID int64, inputs []mo
 		})
 	}
 
+	return createdExecutions, processingErrors, nil
+}
+
+// CreateBuildExecutionsWithTx handles the creation of multiple build execution records within an existing transaction.
+// It returns a slice of successfully created executions, a slice of error messages for individual failures,
+// and a general error if a non-recoverable issue occurs during its own operations (but does not commit/rollback tx).
+func (s *BuildExecutionService) CreateBuildExecutionsWithTx(tx *sql.Tx, buildID int64, inputs []models.BuildExecutionInput) ([]models.BuildTestCaseExecution, []string, error) {
+	var createdExecutions []models.BuildTestCaseExecution
+	var processingErrors []string
+	validStatuses := map[string]bool{"passed": true, "failed": true, "skipped": true, "error": true}
+
+	// Optional: Pre-check existence of all test cases in a batch if performance allows and it's critical.
+	// For now, checking one by one.
+	// Also, CheckTestCaseExists currently uses s.DB, not tx. If called here, it should ideally use tx.
+	// For simplicity in this step, we'll assume test cases are validated before this call or rely on FK constraints.
+
+	for _, input := range inputs {
+		// It's better if the calling service (JUnitImportService) ensures test cases exist using its own transaction.
+		// If we must check here:
+		// var tcExists bool
+		// err := tx.QueryRow("SELECT EXISTS(SELECT 1 FROM test_cases WHERE id = $1)", input.TestCaseID).Scan(&tcExists)
+		// if err != nil {
+		// 	processingErrors = append(processingErrors, fmt.Sprintf("Error checking test case %d with tx: %s", input.TestCaseID, err.Error()))
+		// 	continue
+		// }
+		// if !tcExists {
+		// 	processingErrors = append(processingErrors, fmt.Sprintf("Test case with ID %d not found (checked with tx).", input.TestCaseID))
+		// 	continue
+		// }
+
+		statusToInsert := strings.ToLower(input.Status)
+		if !validStatuses[statusToInsert] {
+			processingErrors = append(processingErrors, fmt.Sprintf("Invalid status '%s' for test case ID %d. Must be one of: passed, failed, skipped, error.", input.Status, input.TestCaseID))
+			continue
+		}
+
+		var executionID int64
+		// Use the passed-in transaction 'tx'
+		err := tx.QueryRow(
+			`INSERT INTO build_test_case_executions (build_id, test_case_id, status, execution_time)
+			 VALUES ($1, $2, $3, $4)
+			 RETURNING id`,
+			buildID, input.TestCaseID, statusToInsert, input.ExecutionTime,
+		).Scan(&executionID)
+
+		if err != nil {
+			// Do not rollback here; let the caller manage the transaction.
+			processingErrors = append(processingErrors, fmt.Sprintf("Error inserting execution for test case %d with tx: %s", input.TestCaseID, err.Error()))
+			continue // Continue to try other executions in the batch
+		}
+
+		if (statusToInsert == "failed" || statusToInsert == "error") &&
+			(input.FailureMessage != nil || input.FailureType != nil || input.FailureDetails != nil) {
+			_, err = tx.Exec( // Use tx.Exec
+				`INSERT INTO failures (build_test_case_execution_id, message, type, details)
+				 VALUES ($1, $2, $3, $4)`,
+				executionID, input.FailureMessage, input.FailureType, input.FailureDetails,
+			)
+			if err != nil {
+				// Do not rollback here.
+				processingErrors = append(processingErrors, fmt.Sprintf("Error inserting failure details for test case %d (execution %d) with tx: %s", input.TestCaseID, executionID, err.Error()))
+				// This execution might be partially inserted (execution record created, failure not).
+				// The caller needs to decide how to handle this based on the overall transaction strategy.
+				continue
+			}
+		}
+
+		// Do not commit here.
+
+		createdExecutions = append(createdExecutions, models.BuildTestCaseExecution{
+			ID:            executionID,
+			BuildID:       buildID,
+			TestCaseID:    input.TestCaseID,
+			Status:        statusToInsert,
+			ExecutionTime: input.ExecutionTime,
+		})
+	}
+
+	// If any error occurred that should make the *entire batch operation* fail, return it as the third argument.
+	// For now, we're collecting individual errors in processingErrors.
 	return createdExecutions, processingErrors, nil
 }
