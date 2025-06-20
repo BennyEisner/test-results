@@ -1,12 +1,14 @@
-{/* frontend/src/components/HomePage.tsx */ }
-import { Container, Row, Col, Card, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Alert, Button } from 'react-bootstrap';
+import { Link } from 'react-router-dom'
+import ProjectsTable from './ProjectsTable';
+
 const HomePage = () => {
     return (
         <Container fluid className="py-3">
             <Row className="mb-3">
                 <Col>
-                    <h1>Dashboard Overview</h1>
-                    <p className="lead">Welcome to your test results dashboard.</p>
+                    <h1>Test Results Dashboard Overview</h1>
+                    <p className="lead">Welcome to your test results dashboard</p>
                 </Col>
             </Row>
 
@@ -18,7 +20,6 @@ const HomePage = () => {
                         <Card.Body>
                             <Alert variant="info">
                                 Placeholder for global statistics (e.g., total projects, overall pass rate).
-                                You will build components to fetch and display this data.
                             </Alert>
                         </Card.Body>
                     </Card>
@@ -53,11 +54,15 @@ const HomePage = () => {
             <Row>
                 <Col>
                     <Card>
-                        <Card.Header as="h5">Projects / Search</Card.Header>
+                        <Card.Header as="h5">Projects Overview
+                            <Link to="/projects">
+                                <Button variant="outline-primary" size="sm">
+                                    All Projects
+                                </Button>
+                            </Link>
+                        </Card.Header>
                         <Card.Body>
-                            <Alert variant="info">
-                                Placeholder for a project overview or a search component.
-                            </Alert>
+                            < ProjectsTable />
                         </Card.Body>
                     </Card>
                 </Col>
