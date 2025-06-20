@@ -50,7 +50,7 @@ const BuildDetail = () => {
     <div className="build-detail">
       <div className="build-header">
         <button 
-          onClick={() => navigate(`/projects/${projectId}/suites/${suiteId}/builds`)} 
+          onClick={() => navigate(`/projects/${projectId}/suites/${suiteId}`)} 
           className="back-button"
         >
           Back to Builds
