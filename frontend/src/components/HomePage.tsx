@@ -1,0 +1,70 @@
+{/* frontend/src/components/HomePage.tsx */ }
+import { Container, Row, Col, Card, Alert } from 'react-bootstrap';
+const HomePage = () => {
+    return (
+        <Container fluid className="py-3">
+            <Row className="mb-3">
+                <Col>
+                    <h1>Dashboard Overview</h1>
+                    <p className="lead">Welcome to your test results dashboard.</p>
+                </Col>
+            </Row>
+
+            {/* Section 1: Placeholder for Global Stats */}
+            <Row className="mb-4">
+                <Col>
+                    <Card>
+                        <Card.Header as="h5">Global Statistics</Card.Header>
+                        <Card.Body>
+                            <Alert variant="info">
+                                Placeholder for global statistics (e.g., total projects, overall pass rate).
+                                You will build components to fetch and display this data.
+                            </Alert>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Section 2: Placeholder for Recent Activity / Failures */}
+            <Row className="mb-4">
+                <Col md={6} className="mb-3 mb-md-0">
+                    <Card>
+                        <Card.Header as="h5">Recent Builds</Card.Header>
+                        <Card.Body>
+                            <Alert variant="info">
+                                Placeholder for a list/feed of recent builds.
+                            </Alert>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={6}>
+                    <Card>
+                        <Card.Header as="h5">Recent Failures</Card.Header>
+                        <Card.Body>
+                            <Alert variant="info">
+                                Placeholder for a panel showing recent failures.
+                            </Alert>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Section 3: Placeholder for Project Overview or Search */}
+            <Row>
+                <Col>
+                    <Card>
+                        <Card.Header as="h5">Projects / Search</Card.Header>
+                        <Card.Body>
+                            <Alert variant="info">
+                                Placeholder for a project overview or a search component.
+                            </Alert>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+
+        </Container>
+    );
+};
+
+export default HomePage;

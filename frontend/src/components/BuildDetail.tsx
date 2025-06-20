@@ -1,31 +1,41 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Container, Row, Col, Button, Alert } from 'react-bootstrap';
 import ExecutionsTable from './ExecutionsTable';
 import ExecutionsSummary from './ExecutionsSummary';
 import { fetchExecutions } from '../services/api';
 import type { TestCaseExecution } from '../types';
-import './ExecutionsSummary.css';
 
 const BuildDetail = () => {
-  const { buildId, suiteId, projectId } = useParams<{ buildId: string, suiteId: string, projectId: string }>();
+  const { buildId, suiteId, projectId } = useParams<{ buildId: string; suiteId: string; projectId: string }>();
   const navigate = useNavigate();
-  
-  // State for execution data - lifted up from ExecutionsTable
+
   const [executions, setExecutions] = useState<TestCaseExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Validation checks
   if (!suiteId) {
-    return <div className="error">Suite ID is required</div>;
+    return (
+      <Container className="py-3">
+        <Alert variant="danger">Suite ID is required</Alert>
+      </Container>
+    );
   }
 
   if (!projectId) {
-    return <div className="error">Project ID is required</div>;
+    return (
+      <Container className="py-3">
+        <Alert variant="danger">Project ID is required</Alert>
+      </Container>
+    );
   }
 
   if (!buildId) {
-    return <div className="error">Build ID is required</div>; 
+    return (
+      <Container className="py-3">
+        <Alert variant="danger">Build ID is required</Alert>
+      </Container>
+    );
   }
 
   // Fetch execution data
@@ -47,33 +57,35 @@ const BuildDetail = () => {
   }, [buildId]);
 
   return (
-    <div className="build-detail">
-      <div className="build-header">
-        <button 
-          onClick={() => navigate(`/projects/${projectId}/suites/${suiteId}`)} 
-          className="back-button"
-        >
-          Back to Builds
-        </button>
-        <h1>Build {buildId}</h1>
-      </div>
+    <Container className="py-3 build-detail">
+      <Row className="align-items-center mb-3 build-header">
+        <Col xs="auto">
+          <Button 
+            variant="outline-secondary" 
+            onClick={() => navigate(`/projects/${projectId}/suites/${suiteId}`)}
+          >
+            &laquo; Back to Builds
+          </Button>
+        </Col>
+        <Col>
+          <h1 className="h3 mb-0">Build Details: #{buildId} (Suite: #{suiteId}, Project: #{projectId})</h1>
+        </Col>
+      </Row>
 
-      {/* New summary component */}
-      <ExecutionsSummary
-        executions={executions}
-        loading={loading}
-      />
+      <ExecutionsSummary executions={executions} loading={loading} />
 
-      {/* Pass data to ExecutionsTable */}
-      {error ? (
-        <div className="error">Error: {error}</div>
-      ) : (
-        <ExecutionsTable
-          executions={executions}
-          loading={loading}
-        />
+      {error && (
+        <Alert variant="danger" className="mt-3">
+          Error loading executions: {error}
+        </Alert>
       )}
-    </div>
+      
+      {/* ExecutionsTable will be refactored separately. 
+          It already handles its own loading/error state internally if not passed down.
+          For now, we only render it if there's no top-level error from fetchExecutions. 
+      */}
+      {!error && <ExecutionsTable executions={executions} loading={loading} />}
+    </Container>
   );
 };
 

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Table, Spinner, Alert } from 'react-bootstrap';
 import type { Project } from '../types';
 import { fetchProjects } from '../services/api';
-import './ProjectsTable.css';
 
 const ProjectsTable = () => {
   const navigate = useNavigate();
@@ -31,16 +31,23 @@ const ProjectsTable = () => {
   };
 
   if (loading) {
-    return <div className="loading">Loading projects...</div>;
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading projects...</span>
+        </Spinner>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error">Error: {error}</div>;
+    return <Alert variant="danger">Error: {error}</Alert>;
   }
 
   return (
-    <div>
-      <table className="table table-striped table-bordered table-hover">
+    <div className="py-3">
+      <h2 className="mb-3">Projects</h2>
+      <Table striped bordered hover responsive>
         <thead>
           <tr>
             <th>ID</th>
@@ -60,9 +67,9 @@ const ProjectsTable = () => {
             </tr>
           ))}
         </tbody>
-      </table>
-      {projects.length === 0 && (
-        <p className="no-data">No projects found.</p>
+      </Table>
+      {projects.length === 0 && !loading && (
+        <Alert variant="info" className="mt-3">No projects found.</Alert>
       )}
     </div>
   );

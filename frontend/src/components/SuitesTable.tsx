@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Table, Spinner, Alert } from 'react-bootstrap';
 import type { Suite } from '../types';
 import { fetchSuites } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -35,17 +36,23 @@ const SuitesTable = ({ projectId }: SuitesTableProps) => {
   };
 
   if (loading) {
-    return <div className="loading">Loading suites...</div>;
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading suites...</span>
+        </Spinner>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error">Error: {error}</div>;
+    return <Alert variant="danger">Error: {error}</Alert>;
   }
 
   return (
-    <div>
-      <h2>Suites</h2>
-      <table className="table table-striped table-bordered table-hover">
+    <div className="py-3">
+      <h2 className="mb-3">Suites</h2>
+      <Table striped bordered hover responsive>
         <thead>
           <tr>
             <th>Suite ID</th>
@@ -67,9 +74,9 @@ const SuitesTable = ({ projectId }: SuitesTableProps) => {
             </tr>
           ))}
         </tbody>
-      </table>
-      {suites.length === 0 && (
-        <p className="no-data">No suites found for this project.</p>
+      </Table>
+      {suites.length === 0 && !loading && (
+        <Alert variant="info" className="mt-3">No suites found for this project.</Alert>
       )}
     </div>
   );

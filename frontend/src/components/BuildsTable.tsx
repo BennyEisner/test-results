@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // Added import
+import { useNavigate } from 'react-router-dom';
+import { Table, Spinner, Alert, Badge } from 'react-bootstrap';
 import type { Build } from '../types';
 import { fetchBuilds } from '../services/api';
-import './BuildsTable.css';
 
 interface BuildsTableProps {
   projectId: string | number;
@@ -39,17 +39,23 @@ const BuildsTable = ({ projectId, suiteId }: BuildsTableProps) => {
   };
 
   if (loading) {
-    return <div className="loading">Loading builds...</div>;
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading builds...</span>
+        </Spinner>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error">Error: {error}</div>;
+    return <Alert variant="danger">Error: {error}</Alert>;
   }
 
   return (
-    <div>
-      <h2>Builds</h2>
-      <table className="table table-striped table-bordered table-hover">
+    <div className="py-3">
+      <h2 className="mb-3">Builds</h2>
+      <Table striped bordered hover responsive>
         <thead>
           <tr>
             <th>Build ID</th>
@@ -62,18 +68,30 @@ const BuildsTable = ({ projectId, suiteId }: BuildsTableProps) => {
           {builds.map((build) => (
             <tr key={build.id} onClick={() => handleBuildClick(build.id)} style={{ cursor: 'pointer' }}>
               <td>#{build.id}</td>
-              <td>{build.build_number}</td>
-              <td>{build.ci_provider}</td>
-              <td>{new Date(build.created_at).toLocaleString()}</td>
+              <td className="font-monospace">{build.build_number}</td>
+              <td>
+                <Badge bg={getCIProviderBadgeColor(build.ci_provider)}>{build.ci_provider || 'N/A'}</Badge>
+              </td>
+              <td className="text-muted fst-italic">{new Date(build.created_at).toLocaleString()}</td>
             </tr>
           ))}
         </tbody>
-      </table>
-      {builds.length === 0 && (
-        <p className="no-data">No builds found for this project.</p>
+      </Table>
+      {builds.length === 0 && !loading && (
+        <Alert variant="info" className="mt-3">No builds found for this project.</Alert>
       )}
     </div>
   );
+};
+
+// Helper function to determine badge color based on CI provider
+const getCIProviderBadgeColor = (provider: string | null | undefined) => {
+  if (!provider) return 'secondary';
+  const lowerProvider = provider.toLowerCase();
+  if (lowerProvider.includes('github')) return 'dark';
+  if (lowerProvider.includes('jenkins')) return 'danger';
+  if (lowerProvider.includes('travis')) return 'info';
+  return 'secondary';
 };
 
 export default BuildsTable;

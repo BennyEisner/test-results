@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-//import BuildsTable from './BuildsTable';
+import { Container, Row, Col, Button, Alert } from 'react-bootstrap';
 import SuitesTable from './SuitesTable.tsx';
 
 const ProjectDetail = () => {
@@ -7,23 +7,31 @@ const ProjectDetail = () => {
   const navigate = useNavigate();
 
   if (!projectId) {
-    return <div className="error">Project ID is required</div>;
+    return (
+      <Container className="py-3">
+        <Alert variant="danger">Project ID is required</Alert>
+      </Container>
+    );
   }
 
   return (
-    <div className="project-detail">
-      <div className="project-header">
-        <button 
-          onClick={() => navigate('/projects')} 
-          className="back-button"
-        >
-          Back to Projects
-        </button>
-        <h1>Project {projectId}</h1>
-      </div>
+    <Container className="py-3 project-detail">
+      <Row className="align-items-center mb-3 project-header">
+        <Col xs="auto">
+          <Button 
+            variant="outline-secondary" 
+            onClick={() => navigate('/projects')}
+          >
+            &laquo; Back to Projects
+          </Button>
+        </Col>
+        <Col>
+          <h1 className="h3 mb-0">Project Details: #{projectId}</h1>
+        </Col>
+      </Row>
 
       <SuitesTable projectId={projectId} />
-    </div>
+    </Container>
   );
 };
 

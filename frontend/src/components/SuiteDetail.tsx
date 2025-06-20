@@ -1,34 +1,45 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { Container, Row, Col, Button, Alert } from 'react-bootstrap';
 import BuildsTable from './BuildsTable';
-//import SuitesTable from './SuitesTable.tsx';
 
 const SuiteDetail = () => {
-  const { suiteId, projectId} = useParams<{ suiteId: string, projectId: string}>();
+  const { suiteId, projectId } = useParams<{ suiteId: string; projectId: string }>();
   const navigate = useNavigate();
 
- if (!suiteId) {
-    return <div className="error">Suite ID is required</div>;
+  if (!suiteId) {
+    return (
+      <Container className="py-3">
+        <Alert variant="danger">Suite ID is required</Alert>
+      </Container>
+    );
   }
 
-if (!projectId) {
-    return <div className="error">Project ID is required</div>;
+  if (!projectId) {
+    return (
+      <Container className="py-3">
+        <Alert variant="danger">Project ID is required</Alert>
+      </Container>
+    );
   }
-
 
   return (
-    <div className="project-detail">
-      <div className="project-header">
-        <button 
-          onClick={() => navigate(`/projects/${projectId}`)} 
-          className="back-button"
-        >
-          Back to Suites
-        </button>
-        <h1>Suite {suiteId}</h1>
-      </div>
+    <Container className="py-3 suite-detail">
+      <Row className="align-items-center mb-3 suite-header">
+        <Col xs="auto">
+          <Button 
+            variant="outline-secondary" 
+            onClick={() => navigate(`/projects/${projectId}`)}
+          >
+            &laquo; Back to Project Suites
+          </Button>
+        </Col>
+        <Col>
+          <h1 className="h3 mb-0">Suite Details: #{suiteId} (Project: #{projectId})</h1>
+        </Col>
+      </Row>
 
-      <BuildsTable  projectId={projectId} suiteId={suiteId}/>
-    </div>
+      <BuildsTable projectId={projectId} suiteId={suiteId} />
+    </Container>
   );
 };
 
