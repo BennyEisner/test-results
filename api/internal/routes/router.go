@@ -74,6 +74,23 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	// Build-related endpoints
 	mux.HandleFunc("/api/builds", buildHandler.HandleBuilds)
 
+	mux.HandleFunc("/api/builds/recent", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method == http.MethodGet {
+			buildHandler.GetRecentBuilds(w, r)
+		} else {
+			utils.RespondWithError(w, http.StatusMethodNotAllowed, "Only GET Method is allowed")
+		}
+	})
+
 	mux.HandleFunc("/api/builds/", func(w http.ResponseWriter, r *http.Request) {
 		// Add CORS headers to allow frontend access - anticipating direct calls
 		w.Header().Set("Access-Control-Allow-Origin", "*")

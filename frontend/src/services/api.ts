@@ -19,7 +19,7 @@ export const fetchProjects = async (): Promise<Project[]> => {
 export const fetchSuites = async (
   projectId: string | number,
 ): Promise<Suite[]> => {
-  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/suites`); 
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/suites`);
   if (!response.ok) {
     throw new Error("Failed to fetch suites");
   }
@@ -27,13 +27,20 @@ export const fetchSuites = async (
 };
 
 export const fetchBuilds = async (
-  projectId: string | number, 
+  projectId: string | number,
   suiteId: string | number,
 ): Promise<Build[]> => {
-  
   const response = await fetch(
-    `${API_BASE_URL}/projects/${projectId}/suites/${suiteId}/builds`, 
+    `${API_BASE_URL}/projects/${projectId}/suites/${suiteId}/builds`,
   );
+  if (!response.ok) {
+    throw new Error("Failed to fetch builds");
+  }
+  return response.json();
+};
+
+export const fetchRecentBuilds = async (): Promise<Build[]> => {
+  const response = await fetch(`${API_BASE_URL}/builds/recent`);
   if (!response.ok) {
     throw new Error("Failed to fetch builds");
   }
@@ -42,7 +49,8 @@ export const fetchBuilds = async (
 
 export const fetchExecutions = async (
   buildId: string | number,
-): Promise<TestCaseExecution[]> => { // Used TestCaseExecution type
+): Promise<TestCaseExecution[]> => {
+  // Used TestCaseExecution type
   const response = await fetch(`${API_BASE_URL}/builds/${buildId}/executions`); // Added API_BASE_URL
   if (!response.ok) {
     throw new Error("Failed to fetch executions");
