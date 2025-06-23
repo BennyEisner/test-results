@@ -7,3 +7,4 @@ junit.xml
 coverage.xml
 
 .aider*
+node_modules/
