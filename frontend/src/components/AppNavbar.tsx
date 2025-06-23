@@ -35,20 +35,28 @@ const AppNavbar = () => {
                 className="d-flex overflow-auto" 
                 style={{ 
                     whiteSpace: 'nowrap',
-                    scrollbarWidth: 'thin'
+                    scrollbarWidth: 'none', /* Firefox */
                 }}
             >
+                <style>
+                    {`
+                        .d-flex.overflow-auto::-webkit-scrollbar {
+                            display: none; /* Safari and Chrome */
+                        }
+                    `}
+                </style>
                 <Nav className="flex-nowrap">
                     {projects.map((project) => (
                         <Nav.Link 
                             key={project.id} 
                             as={Link} 
                             to={`/projects/${project.id}`}
-                            className="text-primary px-3 py-2 me-2 bg-white rounded border"
+                            className="text-primary px-2 py-1 me-2 bg-white rounded border"
                             style={{ 
                                 textDecoration: 'none',
                                 minWidth: 'fit-content',
-                                whiteSpace: 'nowrap'
+                                whiteSpace: 'nowrap',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)'
                             }}
                         >
                             {project.name}

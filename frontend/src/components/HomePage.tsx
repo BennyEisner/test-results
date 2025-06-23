@@ -16,8 +16,8 @@ const HomePage = () => {
 
             <Row className="mb-4">
                 <Col>
-                    <Card>
-                        <Card.Header as="h5">Projects</Card.Header>
+                    <Card className="shadow-sm">
+                        <Card.Header as="h5" className="bg-light">Projects</Card.Header>
                         <AppNavbar />
                     </Card>
                 </Col>
@@ -26,8 +26,8 @@ const HomePage = () => {
             {/* Section 1: Placeholder for Global Stats */}
             <Row className="mb-4">
                         <Col>
-                            <Card>
-                                <Card.Header as="h5">Global Statistics</Card.Header>
+                            <Card className="shadow-sm">
+                                <Card.Header as="h5" className="bg-light">Global Statistics</Card.Header>
                                 <Card.Body>
                                     <Alert variant="info">
                                         Placeholder for global statistics (e.g., total projects, overall pass rate).
@@ -40,8 +40,8 @@ const HomePage = () => {
                     {/* Section 2: Placeholder for Recent Activity / Failures */}
                     <Row className="mb-4">
                         <Col md={6} className="mb-3 mb-md-0">
-                            <Card>
-                                <Card.Header as="h5">Recent Builds</Card.Header>
+                            <Card className="shadow-sm">
+                                <Card.Header as="h5" className="bg-light">Recent Builds</Card.Header>
                                 <Card.Body>
                                     <Alert variant="info">
                                         Placeholder for a list/feed of recent builds.
@@ -50,8 +50,8 @@ const HomePage = () => {
                             </Card>
                         </Col>
                         <Col md={6}>
-                            <Card>
-                                <Card.Header as="h5">Recent Failures</Card.Header>
+                            <Card className="shadow-sm">
+                                <Card.Header as="h5" className="bg-light">Recent Failures</Card.Header>
                                 <Card.Body>
                                     <Alert variant="info">
                                         Placeholder for a panel showing recent failures.
@@ -64,8 +64,8 @@ const HomePage = () => {
                     {/* Section 3: Placeholder for Project Overview or Search */}
                     <Row>
                         <Col>
-                            <Card>
-                                <Card.Header as="h5">Projects Overview</Card.Header>
+                            <Card className="shadow-sm">
+                                <Card.Header as="h5" className="bg-light">Projects Overview</Card.Header>
                                 <Card.Body>
                                     <Alert variant="info">
                                     </Alert>
