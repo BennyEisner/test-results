@@ -51,6 +51,7 @@ func toAPIBuild(m *models.Build) utils.Build {
 	apiBuild := utils.Build{
 		ID:          int(m.ID),
 		TestSuiteID: int(m.TestSuiteID),
+		ProjectID:   int(m.ProjectID),
 		BuildNumber: m.BuildNumber,
 		CIProvider:  m.CIProvider,
 		CreatedAt:   m.CreatedAt,

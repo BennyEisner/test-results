@@ -44,7 +44,13 @@ func (s *BuildService) CheckTestSuiteExists(testSuiteID int64) (bool, error) {
 
 // GetAllBuilds fetches all builds from the database.
 func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
-	rows, err := s.DB.Query("SELECT id, test_suite_id, build_number, ci_provider, ci_url, created_at FROM builds ORDER BY created_at DESC")
+	const query = `
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at
+		FROM builds b
+		JOIN test_suites ts ON b.test_suite_id = ts.id
+		ORDER BY b.created_at DESC
+	`
+	rows, err := s.DB.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("database error fetching all builds: %w", err)
 	}
@@ -54,11 +60,11 @@ func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 	for rows.Next() {
 		var b models.Build
 		var ciURL sql.NullString
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
 			return nil, fmt.Errorf("error scanning build: %w", err)
 		}
 		if ciURL.Valid {
-			val := ciURL.String // Create a new variable to take its address
+			val := ciURL.String
 			b.CIURL = &val
 		}
 		builds = append(builds, b)
@@ -71,10 +77,16 @@ func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 
 // GetBuildByID fetches a single build by its ID.
 func (s *BuildService) GetBuildByID(id int64) (*models.Build, error) {
+	const query = `
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at
+		FROM builds b
+		JOIN test_suites ts ON b.test_suite_id = ts.id
+		WHERE b.id = $1
+	`
 	var b models.Build
 	var ciURL sql.NullString
-	err := s.DB.QueryRow("SELECT id, test_suite_id, build_number, ci_provider, ci_url, created_at FROM builds WHERE id = $1", id).Scan(
-		&b.ID, &b.TestSuiteID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt)
+	err := s.DB.QueryRow(query, id).Scan(
+		&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, err // Let handler decide on 404 or other error
@@ -90,7 +102,14 @@ func (s *BuildService) GetBuildByID(id int64) (*models.Build, error) {
 
 // GetBuildsByTestSuiteID fetches all builds for a given testSuiteID.
 func (s *BuildService) GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build, error) {
-	rows, err := s.DB.Query("SELECT id, test_suite_id, build_number, ci_provider, ci_url, created_at FROM builds WHERE test_suite_id = $1 ORDER BY created_at DESC", testSuiteID)
+	const query = `
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at
+		FROM builds b
+		JOIN test_suites ts ON b.test_suite_id = ts.id
+		WHERE b.test_suite_id = $1
+		ORDER BY b.created_at DESC
+	`
+	rows, err := s.DB.Query(query, testSuiteID)
 	if err != nil {
 		return nil, fmt.Errorf("database error fetching builds for test suite ID %d: %w", testSuiteID, err)
 	}
@@ -100,7 +119,7 @@ func (s *BuildService) GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build
 	for rows.Next() {
 		var b models.Build
 		var ciURL sql.NullString
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
 			return nil, fmt.Errorf("error scanning build for test suite ID %d: %w", testSuiteID, err)
 		}
 		if ciURL.Valid {
@@ -137,15 +156,8 @@ func (s *BuildService) CreateBuild(build *models.Build) (*models.Build, error) {
 		return nil, fmt.Errorf("database error creating build: %w", err)
 	}
 
-	createdBuild := &models.Build{
-		ID:          newBuildID,
-		TestSuiteID: build.TestSuiteID,
-		BuildNumber: build.BuildNumber,
-		CIProvider:  build.CIProvider,
-		CIURL:       build.CIURL, // Assign the pointer directly
-		CreatedAt:   createdAt,
-	}
-	return createdBuild, nil
+	// Fetch the created build with project_id
+	return s.GetBuildByID(newBuildID)
 }
 
 // CreateBuildWithTx creates a new build in the database within an existing transaction.
@@ -241,28 +253,15 @@ func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *str
 		return nil, fmt.Errorf("no valid fields provided for update")
 	}
 
-	args = append(args, id) // Add ID for WHERE clause
-	query := fmt.Sprintf("UPDATE builds SET %s WHERE id = $%d RETURNING id, test_suite_id, build_number, ci_provider, ci_url, created_at",
+	args = append(args, id)
+	query := fmt.Sprintf("UPDATE builds SET %s WHERE id = $%d",
 		strings.Join(updateFields, ", "), argID)
 
-	var updatedBuildModel models.Build
-	var updatedCIURL sql.NullString
-	err = s.DB.QueryRow(query, args...).Scan(
-		&updatedBuildModel.ID,
-		&updatedBuildModel.TestSuiteID,
-		&updatedBuildModel.BuildNumber,
-		&updatedBuildModel.CIProvider,
-		&updatedCIURL,
-		&updatedBuildModel.CreatedAt,
-	)
+	_, err = s.DB.Exec(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("update build failed: %w", err)
 	}
 
-	if updatedCIURL.Valid {
-		val := updatedCIURL.String
-		updatedBuildModel.CIURL = &val
-	}
-
-	return &updatedBuildModel, nil
+	// After successful update, fetch the updated build with project_id
+	return s.GetBuildByID(id)
 }

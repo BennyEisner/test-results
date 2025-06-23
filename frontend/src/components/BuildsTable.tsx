@@ -44,14 +44,16 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction, title }: BuildsTablePr
         loadBuilds();
     }, [projectId, suiteId, fetchFunction]);
 
-    const handleBuildClick = (buildId: string | number) => {
+    const handleBuildClick = (build: Build) => {
         // Navigate to the executions page for the clicked build
-        if (projectId && suiteId) {
-            navigate(`/projects/${projectId}/suites/${suiteId}/builds/${buildId}`);
-        } else {
-            // For recent builds without project/suite context, navigate to build detail
-            navigate(`/builds/${buildId}`);
-        }
+        console.log('Build object:', build);
+        console.log('projectId prop:', projectId);
+        console.log('build.project_id:', build.project_id);
+        const targetProjectId = projectId ?? build.project_id;
+        const targetSuiteId = suiteId ?? build.test_suite_id;
+        console.log('targetProjectId:', targetProjectId);
+        console.log('targetSuiteId:', targetSuiteId);
+        navigate(`/projects/${targetProjectId}/suites/${targetSuiteId}/builds/${build.id}`);
     };
 
     if (loading) {
@@ -82,7 +84,7 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction, title }: BuildsTablePr
                 </thead>
                 <tbody>
                     {builds.map((build) => (
-                        <tr key={build.id} onClick={() => handleBuildClick(build.id)} style={{ cursor: 'pointer' }}>
+                        <tr key={build.id} onClick={() => handleBuildClick(build)} style={{ cursor: 'pointer' }}>
                             <td>#{build.id}</td>
                             <td className="font-monospace">{build.build_number}</td>
                             <td>
