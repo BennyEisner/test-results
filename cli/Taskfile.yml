@@ -1,0 +1,61 @@
+version: "3"
+
+vars:
+  BIN_NAME: test-results
+  MAIN_PKG: ./main.go
+  OUTPUT_DIR: ./bin
+
+tasks:
+  default:
+    desc: Show all available tasks
+    cmds:
+      - task --list
+
+  build:
+    desc: Build the CLI binary
+    cmds:
+      - mkdir -p {{.OUTPUT_DIR}}
+      - go build -o {{.OUTPUT_DIR}}/{{.BIN_NAME}} {{.MAIN_PKG}}
+
+  run:
+    desc: Run the CLI tool
+    deps: [build]
+    cmds:
+      - ./bin/{{.BIN_NAME}}
+
+  test:
+    desc: Run all unit tests
+    cmds:
+      - go test ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  clean:
+    desc: Remove build output
+    cmds:
+      - rm -rf {{.OUTPUT_DIR}}
+
+  tree:
+    desc: Regenerate tree.txt structure file
+    cmds:
+      - tree -I 'bin|vendor|.git|*.test' -a -N -o tree.txt
+
+  format:
+    desc: Run go fmt and goimports
+    cmds:
+      - go fmt ./...
+      - goimports -w .
+
+  deps:
+    desc: Download go dependencies
+    cmds:
+      - go mod tidy
+
+  update:
+    desc: Update all Go dependencies
+    cmds:
+      - go get -u ./...
+      - go mod tidy
