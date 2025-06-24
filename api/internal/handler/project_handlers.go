@@ -55,65 +55,14 @@ func (ph *ProjectHandler) HandleDBTest(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Database connection successful. Projects count: %d", count)
 }
 
-// HandleProjects handles project collection endpoints
-func (ph *ProjectHandler) HandleProjects(w http.ResponseWriter, r *http.Request) {
-	// Add CORS headers to allow frontend access
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS") // Add other methods if needed for this specific path
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-
-	// Handle preflight OPTIONS requests
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		ph.getProjects(w, r)
-	case http.MethodPost:
-		ph.createProject(w, r)
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
-	}
-}
-
-// HandleProjectByPath handles operations on specific projects
-func (ph *ProjectHandler) HandleProjectByPath(w http.ResponseWriter, r *http.Request) {
-	// Special case for create endpoint - this logic might be better handled by distinct routing
-	// if r.URL.Path == "/api/projects/create" && r.Method == http.MethodPost {
-	// 	ph.createProject(w, r) // createProject is now part of HandleProjects
-	// 	return
-	// }
-
-	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/projects/"), "/")
-	if len(pathSegments) != 1 || pathSegments[0] == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID in URL")
-		return
-	}
-
-	idStr := pathSegments[0]
-	// Project ID in models.Project is int64, but utils.Project and current path parsing use int.
-	// For consistency with service layer, parse to int64.
+func (ph *ProjectHandler) GetProjectByID(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format")
 		return
 	}
 
-	switch r.Method {
-	case http.MethodGet:
-		ph.getProjectByID(w, r, id)
-	case http.MethodPatch: // Assuming PATCH for updates
-		ph.updateProject(w, r, id)
-	case http.MethodDelete:
-		ph.deleteProject(w, r, id)
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
-	}
-}
-
-func (ph *ProjectHandler) getProjectByID(w http.ResponseWriter, r *http.Request, id int64) {
 	projectModel, err := ph.service.GetProjectByID(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -126,8 +75,8 @@ func (ph *ProjectHandler) getProjectByID(w http.ResponseWriter, r *http.Request,
 	utils.RespondWithJSON(w, http.StatusOK, toAPIProject(projectModel))
 }
 
-func (ph *ProjectHandler) getProjects(w http.ResponseWriter, r *http.Request) {
-	log.Println("✅ getProjects called via ProjectHandler") // Keep log for now
+func (ph *ProjectHandler) GetProjects(w http.ResponseWriter, r *http.Request) {
+	log.Println("✅ GetProjects called via ProjectHandler") // Keep log for now
 	projectModels, err := ph.service.GetAllProjects()
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
@@ -136,8 +85,7 @@ func (ph *ProjectHandler) getProjects(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, toAPIProjects(projectModels))
 }
 
-func (ph *ProjectHandler) createProject(w http.ResponseWriter, r *http.Request) {
-	// POST is already checked by HandleProjects method or router
+func (ph *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Error reading request body", http.StatusBadRequest)
@@ -179,7 +127,6 @@ func (ph *ProjectHandler) createProject(w http.ResponseWriter, r *http.Request) 
 
 	createdProjectModel, err := ph.service.CreateProject(projectName)
 	if err != nil {
-		// Consider more specific error mapping if service returns typed errors
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database Error: "+err.Error())
 		return
 	}
@@ -190,7 +137,6 @@ func (ph *ProjectHandler) createProject(w http.ResponseWriter, r *http.Request) 
 	if strings.Contains(acceptHeader, "application/xml") {
 		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusCreated)
-		// Using models.ProjectXML for consistency if it's defined for XML marshalling
 		xmlResponse := models.ProjectXML{Project: models.Project{ID: createdProjectModel.ID, Name: createdProjectModel.Name}}
 		xml.NewEncoder(w).Encode(xmlResponse)
 	} else {
@@ -198,10 +144,17 @@ func (ph *ProjectHandler) createProject(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (ph *ProjectHandler) deleteProject(w http.ResponseWriter, r *http.Request, id int64) {
+func (ph *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format")
+		return
+	}
+
 	rowsAffected, err := ph.service.DeleteProject(id)
 	if err != nil {
-		if err == sql.ErrNoRows { // Service might not return this directly, depends on its impl.
+		if err == sql.ErrNoRows {
 			utils.RespondWithError(w, http.StatusNotFound, "Project not found")
 		} else {
 			utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
@@ -215,10 +168,16 @@ func (ph *ProjectHandler) deleteProject(w http.ResponseWriter, r *http.Request, 
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Project deleted successfully"})
 }
 
-func (ph *ProjectHandler) updateProject(w http.ResponseWriter, r *http.Request, id int64) {
-	// Assuming PATCH, body parsing for name
+func (ph *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format")
+		return
+	}
+
 	var payload struct {
-		Name string `json:"name" xml:"name"` // Support both JSON and XML for update
+		Name string `json:"name" xml:"name"`
 	}
 
 	contentType := r.Header.Get("Content-Type")

@@ -72,83 +72,14 @@ func toAPIBuilds(ms []models.Build) []utils.Build {
 	return apiBuilds
 }
 
-// HandleBuilds handles GET (all builds) and POST (create build) requests for /api/builds
-func (bh *BuildHandler) HandleBuilds(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		bh.getAllBuilds(w, r)
-	case http.MethodPost:
-		bh.createBuild(w, r)
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
-	}
-}
-
-// HandleBuildByPath handles operations on a specific build via /api/builds/{id}
-func (bh *BuildHandler) HandleBuildByPath(w http.ResponseWriter, r *http.Request) {
-	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/builds/"), "/")
-	if len(pathSegments) != 1 || pathSegments[0] == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID in URL")
-		return
-	}
-
-	idStr := pathSegments[0]
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID format: "+err.Error())
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		bh.getBuildByID(w, r, id)
-	case http.MethodPatch:
-		bh.updateBuild(w, r, id)
-	case http.MethodDelete:
-		bh.deleteBuild(w, r, id)
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
-	}
-}
-
-// HandleTestSuiteBuilds handles GET and POST for builds under a specific test suite: /api/projects/{projectID}/test_suites/{testSuiteID}/builds
-func (bh *BuildHandler) HandleTestSuiteBuilds(w http.ResponseWriter, r *http.Request) {
-	trimmedPath := strings.TrimPrefix(r.URL.Path, "/api/projects/")
-	pathSegments := strings.Split(strings.Trim(trimmedPath, "/"), "/")
-
-	if len(pathSegments) < 4 || pathSegments[1] != "suites" || pathSegments[3] != "builds" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid URL. Expected /api/projects/{projectID}/suites/{testSuiteID}/builds")
-		return
-	}
-
-	testSuiteIDStr := pathSegments[2]
+func (bh *BuildHandler) GetBuildsByTestSuiteID(w http.ResponseWriter, r *http.Request) {
+	testSuiteIDStr := r.PathValue("suiteId")
 	testSuiteID, err := strconv.ParseInt(testSuiteIDStr, 10, 64)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid test suite ID format: "+err.Error())
 		return
 	}
 
-	exists, err := bh.service.CheckTestSuiteExists(testSuiteID)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking test suite: "+err.Error())
-		return
-	}
-	if !exists {
-		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Test suite with ID %d not found", testSuiteID))
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		bh.getBuildsByTestSuiteID(w, r, testSuiteID)
-	case http.MethodPost:
-		bh.createBuildForTestSuite(w, r, testSuiteID)
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
-	}
-}
-
-func (bh *BuildHandler) getBuildsByTestSuiteID(w http.ResponseWriter, r *http.Request, testSuiteID int64) {
 	builds, err := bh.service.GetBuildsByTestSuiteID(testSuiteID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching builds: "+err.Error())
@@ -157,7 +88,14 @@ func (bh *BuildHandler) getBuildsByTestSuiteID(w http.ResponseWriter, r *http.Re
 	utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
 }
 
-func (bh *BuildHandler) getBuildByID(w http.ResponseWriter, r *http.Request, id int64) {
+func (bh *BuildHandler) GetBuildByID(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID format: "+err.Error())
+		return
+	}
+
 	build, err := bh.service.GetBuildByID(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -170,7 +108,7 @@ func (bh *BuildHandler) getBuildByID(w http.ResponseWriter, r *http.Request, id 
 	utils.RespondWithJSON(w, http.StatusOK, toAPIBuild(build))
 }
 
-func (bh *BuildHandler) getAllBuilds(w http.ResponseWriter, r *http.Request) {
+func (bh *BuildHandler) GetAllBuilds(w http.ResponseWriter, r *http.Request) {
 	builds, err := bh.service.GetAllBuilds()
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching all builds: "+err.Error())
@@ -188,7 +126,14 @@ func (bh *BuildHandler) GetRecentBuilds(w http.ResponseWriter, r *http.Request) 
 	utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
 }
 
-func (bh *BuildHandler) createBuildForTestSuite(w http.ResponseWriter, r *http.Request, testSuiteID int64) {
+func (bh *BuildHandler) CreateBuildForTestSuite(w http.ResponseWriter, r *http.Request) {
+	testSuiteIDStr := r.PathValue("suiteId")
+	testSuiteID, err := strconv.ParseInt(testSuiteIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid test suite ID format: "+err.Error())
+		return
+	}
+
 	var input BuildInput
 	contentType := r.Header.Get("Content-Type")
 	var decodeErr error
@@ -231,7 +176,7 @@ func (bh *BuildHandler) createBuildForTestSuite(w http.ResponseWriter, r *http.R
 	utils.RespondWithJSON(w, http.StatusCreated, toAPIBuild(createdBuild))
 }
 
-func (bh *BuildHandler) createBuild(w http.ResponseWriter, r *http.Request) {
+func (bh *BuildHandler) CreateBuild(w http.ResponseWriter, r *http.Request) {
 	var input BuildCreateInput
 	contentType := r.Header.Get("Content-Type")
 	var decodeErr error
@@ -289,7 +234,14 @@ func (bh *BuildHandler) createBuild(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusCreated, toAPIBuild(createdBuild))
 }
 
-func (bh *BuildHandler) deleteBuild(w http.ResponseWriter, r *http.Request, id int64) {
+func (bh *BuildHandler) DeleteBuild(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID format: "+err.Error())
+		return
+	}
+
 	rowsAffected, err := bh.service.DeleteBuild(id)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Error deleting build: "+err.Error())
@@ -302,7 +254,14 @@ func (bh *BuildHandler) deleteBuild(w http.ResponseWriter, r *http.Request, id i
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Build deleted successfully"})
 }
 
-func (bh *BuildHandler) updateBuild(w http.ResponseWriter, r *http.Request, id int64) {
+func (bh *BuildHandler) UpdateBuild(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID format: "+err.Error())
+		return
+	}
+
 	var input BuildUpdateInput
 	contentType := r.Header.Get("Content-Type")
 	var decodeErr error
@@ -319,7 +278,6 @@ func (bh *BuildHandler) updateBuild(w http.ResponseWriter, r *http.Request, id i
 		return
 	}
 
-	// Input validation for non-nil fields
 	if input.BuildNumber != nil && strings.TrimSpace(*input.BuildNumber) == "" {
 		utils.RespondWithError(w, http.StatusBadRequest, "Build number cannot be empty if provided")
 		return
@@ -328,14 +286,12 @@ func (bh *BuildHandler) updateBuild(w http.ResponseWriter, r *http.Request, id i
 		utils.RespondWithError(w, http.StatusBadRequest, "CI provider cannot be empty if provided")
 		return
 	}
-	// CIURL can be an empty string to clear it, so no trim check here for emptiness,
-	// but the service layer handles sql.NullString for empty vs. nil.
 
 	updatedBuild, err := bh.service.UpdateBuild(id, input.BuildNumber, input.CIProvider, input.CIURL)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			utils.RespondWithError(w, http.StatusNotFound, "Build not found")
-		} else if strings.Contains(err.Error(), "no valid fields provided for update") { // Check for specific service error
+		} else if strings.Contains(err.Error(), "no valid fields provided for update") {
 			utils.RespondWithError(w, http.StatusBadRequest, "No valid fields provided for update")
 		} else {
 			utils.RespondWithError(w, http.StatusInternalServerError, "Update build failed: "+err.Error())
