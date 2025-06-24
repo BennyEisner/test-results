@@ -45,13 +45,21 @@ go test ./...
 
 ## 📁 Project Structure
 
-```
-cli/
-├── cmd/               # Main entry point
-├── internal/          # CLI internals (client, collector, config, etc.)
-├── pkg/               # Optional shared utilities
-├── tests/             # Unit and integration tests
-└── go.mod             # Go module definition
+```plaintext
+.
+├── cmd/                    # CLI command entry points (for Cobra or similar)
+├── go.mod                  # Go module file
+├── internal/               # Internal packages (not importable by others)
+│   ├── client/             # API/HTTP or external system interaction logic
+│   ├── collector/          # Logic for gathering or aggregating data
+│   ├── config/             # Configuration loading (e.g., Viper-based or custom)
+│   └── formatter/          # Output formatting (JSON, table, CSV, etc.)
+├── main.go                 # Entry point (invokes cmd/ logic)
+├── pkg/                    # Public utility packages (can be reused externally)
+│   └── utils/
+│       └── io.go           # General-purpose IO helpers
+├── README.md               # Documentation
+└── tree.txt                # Tree snapshot (probably for reference)
 ```
 
 ## ✅ Requirements
