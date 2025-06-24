@@ -4,7 +4,9 @@ import type { Suite } from "../types";
 
 import type { Build } from "../types";
 
-import type { TestCaseExecution } from "../types"; // Renamed Executions to TestCaseExecution
+import type { TestCaseExecution } from "../types";
+
+import type { Failure } from "../types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -52,6 +54,17 @@ export const fetchExecutions = async (
 ): Promise<TestCaseExecution[]> => {
   // Used TestCaseExecution type
   const response = await fetch(`${API_BASE_URL}/builds/${buildId}/executions`); // Added API_BASE_URL
+  if (!response.ok) {
+    throw new Error("Failed to fetch executions");
+  }
+  return response.json();
+};
+
+export const fetchFailures = async (
+  buildId: string | number,
+): Promise<Failure[]> => {
+  // Used TestCaseExecution type
+  const response = await fetch(`${API_BASE_URL}/builds/${buildId}/failures`); // Added API_BASE_URL
   if (!response.ok) {
     throw new Error("Failed to fetch executions");
   }

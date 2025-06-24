@@ -22,9 +22,9 @@ const ProjectDetail = () => {
                 <Col xs="auto">
                     <Button
                         variant="outline-secondary"
-                        onClick={() => navigate('/projects')}
+                        onClick={() => navigate('/')}
                     >
-                        &laquo; Back to Projects
+                        &laquo; Back to Dashboard
                     </Button>
                 </Col>
                 <Col>

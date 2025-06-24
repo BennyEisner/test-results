@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Button, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Button, Alert, Card } from 'react-bootstrap';
 import BuildsTable from './BuildsTable';
+import TestCaseTrendChart from './TestCaseTrendChart';
 
 const SuiteDetail = () => {
   const { suiteId, projectId } = useParams<{ suiteId: string; projectId: string }>();
@@ -23,7 +24,7 @@ const SuiteDetail = () => {
   }
 
   return (
-    <Container className="py-3 suite-detail">
+    <Container fluid className="py-3 suite-detail" style={{ paddingLeft: '2rem', paddingRight: '2rem' }}>
       <Row className="align-items-center mb-3 suite-header">
         <Col xs="auto">
           <Button 
@@ -38,7 +39,18 @@ const SuiteDetail = () => {
         </Col>
       </Row>
 
-      <BuildsTable projectId={projectId} suiteId={suiteId} />
+      <Row>
+        <Col md={6}>
+          <Card className="mb-4">
+            <Card.Body>
+              <TestCaseTrendChart projectId={projectId} suiteId={suiteId} />
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={6}>
+          <BuildsTable projectId={projectId} suiteId={suiteId} />
+        </Col>
+      </Row>
     </Container>
   );
 };

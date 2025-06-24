@@ -78,6 +78,7 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction, title }: BuildsTablePr
                     <tr>
                         <th>Build ID</th>
                         <th>Build Number</th>
+                        <th>Test Cases</th>
                         <th>CI Provider</th>
                         <th>Created</th>
                     </tr>
@@ -87,6 +88,7 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction, title }: BuildsTablePr
                         <tr key={build.id} onClick={() => handleBuildClick(build)} style={{ cursor: 'pointer' }}>
                             <td>#{build.id}</td>
                             <td className="font-monospace">{build.build_number}</td>
+                            <td>{build.test_case_count}</td>
                             <td>
                                 <Badge bg={getCIProviderBadgeColor(build.ci_provider)}>{build.ci_provider || 'N/A'}</Badge>
                             </td>

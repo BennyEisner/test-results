@@ -12,7 +12,7 @@ const HomePage = () => {
             <Row className="mb-3">
                 <Col>
                     <h1>Test Results Dashboard Overview</h1>
-                    <p className="lead">Welcome to your test results dashboard</p>
+                    <p className="lead">Test Results Dashboard</p>
                 </Col>
             </Row>
 

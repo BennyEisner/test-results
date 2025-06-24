@@ -7,7 +7,6 @@ import BuildsTable from './components/BuildsTable';
 import BuildDetail from './components/BuildDetail.tsx';
 import HomePage from './components/HomePage';
 
-
 function App() {
     return (
         <Router>
