@@ -8,18 +8,21 @@ import (
 	"time"
 
 	"github.com/BennyEisner/test-results/internal/handler"
+	"github.com/BennyEisner/test-results/internal/middleware"
 	"github.com/BennyEisner/test-results/internal/service"
 )
 
-func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
+func NewRouter(db *sql.DB) http.Handler {
+	mux := http.NewServeMux()
+
+	projectService := service.NewProjectService(db)
+	projectHandler := handler.NewProjectHandler(projectService)
+
 	buildService := service.NewBuildService(db)
 	buildHandler := handler.NewBuildHandler(buildService)
 
 	buildExecutionService := service.NewBuildExecutionService(db)
 	buildExecutionHandler := handler.NewBuildExecutionHandler(buildExecutionService)
-
-	projectService := service.NewProjectService(db)
-	projectHandler := handler.NewProjectHandler(projectService)
 
 	testSuiteService := service.NewTestSuiteService(db)
 	testSuiteHandler := handler.NewTestSuiteHandler(testSuiteService)
@@ -76,6 +79,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	// Test Suite related endpoints
 	mux.HandleFunc("GET /api/suites/{id}", testSuiteHandler.GetTestSuiteByID)
 	mux.HandleFunc("GET /api/suites/{id}/cases", testCaseHandler.GetSuiteTestCases)
+	mux.HandleFunc("POST /api/suites/{id}/cases", testCaseHandler.CreateTestCaseForSuite)
 
 	// Test Case related endpoints
 	mux.HandleFunc("GET /api/cases/{id}", testCaseHandler.GetTestCaseByID)
@@ -85,5 +89,12 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	mux.HandleFunc("POST /api/projects/{id}/suites", testSuiteHandler.CreateTestSuiteForProject)
 	mux.HandleFunc("GET /api/projects/{projectId}/suites/{suiteId}", testSuiteHandler.GetProjectTestSuiteByID)
 	mux.HandleFunc("GET /api/projects/{projectId}/suites/{suiteId}/builds", buildHandler.GetBuildsByTestSuiteID)
+	mux.HandleFunc("POST /api/projects/{projectId}/suites/{suiteId}/builds", buildHandler.CreateBuildForTestSuite)
 	mux.HandleFunc("POST /api/projects/{projectId}/suites/{suiteId}/junit_imports", junitImportHandler.HandleJUnitImport)
+
+	// Apply middleware
+	var finalMux http.Handler = mux
+	finalMux = middleware.Cors(finalMux)
+
+	return finalMux
 }
