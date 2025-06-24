@@ -49,12 +49,13 @@ func NewBuildHandler(s service.BuildServiceInterface) *BuildHandler {
 // Helper function to convert models.Build to utils.Build for API responses
 func toAPIBuild(m *models.Build) utils.Build {
 	apiBuild := utils.Build{
-		ID:          int(m.ID),
-		TestSuiteID: int(m.TestSuiteID),
-		ProjectID:   int(m.ProjectID),
-		BuildNumber: m.BuildNumber,
-		CIProvider:  m.CIProvider,
-		CreatedAt:   m.CreatedAt,
+		ID:            int(m.ID),
+		TestSuiteID:   int(m.TestSuiteID),
+		ProjectID:     int(m.ProjectID),
+		BuildNumber:   m.BuildNumber,
+		CIProvider:    m.CIProvider,
+		CreatedAt:     m.CreatedAt,
+		TestCaseCount: int(m.TestCaseCount),
 	}
 	if m.CIURL != nil {
 		apiBuild.CIURL = *m.CIURL

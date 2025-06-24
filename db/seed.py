@@ -39,11 +39,11 @@ class DatabaseSeeder:
             (project_id, name, time)
         )
 
-    def create_build(self, test_suite_id: int, build_number: str, ci_provider: str, ci_url: Optional[str]) -> Optional[int]:
+    def create_build(self, test_suite_id: int, build_number: str, ci_provider: str, ci_url: Optional[str], test_case_count: int) -> Optional[int]:
         print(f"    Creating build: {build_number} for test_suite_id: {test_suite_id}")
         return self._execute_returning_id(
-            "INSERT INTO builds (test_suite_id, build_number, ci_provider, ci_url) VALUES (%s, %s, %s, %s) RETURNING id",
-            (test_suite_id, build_number, ci_provider, ci_url)
+            "INSERT INTO builds (test_suite_id, build_number, ci_provider, ci_url, test_case_count) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+            (test_suite_id, build_number, ci_provider, ci_url, test_case_count)
         )
 
     def create_test_case(self, suite_id: int, name: str, classname: str) -> Optional[int]:
@@ -101,7 +101,7 @@ class DatabaseSeeder:
                             test_case_definition_id = self.create_test_case(test_suite_id, tc_name, tc_classname)
                             if test_case_definition_id:
                                 test_case_definitions_count += 1
-                                current_suite_test_case_ids.append(test_case_definition_id)
+                                current_suite_test_case_ids.append(test_case_definition_id) # Tracks number of test cases per suite
 
                         # Create builds for this suite
                         for k in range(num_builds_per_suite):
@@ -110,7 +110,7 @@ class DatabaseSeeder:
                             ci_provider_str = random.choice(ci_providers)
                             ci_url_str = fake.url() if random.choice([True, False]) else None
                             
-                            build_id = self.create_build(test_suite_id, build_number_str, ci_provider_str, ci_url_str)
+                            build_id = self.create_build(test_suite_id, build_number_str, ci_provider_str, ci_url_str, len(current_suite_test_case_ids))
                             if build_id:
                                 build_count += 1
                                 

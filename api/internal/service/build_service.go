@@ -45,7 +45,7 @@ func (s *BuildService) CheckTestSuiteExists(testSuiteID int64) (bool, error) {
 // GetAllBuilds fetches all builds from the database.
 func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 	const query = `
-		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at, b.test_case_count
 		FROM builds b
 		JOIN test_suites ts ON b.test_suite_id = ts.id
 		ORDER BY b.created_at DESC
@@ -60,7 +60,7 @@ func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 	for rows.Next() {
 		var b models.Build
 		var ciURL sql.NullString
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt, &b.TestCaseCount); err != nil {
 			return nil, fmt.Errorf("error scanning build: %w", err)
 		}
 		if ciURL.Valid {
@@ -78,7 +78,7 @@ func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 // GetBuildByID fetches a single build by its ID.
 func (s *BuildService) GetBuildByID(id int64) (*models.Build, error) {
 	const query = `
-		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at, b.test_case_count
 		FROM builds b
 		JOIN test_suites ts ON b.test_suite_id = ts.id
 		WHERE b.id = $1
@@ -86,7 +86,7 @@ func (s *BuildService) GetBuildByID(id int64) (*models.Build, error) {
 	var b models.Build
 	var ciURL sql.NullString
 	err := s.DB.QueryRow(query, id).Scan(
-		&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt)
+		&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt, &b.TestCaseCount)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, err // Let handler decide on 404 or other error
@@ -103,7 +103,7 @@ func (s *BuildService) GetBuildByID(id int64) (*models.Build, error) {
 // GetBuildsByTestSuiteID fetches all builds for a given testSuiteID.
 func (s *BuildService) GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build, error) {
 	const query = `
-		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at, b.test_case_count
 		FROM builds b
 		JOIN test_suites ts ON b.test_suite_id = ts.id
 		WHERE b.test_suite_id = $1
@@ -119,7 +119,7 @@ func (s *BuildService) GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build
 	for rows.Next() {
 		var b models.Build
 		var ciURL sql.NullString
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt, &b.TestCaseCount); err != nil {
 			return nil, fmt.Errorf("error scanning build for test suite ID %d: %w", testSuiteID, err)
 		}
 		if ciURL.Valid {
@@ -148,8 +148,8 @@ func (s *BuildService) CreateBuild(build *models.Build) (*models.Build, error) {
 	}
 
 	err := s.DB.QueryRow(
-		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at) VALUES($1, $2, $3, $4, NOW()) RETURNING id, created_at",
-		build.TestSuiteID, build.BuildNumber, build.CIProvider, ciURLNullStr,
+		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at, test_case_count) VALUES($1, $2, $3, $4, NOW(), $5) RETURNING id, created_at",
+		build.TestSuiteID, build.BuildNumber, build.CIProvider, ciURLNullStr, build.TestCaseCount,
 	).Scan(&newBuildID, &createdAt)
 
 	if err != nil {
@@ -175,8 +175,8 @@ func (s *BuildService) CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*mode
 
 	// Use tx.QueryRow instead of s.DB.QueryRow
 	err := tx.QueryRow(
-		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at) VALUES($1, $2, $3, $4, NOW()) RETURNING id, created_at",
-		build.TestSuiteID, build.BuildNumber, build.CIProvider, ciURLNullStr,
+		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at, test_case_count) VALUES($1, $2, $3, $4, NOW(), $5) RETURNING id, created_at",
+		build.TestSuiteID, build.BuildNumber, build.CIProvider, ciURLNullStr, build.TestCaseCount,
 	).Scan(&newBuildID, &createdAt)
 
 	if err != nil {
@@ -184,12 +184,13 @@ func (s *BuildService) CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*mode
 	}
 
 	createdBuild := &models.Build{
-		ID:          newBuildID,
-		TestSuiteID: build.TestSuiteID,
-		BuildNumber: build.BuildNumber,
-		CIProvider:  build.CIProvider,
-		CIURL:       build.CIURL,
-		CreatedAt:   createdAt,
+		ID:            newBuildID,
+		TestSuiteID:   build.TestSuiteID,
+		BuildNumber:   build.BuildNumber,
+		CIProvider:    build.CIProvider,
+		CIURL:         build.CIURL,
+		CreatedAt:     createdAt,
+		TestCaseCount: build.TestCaseCount,
 	}
 	return createdBuild, nil
 }

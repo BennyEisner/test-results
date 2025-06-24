@@ -41,8 +41,8 @@ func NewJUnitImportService(
 	}
 }
 
-// ProcessJUnitData will contain the core logic for parsing and saving JUnit data.
-// It creates a new Build for this import, associated with the given projectID and suiteID.
+// ProcessJUnitData will contain the core logic for parsing and saving JUnit data
+// It creates a new Build for this import, associated with the given projectID and suiteID
 func (s *JUnitImportService) ProcessJUnitData(projectID int64, suiteID int64, junitData *models.JUnitTestSuites) (*models.Build, []string, error) {
 	var processingErrors []string
 	var createdBuild *models.Build
@@ -95,12 +95,19 @@ func (s *JUnitImportService) ProcessJUnitData(projectID int64, suiteID int64, ju
 	//	}
 	//}
 
+	// Calculate total test case count from all test suites
+	var totalTestCaseCount int64
+	for _, junitSuite := range junitData.TestSuites {
+		totalTestCaseCount += int64(len(junitSuite.TestCases))
+	}
+
 	buildToCreate := &models.Build{
-		TestSuiteID: suiteID,
-		BuildNumber: buildName,      // Using the derived name as BuildNumber
-		CIProvider:  "JUnit Import", // Or derive from junitData.TestSuites[0].Hostname
-		CIURL:       nil,            // Can be set if available in XML
-		CreatedAt:   buildTimestamp, // This will be overridden by DB's NOW() in CreateBuildWithTx, but good to have
+		TestSuiteID:   suiteID,
+		BuildNumber:   buildName,      // Using the derived name as BuildNumber
+		CIProvider:    "JUnit Import", // Or derive from junitData.TestSuites[0].Hostname
+		CIURL:         nil,            // Can be set if available in XML
+		CreatedAt:     buildTimestamp,
+		TestCaseCount: totalTestCaseCount,
 	}
 
 	createdBuild, err = s.BuildService.CreateBuildWithTx(tx, buildToCreate)

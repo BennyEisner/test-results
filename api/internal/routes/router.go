@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/BennyEisner/test-results/internal/handler"
-	"github.com/BennyEisner/test-results/internal/service" // Added service import
+	"github.com/BennyEisner/test-results/internal/service"
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 
@@ -33,8 +33,10 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 	testCaseService := service.NewTestCaseService(db)
 	testCaseHandler := handler.NewTestCaseHandler(testCaseService)
 
+	failuresService := service.NewFailuresService(db)
+	failuresHandler := handler.NewFailuresHandler(failuresService)
+
 	// Instantiate JUnitImportService and JUnitImportHandler
-	// Note: buildService, testSuiteService, testCaseService, buildExecutionService are already instantiated above
 	junitImportService := service.NewJUnitImportService(db, buildService, testSuiteService, testCaseService, buildExecutionService)
 	junitImportHandler := handler.NewJUnitImportHandler(junitImportService)
 	// TODO: Instantiate other services and handlers as they are created
@@ -112,10 +114,15 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 
 		// Expected: /api/builds/{build_id} -> parts = ["{build_id}"]
 		// Expected: /api/builds/{build_id}/executions -> parts = ["{build_id}", "executions"]
+		// Expected: /api/builds/{build_id}/failures -> parts = ["{build_id}", "failures"]
 		if len(parts) == 2 && parts[1] == "executions" && parts[0] != "" {
 			fmt.Println("Router /api/builds/: Matched /api/builds/{id}/executions")
 			// Route: /api/builds/{build_id}/executions
 			buildExecutionHandler.HandleBuildExecutions(w, r)
+		} else if len(parts) == 2 && parts[1] == "failures" && parts[0] != "" {
+			fmt.Println("Router /api/builds/: Matched /api/builds/{id}/failures")
+			// Route: /api/builds/{build_id}/failures
+			failuresHandler.HandleBuildFailures(w, r)
 		} else if len(parts) == 1 && parts[0] != "" {
 			fmt.Println("Router /api/builds/: Matched /api/builds/{id}")
 			// Route: /api/builds/{build_id}
