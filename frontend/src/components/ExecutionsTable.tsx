@@ -32,8 +32,7 @@ const ExecutionsTable = ({ executions, loading }: ExecutionsTableProps) => {
     };
 
     return (
-        <div className="py-3">
-            <h2 className="mb-3">Test Executions</h2>
+        <div>
             <Table striped bordered hover responsive>
                 <thead>
                     <tr>
@@ -52,12 +51,12 @@ const ExecutionsTable = ({ executions, loading }: ExecutionsTableProps) => {
                             <td>
                                 {getStatusBadge(execution.status, !!execution.failure)}
                                 {execution.failure && (
-                                    <span 
+                                    <span
                                         title={`Failure: ${execution.failure.message || 'No message'}`}
                                         className="ms-2 text-danger"
                                         style={{ cursor: 'help' }}
                                     >
-                                        ⚠️
+                                        
                                     </span>
                                 )}
                             </td>
@@ -68,7 +67,7 @@ const ExecutionsTable = ({ executions, loading }: ExecutionsTableProps) => {
                 </tbody>
             </Table>
             {executions.length === 0 && !loading && (
-                <Alert variant="info" className="mt-3">No executions found for this build.</Alert>
+                <Alert variant="info" className="info-alert mt-3">No executions found for this build.</Alert>
             )}
         </div>
     );

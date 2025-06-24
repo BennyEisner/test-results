@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Table, Spinner, Alert } from 'react-bootstrap';
+import { Table, Spinner, Alert, Card } from 'react-bootstrap';
 import type { Suite } from '../types';
 import { fetchSuites } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -50,35 +50,37 @@ const SuitesTable = ({ projectId }: SuitesTableProps) => {
   }
 
   return (
-    <div className="py-3">
-      <h2 className="mb-3">Suites</h2>
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th>Suite ID</th>
-            <th>Name</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {suites.map((suite) => (
-            <tr
-              key={suite.id}
-              onClick={() => handleSuiteClick(suite.id)}
-              style={{ cursor: 'pointer' }}
-              className="clickable-row"
-            >
-              <td>#{suite.id}</td>
-              <td>{suite.name}</td>
-              <td>{new Date(suite.time).toLocaleString()}</td>
+    <Card className="overview-card">
+      <Card.Header as="h5">Suites</Card.Header>
+      <Card.Body>
+        <Table striped bordered hover responsive>
+          <thead>
+            <tr>
+              <th>Suite ID</th>
+              <th>Name</th>
+              <th>Created</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
-      {suites.length === 0 && !loading && (
-        <Alert variant="info" className="mt-3">No suites found for this project.</Alert>
-      )}
-    </div>
+          </thead>
+          <tbody>
+            {suites.map((suite) => (
+              <tr
+                key={suite.id}
+                onClick={() => handleSuiteClick(suite.id)}
+                style={{ cursor: 'pointer' }}
+                className="clickable-row"
+              >
+                <td>#{suite.id}</td>
+                <td>{suite.name}</td>
+                <td>{new Date(suite.time).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+        {suites.length === 0 && !loading && (
+          <Alert variant="info" className="info-alert mt-3">No suites found for this project.</Alert>
+        )}
+      </Card.Body>
+    </Card>
   );
 };
 

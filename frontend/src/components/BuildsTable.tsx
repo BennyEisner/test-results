@@ -11,7 +11,7 @@ interface BuildsTableProps {
     title?: string;
 }
 
-const BuildsTable = ({ projectId, suiteId, fetchFunction, title }: BuildsTableProps) => {
+const BuildsTable = ({ projectId, suiteId, fetchFunction }: BuildsTableProps) => {
     const [builds, setBuilds] = useState<Build[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -71,8 +71,7 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction, title }: BuildsTablePr
     }
 
     return (
-        <div className="py-3">
-            {title && <h2 className="mb-3">{title}</h2>}
+        <div className="builds-table-container" style={{ height: '350px', overflowY: 'auto' }}>
             <Table striped bordered hover responsive>
                 <thead>
                     <tr>
@@ -90,7 +89,7 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction, title }: BuildsTablePr
                             <td className="font-monospace">{build.build_number}</td>
                             <td>{build.test_case_count}</td>
                             <td>
-                                <Badge bg={getCIProviderBadgeColor(build.ci_provider)}>{build.ci_provider || 'N/A'}</Badge>
+                                <Badge bg={getCIProviderBadgeColor()}>{build.ci_provider || 'N/A'}</Badge>
                             </td>
                             <td className="text-muted fst-italic">{new Date(build.created_at).toLocaleString()}</td>
                         </tr>
@@ -98,20 +97,15 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction, title }: BuildsTablePr
                 </tbody>
             </Table>
             {builds.length === 0 && !loading && (
-                <Alert variant="info" className="mt-3">No builds found for this project.</Alert>
+                <Alert variant="info" className="info-alert mt-3">No builds found for this project.</Alert>
             )}
         </div>
     );
 };
 
 // Helper function to determine badge color based on CI provider
-const getCIProviderBadgeColor = (provider: string | null | undefined) => {
-    if (!provider) return 'secondary';
-    const lowerProvider = provider.toLowerCase();
-    if (lowerProvider.includes('github')) return 'dark';
-    if (lowerProvider.includes('jenkins')) return 'danger';
-    if (lowerProvider.includes('travis')) return 'info';
-    return 'secondary';
+const getCIProviderBadgeColor = () => {
+    return 'primary';
 };
 
 export default BuildsTable;

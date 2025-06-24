@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Spinner, Alert } from 'react-bootstrap';
+import { Table, Spinner, Alert, Card, Container } from 'react-bootstrap';
 import type { Project } from '../types';
 import { fetchProjects } from '../services/api';
 
@@ -34,45 +34,60 @@ const ProjectsTable = () => {
 
     if (loading) {
         return (
-            <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
-                <Spinner animation="border" role="status">
-                    <span className="visually-hidden">Loading projects...</span>
-                </Spinner>
+            <div className="page-container">
+                <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+                    <Spinner animation="border" role="status">
+                        <span className="visually-hidden">Loading projects...</span>
+                    </Spinner>
+                </div>
             </div>
         );
     }
 
     if (error) {
-        return <Alert variant="danger">Error: {error}</Alert>;
+        return (
+            <div className="page-container">
+                <Container fluid>
+                    <Alert variant="danger">Error: {error}</Alert>
+                </Container>
+            </div>
+        );
     }
 
     return (
-        <div className="py-3">
-            <h2 className="mb-3">Projects</h2>
-            <Table striped bordered hover responsive>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Project Name</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {projects.map((project) => (
-                        <tr
-                            key={project.id}
-                            onClick={() => handleProjectClick(project.id)}
-                            style={{ cursor: 'pointer' }}
-                            className="clickable-row"
-                        >
-                            <td>{project.id}</td>
-                            <td>{project.name}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </Table>
-            {projects.length === 0 && !loading && (
-                <Alert variant="info" className="mt-3">No projects found.</Alert>
-            )}
+        <div className="page-container">
+            <Container fluid>
+                <h1 className="page-title mb-4">Projects</h1>
+                <Card className="overview-card">
+                    <Card.Header as="h5">All Projects</Card.Header>
+                    <Card.Body>
+                        <Table striped bordered hover responsive>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Project Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {projects.map((project) => (
+                                    <tr
+                                        key={project.id}
+                                        onClick={() => handleProjectClick(project.id)}
+                                        style={{ cursor: 'pointer' }}
+                                        className="clickable-row"
+                                    >
+                                        <td>{project.id}</td>
+                                        <td>{project.name}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                        {projects.length === 0 && !loading && (
+                            <Alert variant="info" className="info-alert mt-3">No projects found.</Alert>
+                        )}
+                    </Card.Body>
+                </Card>
+            </Container>
         </div>
     );
 };

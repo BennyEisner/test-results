@@ -1,16 +1,16 @@
 import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom';
-import { Container } from 'react-bootstrap';
 import ProjectsTable from './components/ProjectsTable';
 import ProjectDetail from './components/ProjectDetail';
 import SuiteDetail from './components/SuiteDetail';
 import BuildsTable from './components/BuildsTable';
 import BuildDetail from './components/BuildDetail.tsx';
 import HomePage from './components/HomePage';
+import './styles/shared.css';
 
 function App() {
     return (
         <Router>
-            <Container fluid className="App">
+            <div className="app-container">
                 <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/projects" element={<ProjectsTable />} />
@@ -23,8 +23,9 @@ function App() {
                     <Route
                         path="/projects/:projectId/suites/:suiteId/builds/:buildId"
                         element={<BuildDetail />}
-                    />        </Routes>
-            </Container>
+                    />
+                </Routes>
+            </div>
         </Router>
     );
 }

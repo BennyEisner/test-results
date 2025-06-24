@@ -63,8 +63,7 @@ const ExecutionsSummary = ({ executions, loading }: ExecutionsSummaryProps) => {
 
   // Render the summary metrics
   return (
-    <div className="my-3"> 
-      <h3 className="mb-3">Test Results Summary</h3>
+    <div>
       <Row xs={1} sm={2} md={3} lg={6} className="g-3">
         <Col>
           <Card text="white" bg="primary" className="h-100">
@@ -91,7 +90,7 @@ const ExecutionsSummary = ({ executions, loading }: ExecutionsSummaryProps) => {
           </Card>
         </Col>
         <Col>
-          <Card text="dark" bg="warning" className="h-100">
+          <Card text="white" bg="secondary" className="h-100">
             <Card.Body className="text-center">
               <Card.Title as="h4">{stats.skipped}</Card.Title>
               <Card.Text>Skipped</Card.Text>
@@ -99,7 +98,7 @@ const ExecutionsSummary = ({ executions, loading }: ExecutionsSummaryProps) => {
           </Card>
         </Col>
         <Col>
-          <Card text="dark" bg="info" className="h-100">
+          <Card text="white" bg="primary" className="h-100">
             <Card.Body className="text-center">
               <Card.Title as="h4">{stats.passRate}%</Card.Title>
               <Card.Text>Pass Rate</Card.Text>
@@ -107,7 +106,7 @@ const ExecutionsSummary = ({ executions, loading }: ExecutionsSummaryProps) => {
           </Card>
         </Col>
         <Col>
-          <Card text="dark" bg="light" className="h-100">
+          <Card text="white" bg="primary" className="h-100">
             <Card.Body className="text-center">
               <Card.Title as="h4">{stats.avgTime.toFixed(2)}s</Card.Title>
               <Card.Text>Avg. Time</Card.Text>
