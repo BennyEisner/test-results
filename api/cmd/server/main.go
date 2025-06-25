@@ -13,6 +13,7 @@ import (
 
 	"github.com/BennyEisner/test-results/internal/routes"
 	_ "github.com/lib/pq"
+	_ "go.uber.org/automaxprocs"
 )
 
 func main() {
