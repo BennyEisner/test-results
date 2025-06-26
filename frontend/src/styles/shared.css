@@ -52,19 +52,19 @@
 }
 
 .accent-button-outline {
-    background-color: transparent;
+    background-color: var(--primary-color);
     border-color: var(--primary-color);
-    color: var(--primary-color);
+    color: var(--white-color);
     font-weight: 600;
 }
 
 .accent-button-outline:hover {
-    background-color: var(--primary-color);
-    color: var(--white-color);
+    background-color: var(--primary-hover-color);
+    border-color: var(--primary-hover-color);
 }
 
 .info-alert {
-    background-color: #eef2ff; /* Lighter blue for info alerts */
+    background-color: rgba(67, 140, 230, 0.1); /* Light blue background using primary color */
     color: var(--text-color);
     border: 1px solid var(--primary-color);
     border-radius: 8px;
@@ -113,5 +113,5 @@
 }
 
 .table-hover > tbody > tr:hover > td {
-    background-color: #eef2ff !important; /* A subtle blue hover for tables */
+    background-color: rgba(67, 140, 230, 0.08) !important; /* Subtle blue hover using primary color */
 }

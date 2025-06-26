@@ -34,7 +34,7 @@ const SearchBar = ({ onResultSelect }: SearchBarProps) => {
         setResults([]);
         setShowDropdown(false);
       }
-    }, 300); // Debounce search by 300ms
+    }, 300); 
 
     return () => clearTimeout(delayedSearch);
   }, [query]);

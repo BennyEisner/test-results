@@ -1,3 +1,5 @@
+// Uses the repository to make search operations
+
 package service
 
 import (

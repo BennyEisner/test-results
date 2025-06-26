@@ -3,8 +3,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 24px;
-  background-color: #007bff;
-  color: #ffffff;
+  background-color: var(--secondary-color);
+  color: var(--white-color);
   width: 100%;
 }
 
@@ -14,7 +14,7 @@
 
 .breadcrumb-loading {
   font-style: italic;
-  color: #f8f9fa;
+  color: var(--light-gray-color);
 }
 
 .breadcrumb-section {
@@ -34,27 +34,28 @@
   background: none;
   border: none;
   padding: 0;
-  font-size: 16px;
-  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--white-color);
   text-decoration: none;
   cursor: pointer;
   transition: color 0.2s ease;
 }
 
 .breadcrumb-link:hover {
-  color: #f8f9fa;
+  color: var(--primary-color);
   text-decoration: underline;
 }
 
 .breadcrumb-current {
-  font-size: 16px;
-  font-weight: 500;
-  color: #f8f9fa;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--light-gray-color);
 }
 
 .breadcrumb-separator {
   margin: 0 8px;
-  color: #f8f9fa;
+  color: var(--light-gray-color);
   font-size: 14px;
 }
 

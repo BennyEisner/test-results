@@ -1,8 +1,3 @@
-.home-page-container {
-    background-color: #f9fafb;
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-}
 
 .overview-card {
     border: 1px solid var(--border-color);
@@ -10,10 +5,16 @@
     box-shadow: var(--box-shadow);
     background-color: var(--white-color);
     height: 100%;
+    transition: all 0.2s ease-in-out;
+}
+
+.overview-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
 .overview-card .card-header {
-    background-color: var(--white-color);
+    background-color: var(--light-gray-color);
     color: var(--text-color);
     font-weight: 700;
     border-bottom: 1px solid var(--border-color);
@@ -53,8 +54,11 @@
 
 .accent-button-outline {
     color: var(--primary-color);
-    border-color: var(--primary-color);
+    border: 2px solid var(--primary-color);
     font-weight: 600;
+    background-color: transparent;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
 }
 
 .accent-button-outline:hover {
@@ -63,7 +67,7 @@
 }
 
 .info-alert {
-    background-color: #eef2ff;
+    background-color: rgba(67, 140, 230, 0.1);
     color: var(--text-color);
     border: 1px solid var(--primary-color);
     border-radius: 8px;

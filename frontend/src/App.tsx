@@ -13,7 +13,7 @@ function App() {
         <Router>
             <div className="app-container">
                 <Routes>
-                    <Route path="/" element={<HomePage />} />
+                    <Route path="/" element={<PageLayout><HomePage /></PageLayout>} />
                     <Route path="/projects" element={<PageLayout><ProjectsTable /></PageLayout>} />
                     <Route path="/projects/:projectId" element={<PageLayout><ProjectDetail /></PageLayout>} />
                     <Route path="/projects/:projectId/suites/:suiteId" element={<PageLayout><SuiteDetail /></PageLayout>} />

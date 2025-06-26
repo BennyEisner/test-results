@@ -1,18 +1,13 @@
-import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Alert, Card } from 'react-bootstrap';
+import { Button, Alert, Card, Row, Col } from 'react-bootstrap';
 import ExecutionsTable from './ExecutionsTable';
 import ExecutionsSummary from './ExecutionsSummary';
-import { fetchExecutions } from '../services/api';
-import type { TestCaseExecution } from '../types';
+import BuildDoughnutChart from './BuildDoughnutChart';
+import { useExecutionsSummary } from '../hooks/useExecutionsSummary';
 
 const BuildDetail = () => {
     const { buildId, suiteId, projectId } = useParams<{ buildId: string; suiteId: string; projectId: string }>();
     const navigate = useNavigate();
-
-    const [executions, setExecutions] = useState<TestCaseExecution[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
 
     if (!suiteId) {
         return (
@@ -38,23 +33,7 @@ const BuildDetail = () => {
         );
     }
 
-    // Fetch execution data
-    useEffect(() => {
-        const loadExecutions = async () => {
-            try {
-                setLoading(true);
-                const data = await fetchExecutions(buildId);
-                setExecutions(data);
-                setError(null);
-            } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to load executions');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadExecutions();
-    }, [buildId]);
+    const { stats, executions, loading, error } = useExecutionsSummary(buildId);
 
     return (
         <div className="page-container">
@@ -69,12 +48,24 @@ const BuildDetail = () => {
                 <h1 className="page-title">Build: #{buildId}</h1>
             </div>
 
-            <Card className="overview-card mb-4">
-                <Card.Header as="h5">Executions Summary</Card.Header>
-                <Card.Body>
-                    <ExecutionsSummary executions={executions} loading={loading} />
-                </Card.Body>
-            </Card>
+            <Row>
+                <Col md={8}>
+                    <Card className="overview-card mb-4">
+                        <Card.Header as="h5">Executions Summary</Card.Header>
+                        <Card.Body>
+                            <ExecutionsSummary stats={stats} loading={loading} />
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md={4}>
+                    <Card className="overview-card mb-4">
+                        <Card.Header as="h5">Executions Chart</Card.Header>
+                        <Card.Body>
+                            <BuildDoughnutChart buildId={buildId} />
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
 
             {error && (
                 <Alert variant="danger" className="mt-3">
