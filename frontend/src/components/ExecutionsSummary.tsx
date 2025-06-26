@@ -1,19 +1,18 @@
 // ExecutionsSummary.tsx
 import { Card, Row, Col, Spinner } from 'react-bootstrap';
+import { useExecutionsSummary } from '../hooks/useExecutionsSummary';
 
 interface ExecutionsSummaryProps {
-    stats: {
-        total: number;
-        passed: number;
-        failed: number;
-        skipped: number;
-        passRate: number;
-        avgTime: number;
-    };
-    loading: boolean;
+    buildId?: string | number;
+    title?: string;
 }
 
-const ExecutionsSummary = ({ stats, loading }: ExecutionsSummaryProps) => {
+const ExecutionsSummary = ({ buildId, title }: ExecutionsSummaryProps) => {
+    if (!buildId) {
+        return <div className="text-muted">Please provide a build ID.</div>;
+    }
+
+    const { stats, loading } = useExecutionsSummary(buildId);
 
     if (loading) {
         return (
@@ -35,6 +34,7 @@ const ExecutionsSummary = ({ stats, loading }: ExecutionsSummaryProps) => {
     // Render the summary metrics
     return (
         <div>
+            {title && <h3 className="component-title">{title}</h3>}
             <Row xs={1} sm={2} md={3} lg={6} className="g-3">
                 <Col>
                     <Card text="white" bg="primary" className="h-100">

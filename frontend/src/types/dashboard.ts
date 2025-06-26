@@ -1,61 +1,65 @@
 export interface DashboardLayout {
   id: string;
   name: string;
-  components: DashboardComponents[];
+  components: DashboardComponent[];
+  gridLayout: GridLayoutItem[];
   settings: DashboardSettings;
 }
 
-export interface DashboardComponents {
+export interface DashboardComponent {
   id: string;
   type: ComponentType;
-  positions: ComponentPosition;
-  size: ComponentSize;
   props: ComponentProps;
   visible: boolean;
 }
-export interface ComponentPosition {
+
+// matches react-grid-layout's expected format
+export interface GridLayoutItem {
+  i: string; // component id
   x: number;
   y: number;
-  order?: number;
-}
-
-export interface ComponentSize {
-  width: number | "auto" | "full";
-  height: number | "auto";
-  minWidth?: number;
-  minHeight?: number;
+  w: number; 
+  h: number; 
+  minW?: number;
+  minH?: number;
+  maxW?: number;
+  maxH?: number;
+  static?: boolean; // prevents dragging/resizing
 }
 
 export interface ComponentProps {
   title?: string;
-  filters?: Record<string, any>;
-  dataSource?: string;
-  chartType?: "doughnut" | "line" | "bar"; // Will add more once more visual components are added
-  tableColumns?: string[];
-  refreshInterval?: number;
+  buildId?: string | number;
+  projectId?: string | number;
+  suiteId?: string | number;
+  fetchFunction?: () => Promise<any[]>;
+  onResultSelect?: (result: any) => void;
   [key: string]: any;
 }
 
-export type ComponentType =
-  | "builds-table"
-  | "executions-summary"
-  | "build-chart"
-  | "test-cases-table"
-  | "failures-summary"
-  | "project-overview"
-  | "search-bar"
-  | "custom-widget";
+export type ComponentType = 
+  | 'builds-table'
+  | 'executions-summary' 
+  | 'build-chart'
+  | 'search-bar';
 
 export interface DashboardSettings {
-  theme: "light" | "dark";
-  layout: "grid" | "flex" | "masonry";
-  spacing: "compact" | "normal" | "spacious";
-  autoRefresh: boolean;
-  refreshInterval: number;
+  theme: 'light' | 'dark';
+  layout: 'grid' | 'flex';
+  spacing: 'compact' | 'normal' | 'spacious';
 }
-export interface DashboardSettings {
-  id: string;
+
+export interface ComponentDefinition {
   name: string;
-  components: DashboardComponents[];
-  settings: DashboardSettings;
+  description: string;
+  category: string;
+  defaultProps: ComponentProps;
+  defaultGridSize: {
+    w: number;
+    h: number;
+    minW?: number;
+    minH?: number;
+    maxW?: number;
+    maxH?: number;
+  };
 }
