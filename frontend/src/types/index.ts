@@ -41,3 +41,10 @@ export interface Failure {
   type?: string | null;
   details?: string | null;
 }
+
+export interface SearchResult {
+  type: string;
+  id: number;
+  name: string;
+  url: string;
+}
