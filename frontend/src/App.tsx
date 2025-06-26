@@ -5,6 +5,7 @@ import SuiteDetail from './components/SuiteDetail';
 import BuildsTable from './components/BuildsTable';
 import BuildDetail from './components/BuildDetail.tsx';
 import HomePage from './components/HomePage';
+import PageLayout from './components/PageLayout';
 import './styles/shared.css';
 
 function App() {
@@ -12,26 +13,27 @@ function App() {
         <Router>
             <div className="app-container">
                 <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/projects" element={<ProjectsTable />} />
-                    <Route path="/projects/:projectId" element={<ProjectDetail />} />
-                    <Route path="/projects/:projectId/suites/:suiteId" element={<SuiteDetail />} />
+                    <Route path="/" element={<PageLayout><HomePage /></PageLayout>} />
+                    <Route path="/projects" element={<PageLayout><ProjectsTable /></PageLayout>} />
+                    <Route path="/projects/:projectId" element={<PageLayout><ProjectDetail /></PageLayout>} />
+                    <Route path="/projects/:projectId/suites/:suiteId" element={<PageLayout><SuiteDetail /></PageLayout>} />
                     <Route
                         path="/projects/:projectId/suites/:suiteId/builds"
-                        element={<BuildsTableWrapper />}
+                        element={<PageLayout><BuildsTableWrapper /></PageLayout>}
                     />
                     <Route
                         path="/projects/:projectId/suites/:suiteId/builds/:buildId"
-                        element={<BuildDetail />}
+                        element={<PageLayout><BuildDetail /></PageLayout>}
                     />
                 </Routes>
             </div>
         </Router>
     );
 }
+
 // Wrapper component to extract params and pass them to BuildsTable
 const BuildsTableWrapper = () => {
-    const { projectId, suiteId } = useParams<{ projectId: string; suiteId: string }>();
+    const { projectId, suiteId } = useParams<{ projectId: string; suiteId:string }>();
 
     if (!projectId || !suiteId) {
         // Handle the case where params are not available, though this shouldn't happen with a matched route

@@ -36,6 +36,9 @@ func NewRouter(db *sql.DB) http.Handler {
 	junitImportService := service.NewJUnitImportService(db, buildService, testSuiteService, testCaseService, buildExecutionService)
 	junitImportHandler := handler.NewJUnitImportHandler(junitImportService)
 
+	searchService := service.NewSearchService(db)
+	searchHandler := handler.NewSearchHandler(searchService)
+
 	// Health and monitoring endpoints
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -91,6 +94,9 @@ func NewRouter(db *sql.DB) http.Handler {
 	mux.HandleFunc("GET /api/projects/{projectId}/suites/{suiteId}/builds", buildHandler.GetBuildsByTestSuiteID)
 	mux.HandleFunc("POST /api/projects/{projectId}/suites/{suiteId}/builds", buildHandler.CreateBuildForTestSuite)
 	mux.HandleFunc("POST /api/projects/{projectId}/suites/{suiteId}/junit_imports", junitImportHandler.HandleJUnitImport)
+
+	// Search function route
+	mux.HandleFunc("GET /api/search", searchHandler.HandleSearch)
 
 	// Apply middleware
 	var finalMux http.Handler = mux

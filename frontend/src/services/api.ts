@@ -6,7 +6,7 @@ import type { Build } from "../types";
 
 import type { TestCaseExecution } from "../types";
 
-import type { Failure } from "../types";
+import type { Failure, SearchResult } from "../types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -67,6 +67,17 @@ export const fetchFailures = async (
   const response = await fetch(`${API_BASE_URL}/builds/${buildId}/failures`); // Added API_BASE_URL
   if (!response.ok) {
     throw new Error("Failed to fetch executions");
+  }
+  return response.json();
+};
+
+export const search = async (query: string): Promise<SearchResult[]> => {
+  if (!query.trim()) {
+    return [];
+  }
+  const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
+  if (!response.ok) {
+    throw new Error("Failed to search");
   }
   return response.json();
 };

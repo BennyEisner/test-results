@@ -6,36 +6,37 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   line-height: 1.6;
   font-weight: 400;
-  color: #333333; /* Darker gray for better readability */
-  background-color: #f9fafb; /* Lighter, cleaner background */
+  color: var(--text-color);
+  background-color: var(--off-white-color);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
   /* Modern Color Palette */
-  --primary-color: #3b82f6; /* A more modern, softer blue */
-  --primary-hover-color: #2563eb;
-  --secondary-color: #6b7280;
-  --light-gray-color: #f3f4f6;
-  --border-color: #e5e7eb;
-  --text-color: #1f2937;
-  --text-light-color: #6b7280;
-  --white-color: #ffffff;
-  --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --primary-color: #438CE6; /* Main blue */
+  --primary-hover-color: #3478d4; /* Darker blue for hover */
+  --secondary-color: #000033; /* Dark navy */
+  --light-gray-color: #f0f2f5; /* Light grey */
+  --border-color: #e2e8f0; /* Subtle border color */
+  --text-color: #000033; /* Dark navy for primary text */
+  --text-light-color: #64748b; /* Muted gray for secondary text */
+  --white-color: #FFFFFF; /* Pure white */
+  --off-white-color: #f0f2f5; /* Light grey background */
+  --box-shadow: 0 4px 6px -1px rgba(0, 0, 51, 0.1), 0 2px 4px -1px rgba(0, 0, 51, 0.06);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #f9fafb;
+  background-color: var(--off-white-color);
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 700; /* Bolder headings */
+  font-weight: 700; 
   line-height: 1.3;
-  margin-bottom: 0.75rem; /* Increased margin */
+  margin-bottom: 0.75rem; 
   color: var(--text-color);
 }
 
@@ -67,7 +68,7 @@ a {
 
 a:hover {
   color: var(--primary-hover-color);
-  text-decoration: none; /* Removed underline for a cleaner look */
+  text-decoration: none; 
 }
 
 button {
@@ -75,7 +76,7 @@ button {
 }
 
 .btn {
-  font-weight: 600; /* Bolder buttons */
+  font-weight: 600; 
   border-radius: 8px; /* Rounded corners */
   transition: all 0.2s ease-in-out;
 }
