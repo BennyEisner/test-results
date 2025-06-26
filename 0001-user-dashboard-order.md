@@ -1,8 +1,4 @@
-# Architectural Design Records
-
----
-
-# User Dashboard Configuration
+# User Dashboard Order
 
 ## Problems:
 
