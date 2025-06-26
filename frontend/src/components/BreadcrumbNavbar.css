@@ -1,0 +1,84 @@
+.breadcrumb-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  background-color: #007bff;
+  color: #ffffff;
+  width: 100%;
+}
+
+.breadcrumb-navbar.loading {
+  justify-content: center;
+}
+
+.breadcrumb-loading {
+  font-style: italic;
+  color: #f8f9fa;
+}
+
+.breadcrumb-section {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.breadcrumb-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 16px;
+  color: #ffffff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-link:hover {
+  color: #f8f9fa;
+  text-decoration: underline;
+}
+
+.breadcrumb-current {
+  font-size: 16px;
+  font-weight: 500;
+  color: #f8f9fa;
+}
+
+.breadcrumb-separator {
+  margin: 0 8px;
+  color: #f8f9fa;
+  font-size: 14px;
+}
+
+.search-section {
+  flex-shrink: 0;
+  margin-left: 24px;
+}
+
+@media (max-width: 768px) {
+  .breadcrumb-navbar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .breadcrumb-section {
+    margin-bottom: 12px;
+    width: 100%;
+    overflow-x: auto; 
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .search-section {
+    width: 100%;
+    margin-left: 0;
+  }
+}

@@ -1,6 +1,5 @@
-{/*   /   */ }
-
 import { Container, Row, Col, Card, Alert } from 'react-bootstrap';
+import BreadcrumbNavbar from './BreadcrumbNavbar';
 import AppNavbar from './AppNavbar';
 import BuildsTable from './BuildsTable';
 import { fetchRecentBuilds } from '../services/api';
@@ -9,17 +8,23 @@ import './HomePage.css';
 const HomePage = () => {
     return (
         <div className="home-page-container">
-            <Container fluid>
-                {/* AppNavbar at the top */}
-                <Row className="mb-4">
-                    <Col>
-                        <AppNavbar />
-                    </Col>
-                </Row>
-
+            <BreadcrumbNavbar />
+            <Container fluid className="page-container">
                 <Row className="mb-4">
                     <Col>
                         <h1 className="page-title">Dashboard</h1>
+                    </Col>
+                </Row>
+
+                {/* Projects Navigation Card */}
+                <Row className="mb-4">
+                    <Col>
+                        <Card className="overview-card">
+                            <Card.Header as="h5">Projects</Card.Header>
+                            <Card.Body>
+                                <AppNavbar />
+                            </Card.Body>
+                        </Card>
                     </Col>
                 </Row>
 
