@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface TableProps {
   striped?: boolean;
   bordered?: boolean;
@@ -8,13 +6,13 @@ interface TableProps {
   className?: string;
 }
 
-export const BootstrapTable: React.FC<TableProps> = ({ 
+export const BootstrapTable = ({ 
   striped = false, 
   bordered = false, 
   hover = false, 
   children, 
   className = '' 
-}) => {
+}: TableProps) => {
   const classes = [
     'table',
     striped ? 'table-striped' : '',

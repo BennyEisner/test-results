@@ -6,10 +6,14 @@ import { Spinner } from 'react-bootstrap';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 interface BuildDoughnutChartProps {
-    buildId: string | number;
+    buildId?: string | number;
 }
 
 const BuildDoughnutChart = ({ buildId }: BuildDoughnutChartProps) => {
+    if (!buildId) {
+        return <p className="text-center text-muted">No build ID specified.</p>;
+    }
+
     const { stats, loading } = useExecutionsSummary(buildId);
 
     if (loading) {

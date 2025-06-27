@@ -33,7 +33,7 @@ const BuildDetail = () => {
         );
     }
 
-    const { stats, executions, loading, error } = useExecutionsSummary(buildId);
+    const { executions, loading, error } = useExecutionsSummary(buildId);
 
     return (
         <div className="page-container">
@@ -53,7 +53,7 @@ const BuildDetail = () => {
                     <Card className="overview-card mb-4">
                         <Card.Header as="h5">Executions Summary</Card.Header>
                         <Card.Body>
-                            <ExecutionsSummary stats={stats} loading={loading} />
+                            <ExecutionsSummary buildId={buildId} />
                         </Card.Body>
                     </Card>
                 </Col>

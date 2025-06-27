@@ -40,8 +40,7 @@ export interface ComponentProps {
 export type ComponentType = 
   | 'builds-table'
   | 'executions-summary' 
-  | 'build-chart'
-  | 'search-bar';
+  | 'build-chart';
 
 export interface DashboardSettings {
   theme: 'light' | 'dark';
