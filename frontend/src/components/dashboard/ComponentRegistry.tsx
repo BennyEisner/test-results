@@ -7,10 +7,15 @@ import { fetchRecentBuilds } from '../../services/api';
 interface ComponentRegistryProps {
   type: ComponentType;
   props: ComponentProps;
+  projectId?: string | number;
 }
 
-const ComponentRegistry = ({ type, props }: ComponentRegistryProps) => {
+const ComponentRegistry = ({ type, props, projectId }: ComponentRegistryProps) => {
   const componentProps = { ...props, className: `dashboard-component--${type}` };
+
+  if (type === 'builds-table' && projectId) {
+    componentProps.fetchFunction = () => fetchRecentBuilds(projectId);
+  }
 
   switch (type) {
     case 'builds-table':

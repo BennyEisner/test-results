@@ -30,21 +30,27 @@ export const fetchSuites = async (
 
 export const fetchBuilds = async (
   projectId: string | number,
-  suiteId: string | number,
+  suiteId?: string | number,
 ): Promise<Build[]> => {
-  const response = await fetch(
-    `${API_BASE_URL}/projects/${projectId}/suites/${suiteId}/builds`,
-  );
+  let url = `${API_BASE_URL}/projects/${projectId}/builds`;
+  if (suiteId) {
+    url = `${API_BASE_URL}/projects/${projectId}/suites/${suiteId}/builds`;
+  }
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error("Failed to fetch builds");
   }
   return response.json();
 };
 
-export const fetchRecentBuilds = async (): Promise<Build[]> => {
-  const response = await fetch(`${API_BASE_URL}/builds/recent`);
+export const fetchRecentBuilds = async (projectId?: string | number): Promise<Build[]> => {
+  let url = `${API_BASE_URL}/builds/recent`;
+  if (projectId) {
+    url = `${API_BASE_URL}/projects/${projectId}/builds/recent`;
+  }
+  const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("Failed to fetch builds");
+    throw new Error("Failed to fetch recent builds");
   }
   return response.json();
 };
