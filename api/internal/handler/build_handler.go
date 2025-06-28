@@ -118,12 +118,44 @@ func (bh *BuildHandler) GetAllBuilds(w http.ResponseWriter, r *http.Request) {
 }
 
 func (bh *BuildHandler) GetRecentBuilds(w http.ResponseWriter, r *http.Request) {
-	builds, err := bh.service.GetAllBuilds()
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching recent builds: "+err.Error())
-		return
+	// Check if this is a project-specific request (from path parameter)
+	projectIDStr := r.PathValue("id")
+	if projectIDStr != "" {
+		projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
+			return
+		}
+		builds, err := bh.service.GetRecentBuildsByProjectID(projectID)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching recent builds for project: "+err.Error())
+			return
+		}
+		utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
+	} else {
+		// Check for query parameter as fallback
+		projectIDStr = r.URL.Query().Get("projectId")
+		if projectIDStr != "" {
+			projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+			if err != nil {
+				utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
+				return
+			}
+			builds, err := bh.service.GetRecentBuildsByProjectID(projectID)
+			if err != nil {
+				utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching recent builds for project: "+err.Error())
+				return
+			}
+			utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
+		} else {
+			builds, err := bh.service.GetAllBuilds()
+			if err != nil {
+				utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching recent builds: "+err.Error())
+				return
+			}
+			utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
+		}
 	}
-	utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
 }
 
 func (bh *BuildHandler) CreateBuildForTestSuite(w http.ResponseWriter, r *http.Request) {

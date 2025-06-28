@@ -13,6 +13,7 @@ import (
 type BuildServiceInterface interface {
 	GetAllBuilds() ([]models.Build, error)
 	GetBuildByID(id int64) (*models.Build, error)
+	GetRecentBuildsByProjectID(projectID int64) ([]models.Build, error)
 	GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build, error)
 	CreateBuild(build *models.Build) (*models.Build, error)
 	CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*models.Build, error) // New transactional method
@@ -71,6 +72,40 @@ func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 	}
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating build rows: %w", err)
+	}
+	return builds, nil
+}
+
+// GetRecentBuildsByProjectID fetches all recent builds for a given projectID.
+func (s *BuildService) GetRecentBuildsByProjectID(projectID int64) ([]models.Build, error) {
+	const query = `
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at, b.test_case_count
+		FROM builds b
+		JOIN test_suites ts ON b.test_suite_id = ts.id
+		WHERE ts.project_id = $1
+		ORDER BY b.created_at DESC
+	`
+	rows, err := s.DB.Query(query, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("database error fetching builds for project ID %d: %w", projectID, err)
+	}
+	defer rows.Close()
+
+	var builds []models.Build
+	for rows.Next() {
+		var b models.Build
+		var ciURL sql.NullString
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt, &b.TestCaseCount); err != nil {
+			return nil, fmt.Errorf("error scanning build for project ID %d: %w", projectID, err)
+		}
+		if ciURL.Valid {
+			val := ciURL.String
+			b.CIURL = &val
+		}
+		builds = append(builds, b)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating build rows for project ID %d: %w", projectID, err)
 	}
 	return builds, nil
 }

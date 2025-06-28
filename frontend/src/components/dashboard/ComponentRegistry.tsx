@@ -13,8 +13,14 @@ interface ComponentRegistryProps {
 const ComponentRegistry = ({ type, props, projectId }: ComponentRegistryProps) => {
   const componentProps = { ...props, className: `dashboard-component--${type}` };
 
-  if (type === 'builds-table' && projectId) {
-    componentProps.fetchFunction = () => fetchRecentBuilds(projectId);
+  // Handle project-specific configurations
+  if (type === 'builds-table') {
+    const fetchProjectId = props.projectId && props.projectId !== 'all' ? props.projectId : projectId;
+    if (fetchProjectId) {
+      componentProps.fetchFunction = () => fetchRecentBuilds(fetchProjectId);
+    } else {
+      componentProps.fetchFunction = () => fetchRecentBuilds();
+    }
   }
 
   switch (type) {
@@ -36,8 +42,25 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
     name: 'Builds Table',
     description: 'Display recent builds in a table format',
     category: 'Tables',
-    defaultProps: { title: 'Recent Builds', fetchFunction: fetchRecentBuilds },
+    defaultProps: { title: 'Recent Builds' },
     defaultGridSize: { w: 8, h: 6, minW: 4, minH: 4 },
+    configFields: [
+      {
+        key: 'projectId',
+        label: 'Project',
+        type: 'select',
+        required: false,
+        defaultValue: 'all',
+        helpText: 'Select a specific project or show all projects'
+      },
+      {
+        key: 'title',
+        label: 'Component Title',
+        type: 'text',
+        defaultValue: 'Recent Builds',
+        placeholder: 'Enter component title'
+      }
+    ]
   },
   'executions-summary': {
     name: 'Executions Summary',
@@ -45,6 +68,22 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
     category: 'Summaries',
     defaultProps: { title: 'Test Executions' },
     defaultGridSize: { w: 4, h: 4, minW: 3, minH: 3 },
+    configFields: [
+      {
+        key: 'title',
+        label: 'Component Title',
+        type: 'text',
+        defaultValue: 'Test Executions',
+        placeholder: 'Enter component title'
+      },
+      {
+        key: 'buildId',
+        label: 'Build ID',
+        type: 'text',
+        required: true,
+        placeholder: 'Enter build ID'
+      }
+    ]
   },
   'build-chart': {
     name: 'Build Chart',
@@ -52,5 +91,21 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
     category: 'Charts',
     defaultProps: { title: 'Build Status' },
     defaultGridSize: { w: 6, h: 5, minW: 4, minH: 4 },
+    configFields: [
+      {
+        key: 'title',
+        label: 'Component Title',
+        type: 'text',
+        defaultValue: 'Build Status',
+        placeholder: 'Enter component title'
+      },
+      {
+        key: 'buildId',
+        label: 'Build ID',
+        type: 'text',
+        required: true,
+        placeholder: 'Enter build ID'
+      }
+    ]
   },
 };

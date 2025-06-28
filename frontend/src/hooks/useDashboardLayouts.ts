@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DashboardLayout, GridLayoutItem, ComponentType } from '../types/dashboard';
+import { DashboardLayout, GridLayoutItem, ComponentType, ComponentProps } from '../types/dashboard';
 import { COMPONENT_DEFINITIONS } from '../components/dashboard/ComponentRegistry';
 import { fetchRecentBuilds } from '../services/api';
 
@@ -57,7 +57,7 @@ export const useDashboardLayouts = () => {
     }
   };
 
-  const addComponent = (type: ComponentType) => {
+  const addComponent = (type: ComponentType, props?: ComponentProps) => {
     const activeLayout = layouts.find(l => l.id === activeLayoutId);
     if (!activeLayout) return;
 
@@ -67,7 +67,7 @@ export const useDashboardLayouts = () => {
     const newComponent = {
       id: newId,
       type,
-      props: definition.defaultProps,
+      props: props || definition.defaultProps,
       visible: true,
     };
 

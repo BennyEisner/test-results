@@ -37,6 +37,17 @@ export interface ComponentProps {
   [key: string]: any;
 }
 
+export interface ConfigField {
+  key: string;
+  label: string;
+  type: 'select' | 'text' | 'number' | 'boolean' | 'multi-select';
+  required?: boolean;
+  options?: { value: string | number; label: string }[];
+  defaultValue?: any;
+  placeholder?: string;
+  helpText?: string;
+}
+
 export type ComponentType = 
   | 'builds-table'
   | 'executions-summary' 
@@ -61,4 +72,5 @@ export interface ComponentDefinition {
     maxW?: number;
     maxH?: number;
   };
+  configFields?: ConfigField[];
 }

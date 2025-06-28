@@ -5,6 +5,7 @@ import SuiteDetail from './components/SuiteDetail';
 import BuildsTable from './components/BuildsTable';
 import BuildDetail from './components/BuildDetail.tsx';
 import HomePage from './components/HomePage';
+import DashboardPage from './components/DashboardPage';
 import PageLayout from './components/PageLayout';
 import './styles/shared.css';
 
@@ -14,6 +15,7 @@ function App() {
             <div className="app-container">
                 <Routes>
                     <Route path="/" element={<PageLayout><HomePage /></PageLayout>} />
+                    <Route path="/dashboard" element={<PageLayout><DashboardPage /></PageLayout>} />
                     <Route path="/projects" element={<PageLayout><ProjectsTable /></PageLayout>} />
                     <Route path="/projects/:projectId" element={<PageLayout><ProjectDetail /></PageLayout>} />
                     <Route path="/projects/:projectId/suites/:suiteId" element={<PageLayout><SuiteDetail /></PageLayout>} />

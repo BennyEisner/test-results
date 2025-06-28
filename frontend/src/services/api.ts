@@ -69,7 +69,6 @@ export const fetchExecutions = async (
 export const fetchFailures = async (
   buildId: string | number,
 ): Promise<Failure[]> => {
-  // Used TestCaseExecution type
   const response = await fetch(`${API_BASE_URL}/builds/${buildId}/failures`); // Added API_BASE_URL
   if (!response.ok) {
     throw new Error("Failed to fetch executions");

@@ -73,6 +73,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	mux.HandleFunc("GET /api/builds", buildHandler.GetAllBuilds)
 	mux.HandleFunc("POST /api/builds", buildHandler.CreateBuild)
 	mux.HandleFunc("GET /api/builds/recent", buildHandler.GetRecentBuilds)
+	mux.HandleFunc("GET /api/projects/{id}/builds/recent", buildHandler.GetRecentBuilds)
 	mux.HandleFunc("GET /api/builds/{id}", buildHandler.GetBuildByID)
 	mux.HandleFunc("PATCH /api/builds/{id}", buildHandler.UpdateBuild)
 	mux.HandleFunc("DELETE /api/builds/{id}", buildHandler.DeleteBuild)
