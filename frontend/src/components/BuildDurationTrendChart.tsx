@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
+import { useState, useEffect } from 'react';
 import { getBuildDurationTrends } from '../services/api';
 import { BuildDurationTrend } from '../types';
 import {

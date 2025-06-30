@@ -108,6 +108,17 @@ func (tch *TestCaseHandler) GetMostFailedTests(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	suiteIDStr := r.URL.Query().Get("suiteId")
+	var suiteID *int64
+	if suiteIDStr != "" {
+		sID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid suiteId format")
+			return
+		}
+		suiteID = &sID
+	}
+
 	limitStr := r.URL.Query().Get("limit")
 	limit := 10 // Default limit
 	if limitStr != "" {
@@ -118,7 +129,7 @@ func (tch *TestCaseHandler) GetMostFailedTests(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	tests, err := tch.service.GetMostFailedTests(projectID, limit)
+	tests, err := tch.service.GetMostFailedTests(projectID, suiteID, limit)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching most failed tests: "+err.Error())
 		return

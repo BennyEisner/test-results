@@ -14,7 +14,7 @@ type TestCaseServiceInterface interface {
 	FindOrCreateTestCaseWithTx(tx *sql.Tx, suiteID int64, name string, classname string) (*models.TestCase, error) // New
 	GetTestCaseByID(caseID int64) (*models.TestCase, error)
 	CheckTestSuiteExists(suiteID int64) (bool, error) // To validate suite_id before creation
-	GetMostFailedTests(projectID int64, limit int) ([]models.MostFailedTest, error)
+	GetMostFailedTests(projectID int64, suiteID *int64, limit int) ([]models.MostFailedTest, error)
 }
 
 type TestCaseService struct {
@@ -129,10 +129,36 @@ func (s *TestCaseService) FindOrCreateTestCaseWithTx(tx *sql.Tx, suiteID int64, 
 	return &createdCase, nil
 }
 
-func (s *TestCaseService) GetMostFailedTests(projectID int64, limit int) ([]models.MostFailedTest, error) {
-	query := `
-		SELECT
-			tc.id AS test_case_id,
+func (s *TestCaseService) GetMostFailedTests(projectID int64, suiteID *int64, limit int) ([]models.MostFailedTest, error) {
+	var query string
+	var args []interface{}
+
+	if suiteID != nil {
+		query = `
+			SELECT
+				tc.id AS test_case_id,
+				tc.name,
+				tc.classname,
+				COUNT(tce.id) AS failure_count
+			FROM
+				test_cases tc
+			JOIN
+				build_test_case_executions tce ON tc.id = tce.test_case_id
+			JOIN
+				builds b ON tce.build_id = b.id
+			WHERE
+				b.test_suite_id = $1 AND tce.status = 'failed'
+			GROUP BY
+				tc.id, tc.name, tc.classname
+			ORDER BY
+				failure_count DESC
+			LIMIT $2;
+		`
+		args = append(args, *suiteID, limit)
+	} else {
+		query = `
+			SELECT
+				tc.id AS test_case_id,
 			tc.name,
 			tc.classname,
 			COUNT(tce.id) AS failure_count
@@ -145,17 +171,19 @@ func (s *TestCaseService) GetMostFailedTests(projectID int64, limit int) ([]mode
 		JOIN
 			test_suites ts ON b.test_suite_id = ts.id
 		WHERE
-			ts.project_id = $1 AND tce.status = 'failure'
+			ts.project_id = $1 AND tce.status = 'failed'
 		GROUP BY
 			tc.id, tc.name, tc.classname
 		ORDER BY
 			failure_count DESC
 		LIMIT $2;
 	`
+		args = append(args, projectID, limit)
+	}
 
-	rows, err := s.DB.Query(query, projectID, limit)
+	rows, err := s.DB.Query(query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("database error fetching most failed tests for project %d: %w", projectID, err)
+		return nil, fmt.Errorf("database error fetching most failed tests: %w", err)
 	}
 	defer rows.Close()
 
@@ -170,6 +198,10 @@ func (s *TestCaseService) GetMostFailedTests(projectID int64, limit int) ([]mode
 
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating most failed test rows for project %d: %w", projectID, err)
+	}
+
+	if tests == nil {
+		return []models.MostFailedTest{}, nil
 	}
 
 	return tests, nil

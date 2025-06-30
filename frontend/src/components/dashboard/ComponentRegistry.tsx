@@ -42,10 +42,11 @@ function ComponentRegistry({ type, props, projectId }: ComponentRegistryProps) {
       return <div className="component-placeholder">Project ID and Suite ID required for Build Duration Trend Chart</div>;
     case 'most-failed-tests-table':
       const finalMostFailedProjectId = props.projectId ? Number(props.projectId) : (projectId ? Number(projectId) : undefined);
+      const mostFailedSuiteIdNumber = props.suiteId ? Number(props.suiteId) : undefined;
       const limit = props.limit ? Number(props.limit) : 10;
       if (finalMostFailedProjectId) {
-        const { projectId: _, ...restProps } = componentProps;
-        return <MostFailedTestsTable projectId={finalMostFailedProjectId} limit={limit} {...restProps} />;
+        const { projectId: _, suiteId: __, ...restProps } = componentProps;
+        return <MostFailedTestsTable projectId={finalMostFailedProjectId} limit={limit} suiteId={mostFailedSuiteIdNumber} {...restProps} />;
       }
       return <div className="component-placeholder">Project ID required for Most Failed Tests Table</div>;
     default:
@@ -184,6 +185,13 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
         required: false,
         defaultValue: 10,
         placeholder: 'Enter the number of tests to display'
+      },
+      {
+        key: 'suiteId',
+        label: 'Suite ID',
+        type: 'text',
+        required: false,
+        placeholder: 'Enter suite ID (optional)'
       }
     ]
   },

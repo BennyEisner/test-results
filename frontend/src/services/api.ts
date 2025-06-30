@@ -96,10 +96,15 @@ export const getBuildDurationTrends = async (projectId: number, suiteId: number)
   return data || [];
 };
 
-export const fetchMostFailedTests = async (projectId: number, limit: number): Promise<MostFailedTest[]> => {
-  const response = await fetch(`${API_BASE_URL}/test-cases/most-failed?projectId=${projectId}&limit=${limit}`);
+export const fetchMostFailedTests = async (projectId: number, limit: number, suiteId?: number): Promise<MostFailedTest[]> => {
+  let url = `${API_BASE_URL}/test-cases/most-failed?projectId=${projectId}&limit=${limit}`;
+  if (suiteId) {
+    url += `&suiteId=${suiteId}`;
+  }
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Failed to fetch most failed tests');
   }
-  return response.json();
+  const data = await response.json();
+  return data || [];
 };

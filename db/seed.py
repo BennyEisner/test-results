@@ -129,7 +129,7 @@ class DatabaseSeeder:
                                         execution_time=exec_time
                                     )
                                     if execution_id:
-                                        build_test_case_executions_.count += 1
+                                        build_test_case_executions_count += 1
                                         if exec_status == "failed" or exec_status == "error":
                                             failure_message = fake.sentence(nb_words=10)
                                             failure_type = fake.word().capitalize() + "Error"
