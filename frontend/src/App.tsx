@@ -8,6 +8,7 @@ import HomePage from './components/HomePage';
 import DashboardPage from './components/DashboardPage';
 import PageLayout from './components/PageLayout';
 import './styles/shared.css';
+import './styles/tables.css';
 
 function App() {
     return (

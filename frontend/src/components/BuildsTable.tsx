@@ -68,7 +68,7 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction }: BuildsTableProps) =>
 
     return (
         <div className="builds-table-container" style={{ height: '350px', overflowY: 'auto' }}>
-            <Table striped bordered hover responsive>
+            <Table bordered hover responsive>
                 <thead>
                     <tr>
                         <th>Build ID</th>

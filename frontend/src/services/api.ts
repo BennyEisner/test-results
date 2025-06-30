@@ -32,9 +32,12 @@ export const fetchBuilds = async (
   projectId: string | number,
   suiteId?: string | number,
 ): Promise<Build[]> => {
-  let url = `${API_BASE_URL}/projects/${projectId}/builds`;
+  let url;
   if (suiteId) {
     url = `${API_BASE_URL}/projects/${projectId}/suites/${suiteId}/builds`;
+  } else {
+    // When no suiteId is provided, fetch recent builds for the project
+    url = `${API_BASE_URL}/projects/${projectId}/builds/recent`;
   }
   const response = await fetch(url);
   if (!response.ok) {

@@ -53,7 +53,7 @@ const SuitesTable = ({ projectId }: SuitesTableProps) => {
     <Card className="overview-card">
       <Card.Header as="h5">Suites</Card.Header>
       <Card.Body>
-        <Table striped bordered hover responsive>
+        <Table bordered hover responsive>
           <thead>
             <tr>
               <th>Suite ID</th>
