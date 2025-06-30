@@ -2,10 +2,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
+  padding: 16px 24px;
   background-color: var(--secondary-color);
   color: var(--white-color);
   width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .breadcrumb-navbar.loading {
@@ -43,7 +47,7 @@
 }
 
 .breadcrumb-link:hover {
-  color: var(--primary-color);
+  color: var(--primary-hover-color);
   text-decoration: underline;
 }
 
@@ -62,6 +66,47 @@
 .search-section {
   flex-shrink: 0;
   margin-left: 24px;
+}
+
+.project-selector-scroll-container {
+  overflow-x: auto;
+  white-space: nowrap;
+  width: 100%;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.project-selector-scroll-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, and Opera */
+}
+
+.project-selector {
+  display: inline-block;
+}
+
+.project-item {
+  display: inline-block;
+  padding: 8px 16px;
+  margin: 0 4px;
+  background-color: transparent;
+  color: var(--white-color);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.project-item:hover {
+  background-color: var(--primary-hover-color);
+  border-color: var(--primary-hover-color);
+}
+
+.project-item.active {
+  background-color: var(--primary-color);
+  color: var(--white-color);
+  font-weight: 600;
+  border-color: var(--primary-color);
 }
 
 @media (max-width: 768px) {

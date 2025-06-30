@@ -13,17 +13,19 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Modern Color Palette */
-  --primary-color: #438CE6; /* Main blue */
-  --primary-hover-color: #3478d4; /* Darker blue for hover */
-  --secondary-color: #000033; /* Dark navy */
-  --light-gray-color: #f0f2f5; /* Light grey */
-  --border-color: #e2e8f0; /* Subtle border color */
-  --text-color: #000033; /* Dark navy for primary text */
-  --text-light-color: #64748b; /* Muted gray for secondary text */
-  --white-color: #FFFFFF; /* Pure white */
-  --off-white-color: #f0f2f5; /* Light grey background */
-  --box-shadow: 0 4px 6px -1px rgba(0, 0, 51, 0.1), 0 2px 4px -1px rgba(0, 0, 51, 0.06);
+  /* Professional Color Palette */
+  --primary-color: #1E3A8A; /* Dark Blue */
+  --primary-hover-color: #2546a3; /* Lighter Dark Blue for hover */
+  --secondary-color: #1E3A8A; /* Dark Blue for headers/nav */
+  --white-color: #FFFFFF;
+  --light-gray-color: #F3F4F6;
+  --medium-gray-color: #9CA3AF;
+  --dark-gray-color: #4B5563;
+  --border-color: #E5E7EB;
+  --text-color: #4B5563; /* Dark Grey for text */
+  --text-light-color: #9CA3AF; /* Medium Grey for secondary text */
+  --off-white-color: #F3F4F6; /* Light Grey background */
+  --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 body {

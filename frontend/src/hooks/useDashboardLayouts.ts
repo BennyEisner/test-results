@@ -108,12 +108,12 @@ export const useDashboardLayouts = () => {
 
   const activeLayout = layouts.find(l => l.id === activeLayoutId) || layouts[0];
 
-  return { 
-    layouts, 
-    activeLayout, 
-    updateLayout, 
-    setActiveLayoutId, 
-    isEditing, 
+  return {
+    layouts,
+    activeLayout,
+    updateLayout,
+    setActiveLayoutId,
+    isEditing,
     setIsEditing,
     updateGridLayout,
     addComponent,

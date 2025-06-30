@@ -12,7 +12,7 @@ interface DashboardContainerProps {
   isEditing?: boolean;
   onLayoutChange?: (gridLayout: GridLayoutItem[]) => void;
   onRemoveComponent?: (componentId: string) => void;
-  projectId?: string | number;
+  projectId?: string | number | null;
 }
 
 const DashboardContainer = ({
@@ -57,7 +57,7 @@ const DashboardContainer = ({
             </div>
           )}
           <div className="component-content">
-            <ComponentRegistry type={component.type} props={component.props} projectId={projectId} />
+            <ComponentRegistry type={component.type} props={component.props} projectId={projectId ?? undefined} />
           </div>
         </div>
       ))}

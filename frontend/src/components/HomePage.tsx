@@ -10,12 +10,9 @@ const HomePage = () => {
             {/* Projects Navigation Card */}
             <Row className="mb-4">
                 <Col>
-                    <Card className="overview-card">
-                        <Card.Header as="h5">Projects</Card.Header>
-                        <Card.Body>
+ 
                             <AppNavbar />
-                        </Card.Body>
-                    </Card>
+  
                 </Col>
             </Row>
 

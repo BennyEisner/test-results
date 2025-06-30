@@ -5,7 +5,11 @@ import { fetchProjects } from '../services/api';
 import type { Project } from '../types';
 import './AppNavbar.css';
 
-const AppNavbar = () => {
+interface AppNavbarProps {
+    onProjectClick?: (projectId: number) => void;
+}
+
+const AppNavbar = ({ onProjectClick }: AppNavbarProps) => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [error, setError] = useState<string | null>(null);
 
@@ -33,16 +37,30 @@ const AppNavbar = () => {
     return (
         <div className="app-navbar-container">
             <Nav className="projects-nav-container">
-                {projects.map((project) => (
-                    <Nav.Link
-                        key={project.id}
-                        as={Link}
-                        to={`/projects/${project.id}`}
-                        className="project-nav-link"
-                    >
-                        {project.name}
-                    </Nav.Link>
-                ))}
+                {projects.map((project) => {
+                    if (onProjectClick) {
+                        return (
+                            <Nav.Link
+                                key={project.id}
+                                onClick={() => onProjectClick(project.id)}
+                                className="project-nav-link"
+                                style={{ cursor: 'pointer' }}
+                            >
+                                {project.name}
+                            </Nav.Link>
+                        );
+                    }
+                    return (
+                        <Nav.Link
+                            key={project.id}
+                            as={Link}
+                            to={`/projects/${project.id}`}
+                            className="project-nav-link"
+                        >
+                            {project.name}
+                        </Nav.Link>
+                    );
+                })}
             </Nav>
         </div>
     );

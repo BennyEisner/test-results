@@ -30,12 +30,9 @@ const ProjectDetail = () => {
                 <h1 className="page-title">Project: #{projectId}</h1>
             </div>
             <div className="grid-container">
-                <Card className="overview-card">
-                    <Card.Header as="h5">Suites</Card.Header>
-                    <Card.Body>
+
                         <SuitesTable projectId={projectId} />
-                    </Card.Body>
-                </Card>
+
                 <Card className="overview-card">
                     <Card.Header as="h5">Recent Builds</Card.Header>
                     <Card.Body>

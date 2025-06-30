@@ -16,7 +16,7 @@ function App() {
             <div className="app-container">
                 <Routes>
                     <Route path="/" element={<PageLayout><HomePage /></PageLayout>} />
-                    <Route path="/dashboard" element={<PageLayout><DashboardPage /></PageLayout>} />
+                    <Route path="/dashboard" element={<DashboardPage />} />
                     <Route path="/projects" element={<PageLayout><ProjectsTable /></PageLayout>} />
                     <Route path="/projects/:projectId" element={<PageLayout><ProjectDetail /></PageLayout>} />
                     <Route path="/projects/:projectId/suites/:suiteId" element={<PageLayout><SuiteDetail /></PageLayout>} />
