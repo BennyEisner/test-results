@@ -12,3 +12,9 @@ type Build struct {
 	CreatedAt     time.Time `json:"created_at"`
 	TestCaseCount int64     `json:"test_case_count"`
 }
+
+type BuildDurationTrend struct {
+	BuildNumber string    `json:"build_number"`
+	Duration    float64   `json:"duration"`
+	CreatedAt   time.Time `json:"created_at"`
+}

@@ -14,20 +14,13 @@ type TestCaseServiceInterface interface {
 	FindOrCreateTestCaseWithTx(tx *sql.Tx, suiteID int64, name string, classname string) (*models.TestCase, error) // New
 	GetTestCaseByID(caseID int64) (*models.TestCase, error)
 	CheckTestSuiteExists(suiteID int64) (bool, error) // To validate suite_id before creation
-	// Consider if CheckTestSuiteExists also needs a transactional version
+	GetMostFailedTests(projectID int64, limit int) ([]models.MostFailedTest, error)
 }
 
-// TestCaseService provides services related to test cases.
 type TestCaseService struct {
 	DB *sql.DB
-	// testSuiteService TestSuiteServiceInterface // Could be injected if we want to use its CheckTestSuiteExists
 }
 
-// NewTestCaseService creates a new TestCaseService.
-// func NewTestCaseService(db *sql.DB, tsService TestSuiteServiceInterface) *TestCaseService {
-// return &TestCaseService{DB: db, testSuiteService: tsService}
-// }
-// Simplified version for now:
 func NewTestCaseService(db *sql.DB) *TestCaseService {
 	return &TestCaseService{DB: db}
 }
@@ -134,4 +127,48 @@ func (s *TestCaseService) FindOrCreateTestCaseWithTx(tx *sql.Tx, suiteID int64, 
 	}
 
 	return &createdCase, nil
+}
+
+func (s *TestCaseService) GetMostFailedTests(projectID int64, limit int) ([]models.MostFailedTest, error) {
+	query := `
+        SELECT
+            tc.id AS test_case_id,
+            tc.name,
+            tc.classname,
+            COUNT(tce.id) AS failure_count
+        FROM
+            test_cases tc
+        JOIN
+            build_test_case_executions tce ON tc.id = tce.test_case_id
+        JOIN
+            builds b ON tce.build_id = b.id
+        WHERE
+            b.project_id = $1 AND tce.status = 'failure'
+        GROUP BY
+            tc.id, tc.name, tc.classname
+        ORDER BY
+            failure_count DESC
+        LIMIT $2;
+    `
+
+	rows, err := s.DB.Query(query, projectID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("database error fetching most failed tests for project %d: %w", projectID, err)
+	}
+	defer rows.Close()
+
+	var tests []models.MostFailedTest
+	for rows.Next() {
+		var test models.MostFailedTest
+		if err := rows.Scan(&test.TestCaseID, &test.Name, &test.Classname, &test.FailureCount); err != nil {
+			return nil, fmt.Errorf("error scanning most failed test: %w", err)
+		}
+		tests = append(tests, test)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating most failed test rows for project %d: %w", projectID, err)
+	}
+
+	return tests, nil
 }

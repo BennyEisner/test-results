@@ -20,6 +20,7 @@ type BuildServiceInterface interface {
 	UpdateBuild(id int64, buildNumber, ciProvider, ciURL *string) (*models.Build, error)
 	DeleteBuild(id int64) (int64, error)
 	CheckTestSuiteExists(testSuiteID int64) (bool, error)
+	GetBuildDurationTrends(projectID int64) ([]map[string]interface{}, error)
 	// Consider if CheckTestSuiteExists also needs a transactional version if called within a tx
 }
 
@@ -300,4 +301,51 @@ func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *str
 
 	// After successful update, fetch the updated build with project_id
 	return s.GetBuildByID(id)
+}
+
+// GetBuildDurationTrends fetches build duration trends for a given project ID.
+func (s *BuildService) GetBuildDurationTrends(projectID int64) ([]map[string]interface{}, error) {
+	const query = `
+		SELECT b.created_at, 
+		       EXTRACT(EPOCH FROM (b.created_at - LAG(b.created_at) OVER (ORDER BY b.created_at))) as duration
+		FROM builds b
+		JOIN test_suites ts ON b.test_suite_id = ts.id
+		WHERE ts.project_id = $1
+		ORDER BY b.created_at DESC
+		LIMIT 50
+	`
+
+	rows, err := s.DB.Query(query, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("database error fetching build duration trends for project ID %d: %w", projectID, err)
+	}
+	defer rows.Close()
+
+	var trends []map[string]interface{}
+	for rows.Next() {
+		var createdAt time.Time
+		var duration sql.NullFloat64
+
+		if err := rows.Scan(&createdAt, &duration); err != nil {
+			return nil, fmt.Errorf("error scanning build duration trend for project ID %d: %w", projectID, err)
+		}
+
+		trend := map[string]interface{}{
+			"created_at": createdAt,
+		}
+
+		if duration.Valid {
+			trend["duration"] = duration.Float64
+		} else {
+			trend["duration"] = 0
+		}
+
+		trends = append(trends, trend)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating build duration trend rows for project ID %d: %w", projectID, err)
+	}
+
+	return trends, nil
 }

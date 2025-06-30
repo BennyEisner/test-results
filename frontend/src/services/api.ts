@@ -6,7 +6,7 @@ import type { Build } from "../types";
 
 import type { TestCaseExecution } from "../types";
 
-import type { Failure, SearchResult } from "../types";
+import type { Failure, SearchResult, BuildDurationTrend, MostFailedTest } from "../types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -83,6 +83,22 @@ export const search = async (query: string): Promise<SearchResult[]> => {
   const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) {
     throw new Error("Failed to search");
+  }
+  return response.json();
+};
+
+export const getBuildDurationTrends = async (projectId: number): Promise<BuildDurationTrend[]> => {
+  const response = await fetch(`${API_BASE_URL}/builds/duration-trends?projectId=${projectId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch build duration trends');
+  }
+  return response.json();
+};
+
+export const fetchMostFailedTests = async (projectId: number): Promise<MostFailedTest[]> => {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/most-failed-tests`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch most failed tests');
   }
   return response.json();
 };

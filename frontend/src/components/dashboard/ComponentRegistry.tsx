@@ -2,6 +2,8 @@ import { ComponentType, ComponentProps, ComponentDefinition } from '../../types/
 import BuildsTable from '../BuildsTable';
 import ExecutionsSummary from '../ExecutionsSummary';
 import BuildDoughnutChart from '../BuildDoughnutChart';
+import BuildDurationTrendChart from '../BuildDurationTrendChart';
+import MostFailedTestsTable from '../MostFailedTestsTable';
 import { fetchRecentBuilds } from '../../services/api';
 
 interface ComponentRegistryProps {
@@ -30,6 +32,20 @@ const ComponentRegistry = ({ type, props, projectId }: ComponentRegistryProps) =
       return <ExecutionsSummary {...componentProps} />;
     case 'build-chart':
       return <BuildDoughnutChart {...componentProps} />;
+    case 'build-duration-trend-chart':
+      const projectIdNumber = props.projectId ? Number(props.projectId) : undefined;
+      if (projectIdNumber) {
+        const { projectId: _, ...restProps } = componentProps;
+        return <BuildDurationTrendChart projectId={projectIdNumber} {...restProps} />;
+      }
+      return <div className="component-placeholder">Project ID required for Build Duration Trend Chart</div>;
+    case 'most-failed-tests-table':
+      const mostFailedProjectId = props.projectId ? Number(props.projectId) : undefined;
+      if (mostFailedProjectId) {
+        const { projectId: _, ...restProps } = componentProps;
+        return <MostFailedTestsTable projectId={mostFailedProjectId} {...restProps} />;
+      }
+      return <div className="component-placeholder">Project ID required for Most Failed Tests Table</div>;
     default:
       return <div className="component-placeholder">Unknown component: {type}</div>;
   }
@@ -105,6 +121,52 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
         type: 'text',
         required: true,
         placeholder: 'Enter build ID'
+      }
+    ]
+  },
+  'build-duration-trend-chart': {
+    name: 'Build Duration Trend',
+    description: 'Shows the trend of build durations over time.',
+    category: 'Charts',
+    defaultProps: { title: 'Build Duration Trend' },
+    defaultGridSize: { w: 6, h: 5, minW: 4, minH: 4 },
+    configFields: [
+      {
+        key: 'title',
+        label: 'Component Title',
+        type: 'text',
+        defaultValue: 'Build Duration Trend',
+        placeholder: 'Enter component title'
+      },
+      {
+        key: 'projectId',
+        label: 'Project ID',
+        type: 'text',
+        required: true,
+        placeholder: 'Enter project ID'
+      }
+    ]
+  },
+  'most-failed-tests-table': {
+    name: 'Most Failed Tests Table',
+    description: 'Display the most frequently failing tests',
+    category: 'Tables',
+    defaultProps: { title: 'Most Failed Tests' },
+    defaultGridSize: { w: 8, h: 6, minW: 4, minH: 4 },
+    configFields: [
+      {
+        key: 'title',
+        label: 'Component Title',
+        type: 'text',
+        defaultValue: 'Most Failed Tests',
+        placeholder: 'Enter component title'
+      },
+      {
+        key: 'projectId',
+        label: 'Project ID',
+        type: 'text',
+        required: true,
+        placeholder: 'Enter project ID'
       }
     ]
   },

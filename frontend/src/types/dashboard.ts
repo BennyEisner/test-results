@@ -48,10 +48,12 @@ export interface ConfigField {
   helpText?: string;
 }
 
-export type ComponentType = 
+export type ComponentType =
   | 'builds-table'
-  | 'executions-summary' 
-  | 'build-chart';
+  | 'executions-summary'
+  | 'build-chart'
+  | 'build-duration-trend-chart'
+  | 'most-failed-tests-table';
 
 export interface DashboardSettings {
   theme: 'light' | 'dark';

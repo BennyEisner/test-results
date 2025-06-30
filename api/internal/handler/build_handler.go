@@ -332,3 +332,25 @@ func (bh *BuildHandler) UpdateBuild(w http.ResponseWriter, r *http.Request) {
 	}
 	utils.RespondWithJSON(w, http.StatusOK, toAPIBuild(updatedBuild))
 }
+
+func (bh *BuildHandler) GetBuildDurationTrends(w http.ResponseWriter, r *http.Request) {
+	projectIDStr := r.URL.Query().Get("projectId")
+	if projectIDStr == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "projectId query parameter is required")
+		return
+	}
+
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid projectId format")
+		return
+	}
+
+	trends, err := bh.service.GetBuildDurationTrends(projectID)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching build duration trends: "+err.Error())
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, trends)
+}
