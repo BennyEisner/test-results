@@ -16,12 +16,11 @@ type BuildServiceInterface interface {
 	GetRecentBuildsByProjectID(projectID int64) ([]models.Build, error)
 	GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build, error)
 	CreateBuild(build *models.Build) (*models.Build, error)
-	CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*models.Build, error) // New transactional method
-	UpdateBuild(id int64, buildNumber, ciProvider, ciURL *string) (*models.Build, error)
+	CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*models.Build, error)
+	UpdateBuild(id int64, buildNumber, ciProvider, ciURL *string, duration *float64) (*models.Build, error)
 	DeleteBuild(id int64) (int64, error)
 	CheckTestSuiteExists(testSuiteID int64) (bool, error)
-	GetBuildDurationTrends(projectID int64) ([]map[string]interface{}, error)
-	// Consider if CheckTestSuiteExists also needs a transactional version if called within a tx
+	GetBuildDurationTrends(projectID, suiteID int64) ([]models.BuildDurationTrend, error)
 }
 
 // BuildService provides services related to builds.
@@ -47,7 +46,8 @@ func (s *BuildService) CheckTestSuiteExists(testSuiteID int64) (bool, error) {
 // GetAllBuilds fetches all builds from the database.
 func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 	const query = `
-		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at, b.test_case_count
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, 
+		       b.ci_url, b.created_at, b.test_case_count, b.duration
 		FROM builds b
 		JOIN test_suites ts ON b.test_suite_id = ts.id
 		ORDER BY b.created_at DESC
@@ -62,13 +62,23 @@ func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 	for rows.Next() {
 		var b models.Build
 		var ciURL sql.NullString
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt, &b.TestCaseCount); err != nil {
+		var duration sql.NullFloat64
+
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
+			&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration); err != nil {
 			return nil, fmt.Errorf("error scanning build: %w", err)
 		}
+
 		if ciURL.Valid {
 			val := ciURL.String
 			b.CIURL = &val
 		}
+
+		if duration.Valid {
+			val := duration.Float64
+			b.Duration = &val
+		}
+
 		builds = append(builds, b)
 	}
 	if err = rows.Err(); err != nil {
@@ -80,7 +90,8 @@ func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 // GetRecentBuildsByProjectID fetches all recent builds for a given projectID.
 func (s *BuildService) GetRecentBuildsByProjectID(projectID int64) ([]models.Build, error) {
 	const query = `
-		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at, b.test_case_count
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, 
+		       b.ci_url, b.created_at, b.test_case_count, b.duration
 		FROM builds b
 		JOIN test_suites ts ON b.test_suite_id = ts.id
 		WHERE ts.project_id = $1
@@ -96,13 +107,23 @@ func (s *BuildService) GetRecentBuildsByProjectID(projectID int64) ([]models.Bui
 	for rows.Next() {
 		var b models.Build
 		var ciURL sql.NullString
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt, &b.TestCaseCount); err != nil {
+		var duration sql.NullFloat64
+
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
+			&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration); err != nil {
 			return nil, fmt.Errorf("error scanning build for project ID %d: %w", projectID, err)
 		}
+
 		if ciURL.Valid {
 			val := ciURL.String
 			b.CIURL = &val
 		}
+
+		if duration.Valid {
+			val := duration.Float64
+			b.Duration = &val
+		}
+
 		builds = append(builds, b)
 	}
 	if err = rows.Err(); err != nil {
@@ -114,32 +135,45 @@ func (s *BuildService) GetRecentBuildsByProjectID(projectID int64) ([]models.Bui
 // GetBuildByID fetches a single build by its ID.
 func (s *BuildService) GetBuildByID(id int64) (*models.Build, error) {
 	const query = `
-		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at, b.test_case_count
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, 
+		       b.ci_url, b.created_at, b.test_case_count, b.duration
 		FROM builds b
 		JOIN test_suites ts ON b.test_suite_id = ts.id
 		WHERE b.id = $1
 	`
 	var b models.Build
 	var ciURL sql.NullString
+	var duration sql.NullFloat64
+
 	err := s.DB.QueryRow(query, id).Scan(
-		&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt, &b.TestCaseCount)
+		&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
+		&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, err // Let handler decide on 404 or other error
 		}
 		return nil, fmt.Errorf("database error fetching build: %w", err)
 	}
+
 	if ciURL.Valid {
 		val := ciURL.String
 		b.CIURL = &val
 	}
+
+	if duration.Valid {
+		val := duration.Float64
+		b.Duration = &val
+	}
+
 	return &b, nil
 }
 
 // GetBuildsByTestSuiteID fetches all builds for a given testSuiteID.
 func (s *BuildService) GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build, error) {
 	const query = `
-		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, b.created_at, b.test_case_count
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, 
+		       b.ci_url, b.created_at, b.test_case_count, b.duration
 		FROM builds b
 		JOIN test_suites ts ON b.test_suite_id = ts.id
 		WHERE b.test_suite_id = $1
@@ -155,13 +189,23 @@ func (s *BuildService) GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build
 	for rows.Next() {
 		var b models.Build
 		var ciURL sql.NullString
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider, &ciURL, &b.CreatedAt, &b.TestCaseCount); err != nil {
+		var duration sql.NullFloat64
+
+		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
+			&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration); err != nil {
 			return nil, fmt.Errorf("error scanning build for test suite ID %d: %w", testSuiteID, err)
 		}
+
 		if ciURL.Valid {
 			val := ciURL.String
 			b.CIURL = &val
 		}
+
+		if duration.Valid {
+			val := duration.Float64
+			b.Duration = &val
+		}
+
 		builds = append(builds, b)
 	}
 	if err = rows.Err(); err != nil {
@@ -176,6 +220,7 @@ func (s *BuildService) GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build
 func (s *BuildService) CreateBuild(build *models.Build) (*models.Build, error) {
 	var newBuildID int64
 	var createdAt time.Time
+
 	var ciURLNullStr sql.NullString
 	if build.CIURL != nil && strings.TrimSpace(*build.CIURL) != "" {
 		ciURLNullStr = sql.NullString{String: *build.CIURL, Valid: true}
@@ -183,9 +228,16 @@ func (s *BuildService) CreateBuild(build *models.Build) (*models.Build, error) {
 		ciURLNullStr = sql.NullString{String: "", Valid: false}
 	}
 
+	var durationNull sql.NullFloat64
+	if build.Duration != nil {
+		durationNull = sql.NullFloat64{Float64: *build.Duration, Valid: true}
+	} else {
+		durationNull = sql.NullFloat64{Float64: 0, Valid: false}
+	}
+
 	err := s.DB.QueryRow(
-		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at, test_case_count) VALUES($1, $2, $3, $4, NOW(), $5) RETURNING id, created_at",
-		build.TestSuiteID, build.BuildNumber, build.CIProvider, ciURLNullStr, build.TestCaseCount,
+		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at, test_case_count, duration) VALUES($1, $2, $3, $4, NOW(), $5, $6) RETURNING id, created_at",
+		build.TestSuiteID, build.BuildNumber, build.CIProvider, ciURLNullStr, build.TestCaseCount, durationNull,
 	).Scan(&newBuildID, &createdAt)
 
 	if err != nil {
@@ -202,6 +254,7 @@ func (s *BuildService) CreateBuild(build *models.Build) (*models.Build, error) {
 func (s *BuildService) CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*models.Build, error) {
 	var newBuildID int64
 	var createdAt time.Time
+
 	var ciURLNullStr sql.NullString
 	if build.CIURL != nil && strings.TrimSpace(*build.CIURL) != "" {
 		ciURLNullStr = sql.NullString{String: *build.CIURL, Valid: true}
@@ -209,10 +262,17 @@ func (s *BuildService) CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*mode
 		ciURLNullStr = sql.NullString{String: "", Valid: false}
 	}
 
+	var durationNull sql.NullFloat64
+	if build.Duration != nil {
+		durationNull = sql.NullFloat64{Float64: *build.Duration, Valid: true}
+	} else {
+		durationNull = sql.NullFloat64{Float64: 0, Valid: false}
+	}
+
 	// Use tx.QueryRow instead of s.DB.QueryRow
 	err := tx.QueryRow(
-		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at, test_case_count) VALUES($1, $2, $3, $4, NOW(), $5) RETURNING id, created_at",
-		build.TestSuiteID, build.BuildNumber, build.CIProvider, ciURLNullStr, build.TestCaseCount,
+		"INSERT INTO builds(test_suite_id, build_number, ci_provider, ci_url, created_at, test_case_count, duration) VALUES($1, $2, $3, $4, NOW(), $5, $6) RETURNING id, created_at",
+		build.TestSuiteID, build.BuildNumber, build.CIProvider, ciURLNullStr, build.TestCaseCount, durationNull,
 	).Scan(&newBuildID, &createdAt)
 
 	if err != nil {
@@ -227,6 +287,7 @@ func (s *BuildService) CreateBuildWithTx(tx *sql.Tx, build *models.Build) (*mode
 		CIURL:         build.CIURL,
 		CreatedAt:     createdAt,
 		TestCaseCount: build.TestCaseCount,
+		Duration:      build.Duration,
 	}
 	return createdBuild, nil
 }
@@ -247,7 +308,7 @@ func (s *BuildService) DeleteBuild(id int64) (int64, error) {
 
 // UpdateBuild updates an existing build.
 // Only non-nil fields in the input will be updated.
-func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *string) (*models.Build, error) {
+func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *string, duration *float64) (*models.Build, error) {
 	// First, check if build exists
 	_, err := s.GetBuildByID(id) // Leverage existing method
 	if err != nil {
@@ -269,6 +330,7 @@ func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *str
 		args = append(args, *buildNumber)
 		argID++
 	}
+
 	if ciProvider != nil {
 		if strings.TrimSpace(*ciProvider) == "" {
 			return nil, fmt.Errorf("ci provider cannot be empty if provided for update")
@@ -277,10 +339,17 @@ func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *str
 		args = append(args, *ciProvider)
 		argID++
 	}
+
 	if ciURL != nil { // If CIURL key is present
 		ciURLToUpdate := sql.NullString{String: *ciURL, Valid: strings.TrimSpace(*ciURL) != ""}
 		updateFields = append(updateFields, fmt.Sprintf("ci_url = $%d", argID))
 		args = append(args, ciURLToUpdate)
+		argID++
+	}
+
+	if duration != nil {
+		updateFields = append(updateFields, fmt.Sprintf("duration = $%d", argID))
+		args = append(args, sql.NullFloat64{Float64: *duration, Valid: true})
 		argID++
 	}
 
@@ -304,42 +373,28 @@ func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *str
 }
 
 // GetBuildDurationTrends fetches build duration trends for a given project ID.
-func (s *BuildService) GetBuildDurationTrends(projectID int64) ([]map[string]interface{}, error) {
+func (s *BuildService) GetBuildDurationTrends(projectID, suiteID int64) ([]models.BuildDurationTrend, error) {
 	const query = `
-		SELECT b.created_at, 
-		       EXTRACT(EPOCH FROM (b.created_at - LAG(b.created_at) OVER (ORDER BY b.created_at))) as duration
+		SELECT b.build_number, b.duration, b.created_at
 		FROM builds b
 		JOIN test_suites ts ON b.test_suite_id = ts.id
-		WHERE ts.project_id = $1
+		WHERE ts.project_id = $1 AND b.test_suite_id = $2 AND b.duration IS NOT NULL
 		ORDER BY b.created_at DESC
 		LIMIT 50
 	`
 
-	rows, err := s.DB.Query(query, projectID)
+	rows, err := s.DB.Query(query, projectID, suiteID)
 	if err != nil {
 		return nil, fmt.Errorf("database error fetching build duration trends for project ID %d: %w", projectID, err)
 	}
 	defer rows.Close()
 
-	var trends []map[string]interface{}
+	var trends []models.BuildDurationTrend
 	for rows.Next() {
-		var createdAt time.Time
-		var duration sql.NullFloat64
-
-		if err := rows.Scan(&createdAt, &duration); err != nil {
+		var trend models.BuildDurationTrend
+		if err := rows.Scan(&trend.BuildNumber, &trend.Duration, &trend.CreatedAt); err != nil {
 			return nil, fmt.Errorf("error scanning build duration trend for project ID %d: %w", projectID, err)
 		}
-
-		trend := map[string]interface{}{
-			"created_at": createdAt,
-		}
-
-		if duration.Valid {
-			trend["duration"] = duration.Float64
-		} else {
-			trend["duration"] = 0
-		}
-
 		trends = append(trends, trend)
 	}
 

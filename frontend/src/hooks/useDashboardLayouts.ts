@@ -12,11 +12,15 @@ const defaultLayout: DashboardLayout = {
     { id: 'builds-1', type: 'builds-table', props: { title: 'Recent Builds', fetchFunction: fetchRecentBuilds }, visible: true },
     { id: 'summary-1', type: 'executions-summary', props: { title: 'Test Summary', buildId: '1' }, visible: true },
     { id: 'chart-1', type: 'build-chart', props: { title: 'Build Status', buildId: '1' }, visible: true },
+    { id: 'build-duration-trend-chart-1', type: 'build-duration-trend-chart', props: { title: 'Build Duration Trend', projectId: 1, suiteId: 1 }, visible: true },
+    { id: 'most-failed-tests-table-1', type: 'most-failed-tests-table', props: { title: 'Most Failed Tests', projectId: 1, limit: 10 }, visible: true },
   ],
   gridLayout: [
     { i: 'builds-1', x: 0, y: 0, w: 8, h: 6 },
     { i: 'summary-1', x: 8, y: 0, w: 4, h: 4 },
     { i: 'chart-1', x: 8, y: 4, w: 4, h: 5 },
+    { i: 'build-duration-trend-chart-1', x: 0, y: 6, w: 6, h: 5 },
+    { i: 'most-failed-tests-table-1', x: 6, y: 6, w: 6, h: 5 },
   ],
   settings: { theme: 'light', layout: 'grid', spacing: 'normal' },
 };

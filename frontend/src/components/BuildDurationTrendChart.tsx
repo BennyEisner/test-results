@@ -25,15 +25,16 @@ ChartJS.register(
 
 interface BuildDurationTrendChartProps {
   projectId: number;
+  suiteId: number;
 }
 
-const BuildDurationTrendChart: React.FC<BuildDurationTrendChartProps> = ({ projectId }) => {
+const BuildDurationTrendChart: React.FC<BuildDurationTrendChartProps> = ({ projectId, suiteId }) => {
   const [chartData, setChartData] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const trends = await getBuildDurationTrends(projectId);
+        const trends = await getBuildDurationTrends(projectId, suiteId);
         const data = {
           labels: trends.map((t: BuildDurationTrend) => new Date(t.created_at).toLocaleDateString()),
           datasets: [
@@ -52,8 +53,10 @@ const BuildDurationTrendChart: React.FC<BuildDurationTrendChartProps> = ({ proje
       }
     };
 
-    fetchData();
-  }, [projectId]);
+    if (projectId && suiteId) {
+		fetchData();
+	}
+  }, [projectId, suiteId]);
 
   return (
     <div>

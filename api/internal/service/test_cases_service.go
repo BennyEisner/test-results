@@ -131,25 +131,27 @@ func (s *TestCaseService) FindOrCreateTestCaseWithTx(tx *sql.Tx, suiteID int64, 
 
 func (s *TestCaseService) GetMostFailedTests(projectID int64, limit int) ([]models.MostFailedTest, error) {
 	query := `
-        SELECT
-            tc.id AS test_case_id,
-            tc.name,
-            tc.classname,
-            COUNT(tce.id) AS failure_count
-        FROM
-            test_cases tc
-        JOIN
-            build_test_case_executions tce ON tc.id = tce.test_case_id
-        JOIN
-            builds b ON tce.build_id = b.id
-        WHERE
-            b.project_id = $1 AND tce.status = 'failure'
-        GROUP BY
-            tc.id, tc.name, tc.classname
-        ORDER BY
-            failure_count DESC
-        LIMIT $2;
-    `
+		SELECT
+			tc.id AS test_case_id,
+			tc.name,
+			tc.classname,
+			COUNT(tce.id) AS failure_count
+		FROM
+			test_cases tc
+		JOIN
+			build_test_case_executions tce ON tc.id = tce.test_case_id
+		JOIN
+			builds b ON tce.build_id = b.id
+		JOIN
+			test_suites ts ON b.test_suite_id = ts.id
+		WHERE
+			ts.project_id = $1 AND tce.status = 'failure'
+		GROUP BY
+			tc.id, tc.name, tc.classname
+		ORDER BY
+			failure_count DESC
+		LIMIT $2;
+	`
 
 	rows, err := s.DB.Query(query, projectID, limit)
 	if err != nil {

@@ -12,7 +12,7 @@ interface ComponentRegistryProps {
   projectId?: string | number;
 }
 
-const ComponentRegistry = ({ type, props, projectId }: ComponentRegistryProps) => {
+function ComponentRegistry({ type, props, projectId }: ComponentRegistryProps) {
   const componentProps = { ...props, className: `dashboard-component--${type}` };
 
   // Handle project-specific configurations
@@ -33,23 +33,25 @@ const ComponentRegistry = ({ type, props, projectId }: ComponentRegistryProps) =
     case 'build-chart':
       return <BuildDoughnutChart {...componentProps} />;
     case 'build-duration-trend-chart':
-      const projectIdNumber = props.projectId ? Number(props.projectId) : undefined;
-      if (projectIdNumber) {
-        const { projectId: _, ...restProps } = componentProps;
-        return <BuildDurationTrendChart projectId={projectIdNumber} {...restProps} />;
+      const finalProjectId = props.projectId ? Number(props.projectId) : (projectId ? Number(projectId) : undefined);
+      const suiteIdNumber = props.suiteId ? Number(props.suiteId) : undefined;
+      if (finalProjectId && suiteIdNumber) {
+        const { projectId: _, suiteId: __, ...restProps } = componentProps;
+        return <BuildDurationTrendChart projectId={finalProjectId} suiteId={suiteIdNumber} {...restProps} />;
       }
-      return <div className="component-placeholder">Project ID required for Build Duration Trend Chart</div>;
+      return <div className="component-placeholder">Project ID and Suite ID required for Build Duration Trend Chart</div>;
     case 'most-failed-tests-table':
-      const mostFailedProjectId = props.projectId ? Number(props.projectId) : undefined;
-      if (mostFailedProjectId) {
+      const finalMostFailedProjectId = props.projectId ? Number(props.projectId) : (projectId ? Number(projectId) : undefined);
+      const limit = props.limit ? Number(props.limit) : 10;
+      if (finalMostFailedProjectId) {
         const { projectId: _, ...restProps } = componentProps;
-        return <MostFailedTestsTable projectId={mostFailedProjectId} {...restProps} />;
+        return <MostFailedTestsTable projectId={finalMostFailedProjectId} limit={limit} {...restProps} />;
       }
       return <div className="component-placeholder">Project ID required for Most Failed Tests Table</div>;
     default:
       return <div className="component-placeholder">Unknown component: {type}</div>;
   }
-};
+}
 
 export default ComponentRegistry;
 
@@ -144,6 +146,13 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
         type: 'text',
         required: true,
         placeholder: 'Enter project ID'
+      },
+      {
+        key: 'suiteId',
+        label: 'Suite ID',
+        type: 'text',
+        required: true,
+        placeholder: 'Enter suite ID'
       }
     ]
   },
@@ -167,6 +176,14 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
         type: 'text',
         required: true,
         placeholder: 'Enter project ID'
+      },
+      {
+        key: 'limit',
+        label: 'Limit',
+        type: 'number',
+        required: false,
+        defaultValue: 10,
+        placeholder: 'Enter the number of tests to display'
       }
     ]
   },

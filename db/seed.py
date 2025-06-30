@@ -39,11 +39,11 @@ class DatabaseSeeder:
             (project_id, name, time)
         )
 
-    def create_build(self, test_suite_id: int, build_number: str, ci_provider: str, ci_url: Optional[str], test_case_count: int) -> Optional[int]:
+    def create_build(self, test_suite_id: int, build_number: str, ci_provider: str, ci_url: Optional[str], test_case_count: int, duration: float) -> Optional[int]:
         print(f"    Creating build: {build_number} for test_suite_id: {test_suite_id}")
         return self._execute_returning_id(
-            "INSERT INTO builds (test_suite_id, build_number, ci_provider, ci_url, test_case_count) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-            (test_suite_id, build_number, ci_provider, ci_url, test_case_count)
+            "INSERT INTO builds (test_suite_id, build_number, ci_provider, ci_url, test_case_count, duration) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+            (test_suite_id, build_number, ci_provider, ci_url, test_case_count, duration)
         )
 
     def create_test_case(self, suite_id: int, name: str, classname: str) -> Optional[int]:
@@ -66,7 +66,11 @@ class DatabaseSeeder:
             "INSERT INTO failures (build_test_case_execution_id, message, type, details) VALUES (%s, %s, %s, %s) RETURNING id",
             (build_test_case_execution_id, message, type, details)
         )
-
+    def update_build_duration(self, build_id: int, duration: float) -> None:
+        self._execute_query(
+            "UPDATE builds SET duration = %s WHERE id = %s",
+            (duration, build_id)
+        )
     def seed_data(self, num_projects: int, num_suites_per_project: int, num_builds_per_suite: int, num_test_case_definitions_per_suite: int):
         print("Starting database seeding...")
         project_count = 0
@@ -110,13 +114,15 @@ class DatabaseSeeder:
                             ci_provider_str = random.choice(ci_providers)
                             ci_url_str = fake.url() if random.choice([True, False]) else None
                             
-                            build_id = self.create_build(test_suite_id, build_number_str, ci_provider_str, ci_url_str, len(current_suite_test_case_ids))
+                            build_id = self.create_build(test_suite_id, build_number_str, ci_provider_str, ci_url_str, len(current_suite_test_case_ids),0.0)
                             if build_id:
                                 build_count += 1
                                 
                                 # Create executions for each test case definition in this build
+                                total_execution_time=0.0
                                 for test_case_def_id in current_suite_test_case_ids:
                                     exec_time = round(random.uniform(0.01, 15.0), 3)
+                                    total_execution_time += exec_time
                                     statuses = ["passed", "failed", "skipped", "error"]
                                     weights = [0.70, 0.15, 0.10, 0.05] 
                                     exec_status = random.choices(statuses, weights=weights, k=1)[0]
@@ -136,7 +142,7 @@ class DatabaseSeeder:
                                             failure_id = self.create_failure(execution_id, failure_message, failure_type, failure_details)
                                             if failure_id:
                                                 failures_count +=1
-        
+                            self.update_build_duration(build_id,round(total_execution_time, 2)) 
         self.connection.commit()
         print(f"\nSeeding complete!")
         print(f"  Total projects created: {project_count}")

@@ -21,7 +21,8 @@ CREATE TABLE builds (
     ci_provider TEXT NOT NULL,
     ci_url TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    test_case_count INTEGER
+    test_case_count INTEGER,
+    duration DOUBLE PRECISION
 );
 
 -- Table: test_cases

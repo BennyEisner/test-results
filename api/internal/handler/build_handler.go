@@ -14,26 +14,29 @@ import (
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 
-// BuildInput remains the same
+// BuildInput defines the input for creating a build.
 type BuildInput struct {
-	BuildNumber string `json:"build_number" xml:"build_number"`
-	CIProvider  string `json:"ci_provider" xml:"ci_provider"`
-	CIURL       string `json:"ci_url" xml:"ci_url"`
+	BuildNumber string   `json:"build_number" xml:"build_number"`
+	CIProvider  string   `json:"ci_provider" xml:"ci_provider"`
+	CIURL       string   `json:"ci_url" xml:"ci_url"`
+	Duration    *float64 `json:"duration" xml:"duration"`
 }
 
-// BuildCreateInput remains the same
+// BuildCreateInput defines the input for creating a build with a test suite ID.
 type BuildCreateInput struct {
-	TestSuiteID int    `json:"test_suite_id" xml:"test_suite_id"`
-	BuildNumber string `json:"build_number" xml:"build_number"`
-	CIProvider  string `json:"ci_provider" xml:"ci_provider"`
-	CIURL       string `json:"ci_url" xml:"ci_url"`
+	TestSuiteID int      `json:"test_suite_id" xml:"test_suite_id"`
+	BuildNumber string   `json:"build_number" xml:"build_number"`
+	CIProvider  string   `json:"ci_provider" xml:"ci_provider"`
+	CIURL       string   `json:"ci_url" xml:"ci_url"`
+	Duration    *float64 `json:"duration" xml:"duration"`
 }
 
-// BuildUpdateInput remains the same
+// BuildUpdateInput defines the input for updating a build.
 type BuildUpdateInput struct {
-	BuildNumber *string `json:"build_number" xml:"build_number"`
-	CIProvider  *string `json:"ci_provider" xml:"ci_provider"`
-	CIURL       *string `json:"ci_url" xml:"ci_url"`
+	BuildNumber *string  `json:"build_number" xml:"build_number"`
+	CIProvider  *string  `json:"ci_provider" xml:"ci_provider"`
+	CIURL       *string  `json:"ci_url" xml:"ci_url"`
+	Duration    *float64 `json:"duration" xml:"duration"`
 }
 
 // BuildHandler holds the build service.
@@ -59,6 +62,9 @@ func toAPIBuild(m *models.Build) utils.Build {
 	}
 	if m.CIURL != nil {
 		apiBuild.CIURL = *m.CIURL
+	}
+	if m.Duration != nil {
+		apiBuild.Duration = m.Duration
 	}
 	return apiBuild
 }
@@ -195,6 +201,7 @@ func (bh *BuildHandler) CreateBuildForTestSuite(w http.ResponseWriter, r *http.R
 		TestSuiteID: testSuiteID,
 		BuildNumber: input.BuildNumber,
 		CIProvider:  input.CIProvider,
+		Duration:    input.Duration,
 	}
 	if strings.TrimSpace(input.CIURL) != "" {
 		modelBuild.CIURL = &input.CIURL
@@ -253,6 +260,7 @@ func (bh *BuildHandler) CreateBuild(w http.ResponseWriter, r *http.Request) {
 		TestSuiteID: testSuiteID64,
 		BuildNumber: input.BuildNumber,
 		CIProvider:  input.CIProvider,
+		Duration:    input.Duration,
 	}
 	if strings.TrimSpace(input.CIURL) != "" {
 		modelBuild.CIURL = &input.CIURL
@@ -319,7 +327,7 @@ func (bh *BuildHandler) UpdateBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedBuild, err := bh.service.UpdateBuild(id, input.BuildNumber, input.CIProvider, input.CIURL)
+	updatedBuild, err := bh.service.UpdateBuild(id, input.BuildNumber, input.CIProvider, input.CIURL, input.Duration)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			utils.RespondWithError(w, http.StatusNotFound, "Build not found")
@@ -346,7 +354,19 @@ func (bh *BuildHandler) GetBuildDurationTrends(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	trends, err := bh.service.GetBuildDurationTrends(projectID)
+	suiteIDStr := r.URL.Query().Get("suiteId")
+	if suiteIDStr == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "suiteId query parameter is required")
+		return
+	}
+
+	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suiteId format")
+		return
+	}
+
+	trends, err := bh.service.GetBuildDurationTrends(projectID, suiteID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching build duration trends: "+err.Error())
 		return

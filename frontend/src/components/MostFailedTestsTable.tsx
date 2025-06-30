@@ -11,6 +11,7 @@ import { MostFailedTest } from '../types';
 
 interface MostFailedTestsTableProps {
     projectId: number;
+    limit: number;
 }
 
 const columnHelper = createColumnHelper<MostFailedTest>();
@@ -30,14 +31,14 @@ const columns = [
     }),
 ];
 
-const MostFailedTestsTable: React.FC<MostFailedTestsTableProps> = ({ projectId }) => {
+const MostFailedTestsTable: React.FC<MostFailedTestsTableProps> = ({ projectId, limit = 10 }) => {
     const [tests, setTests] = useState<MostFailedTest[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const getTests = async () => {
             try {
-                const data = await fetchMostFailedTests(projectId);
+                const data = await fetchMostFailedTests(projectId, limit);
                 setTests(data);
             } catch (err) {
                 setError('Failed to fetch most failed tests');
@@ -45,7 +46,7 @@ const MostFailedTestsTable: React.FC<MostFailedTestsTableProps> = ({ projectId }
         };
 
         getTests();
-    }, [projectId]);
+    }, [projectId, limit]);
 
     const table = useReactTable({
         data: tests,
