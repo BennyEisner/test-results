@@ -92,7 +92,8 @@ export const getBuildDurationTrends = async (projectId: number, suiteId: number)
   if (!response.ok) {
     throw new Error('Failed to fetch build duration trends');
   }
-  return response.json();
+  const data = await response.json();
+  return data || [];
 };
 
 export const fetchMostFailedTests = async (projectId: number, limit: number): Promise<MostFailedTest[]> => {

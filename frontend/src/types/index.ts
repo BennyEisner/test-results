@@ -13,6 +13,7 @@ export interface Build {
   ci_url?: string;
   created_at: string;
   test_case_count: number;
+  duration?: number;
 }
 
 export interface Suite {
