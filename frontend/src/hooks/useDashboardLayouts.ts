@@ -50,11 +50,11 @@ const defaultLayout: DashboardLayout = {
     },
   ],
   gridLayout: [
-    { i: "builds-1", x: 0, y: 0, w: 5, h: 6 },
-    { i: "chart-1", x: 8, y: 4, w: 4, h: 5 },
-    { i: "build-duration-trend-chart-1", x: 0, y: 6, w: 6, h: 5 },
-    { i: "most-failed-tests-table-1", x: 6, y: 6, w: 6, h: 5 },
-    { i: "summary-1", x: 8, y: 0, w: 9, h: 3 },
+    { i: "builds-1", x: 0, y: 0, w: 4, h: 6 },
+    { i: "chart-1", x: 8, y: 0, w: 3, h: 6 },
+    { i: "build-duration-trend-chart-1", x: 4, y: 0, w: 4, h: 6 },
+    { i: "most-failed-tests-table-1", x: 0, y: 6, w: 5, h: 5 },
+    { i: "summary-1", x: 8, y: 6, w: 6, h: 3 },
   ],
   settings: { theme: "light", layout: "grid", spacing: "normal" },
 };

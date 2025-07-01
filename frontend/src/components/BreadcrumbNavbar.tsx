@@ -103,16 +103,13 @@ const BreadcrumbNavbar = () => {
                 navigate(`/projects/${result.id}`);
                 break;
             case 'test_suite':
-                // For now, navigate to the suite detail page
-                // In a real implementation, you'd need to know the project ID
-                console.log('Suite selected:', result);
+                navigate(result.url);
                 break;
             case 'build':
-                console.log('Build selected:', result);
+                navigate(result.url);
                 break;
             case 'test_case':
-                // For now log the test case selection
-                console.log('Test case selected:', result);
+                navigate(result.url);
                 break;
             default:
                 console.log('Unknown result type:', result);
