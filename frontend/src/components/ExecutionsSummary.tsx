@@ -8,11 +8,11 @@ interface ExecutionsSummaryProps {
 }
 
 const ExecutionsSummary = ({ buildId, title }: ExecutionsSummaryProps) => {
-    if (!buildId) {
-        return <div className="text-muted">Please provide a build ID.</div>;
-    }
+    const { stats, loading, error } = useExecutionsSummary(buildId);
 
-    const { stats, loading } = useExecutionsSummary(buildId);
+    if (!buildId) {
+        return <p className="text-center text-muted">No build selected.</p>;
+    }
 
     if (loading) {
         return (
@@ -21,6 +21,10 @@ const ExecutionsSummary = ({ buildId, title }: ExecutionsSummaryProps) => {
                 <span className="ms-2">Analyzing test results...</span>
             </div>
         );
+    }
+
+    if (error) {
+        return <p className="text-danger">Error: {error}</p>;
     }
 
     if (stats.total === 0) {

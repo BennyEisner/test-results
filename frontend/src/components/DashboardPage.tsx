@@ -8,6 +8,8 @@ import PageLayout from './PageLayout';
 import './HomePage.css';
 
 const DashboardPage = () => {
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  const [selectedSuiteId, setSelectedSuiteId] = useState<number | null>(null);
   const {
     activeLayout,
     isEditing,
@@ -17,8 +19,6 @@ const DashboardPage = () => {
     removeComponent,
     updateLayout,
   } = useDashboardLayouts();
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
-  const [selectedSuiteId, setSelectedSuiteId] = useState<number | null>(null);
 
   const handleProjectSelect = (projectId: number) => {
     setSelectedSuiteId(null);
@@ -79,6 +79,7 @@ const DashboardPage = () => {
         onLayoutChange={updateGridLayout}
         onRemoveComponent={removeComponent}
         projectId={selectedProjectId ?? undefined}
+        suiteId={selectedSuiteId ?? undefined}
       />
         </div>
       </PageLayout>

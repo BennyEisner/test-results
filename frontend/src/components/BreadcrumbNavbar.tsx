@@ -38,15 +38,15 @@ const BreadcrumbNavbar = () => {
             setIsLoading(true);
             const items: BreadcrumbItem[] = [];
 
-      try {
-        if (location.pathname === '/') {
-          items.push({ label: 'Dashboard' });
-        } else {
-          items.push({ label: 'Projects', path: '/projects' });
-        }
+            try {
+                if (location.pathname === '/') {
+                    items.push({ label: 'Dashboard' });
+                } else {
+                    items.push({ label: 'Projects', path: '/' });
+                }
 
-        // Handle projectspecific routes
-        if (params.projectId) {
+                // Handle projectspecific routes
+                if (params.projectId) {
                     const projects = await fetchProjects();
                     const project = projects.find(p => p.id.toString() === params.projectId);
 
@@ -87,7 +87,7 @@ const BreadcrumbNavbar = () => {
             } catch (error) {
                 console.error('Error building breadcrumbs:', error);
                 // Fallback breadcrumbs
-                setBreadcrumbs([{ label: 'Dashboard', path: '/' }]);
+                setBreadcrumbs([{ label: 'Home', path: '/' }]);
             } finally {
                 setIsLoading(false);
             }

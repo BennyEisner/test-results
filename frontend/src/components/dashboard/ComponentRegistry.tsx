@@ -10,9 +10,11 @@ interface ComponentRegistryProps {
     type: ComponentType;
     props: ComponentProps;
     projectId?: string | number;
+    suiteId?: string | number;
+    buildId?: string | number | null;
 }
 
-function ComponentRegistry({ type, props, projectId }: ComponentRegistryProps) {
+function ComponentRegistry({ type, props, projectId, suiteId, buildId }: ComponentRegistryProps) {
     const componentProps = { ...props, className: `dashboard-component--${type}` };
 
     // Handle project-specific configurations
@@ -29,27 +31,36 @@ function ComponentRegistry({ type, props, projectId }: ComponentRegistryProps) {
         case 'builds-table':
             return <BuildsTable {...componentProps} />;
         case 'build-chart':
-            return <BuildDoughnutChart {...componentProps} />;
+            const chartBuildId = (buildId ? Number(buildId) : undefined) ?? (props.buildId ? Number(props.buildId) : undefined);
+            if (chartBuildId) {
+                return <BuildDoughnutChart buildId={chartBuildId} {...componentProps} />;
+            }
+            return <div className="component-placeholder">Select a build to view the chart.</div>;
+
         case 'build-duration-trend-chart':
-            const finalProjectId = props.projectId ? Number(props.projectId) : (projectId ? Number(projectId) : undefined);
-            const suiteIdNumber = props.suiteId ? Number(props.suiteId) : undefined;
+            const finalProjectId = (projectId ? Number(projectId) : undefined) ?? (props.projectId ? Number(props.projectId) : undefined);
+            const suiteIdNumber = (suiteId ? Number(suiteId) : undefined) ?? (props.suiteId ? Number(props.suiteId) : undefined);
             if (finalProjectId && suiteIdNumber) {
                 const { projectId: _, suiteId: __, ...restProps } = componentProps;
                 return <BuildDurationTrendChart projectId={finalProjectId} suiteId={suiteIdNumber} {...restProps} />;
             }
-            return <div className="component-placeholder">Project ID and Suite ID required for Build Duration Trend Chart</div>;
+            return <div className="component-placeholder">Select a project and suite to view the trend chart.</div>;
 
         case 'most-failed-tests-table':
-            const finalMostFailedProjectId = props.projectId ? Number(props.projectId) : (projectId ? Number(projectId) : undefined);
-            const mostFailedSuiteIdNumber = props.suiteId ? Number(props.suiteId) : undefined;
+            const finalMostFailedProjectId = (projectId ? Number(projectId) : undefined) ?? (props.projectId ? Number(props.projectId) : undefined);
+            const mostFailedSuiteIdNumber = (suiteId ? Number(suiteId) : undefined) ?? (props.suiteId ? Number(props.suiteId) : undefined);
             const limit = props.limit ? Number(props.limit) : 10;
             if (finalMostFailedProjectId) {
                 const { projectId: _, suiteId: __, ...restProps } = componentProps;
                 return <MostFailedTestsTable projectId={finalMostFailedProjectId} limit={limit} suiteId={mostFailedSuiteIdNumber} {...restProps} />;
             }
-            return <div className="component-placeholder">Project ID required for Most Failed Tests Table</div>;
+            return <div className="component-placeholder">Select a project to view the most failed tests.</div>;
         case 'executions-summary':
-            return <ExecutionsSummary {...componentProps} />;
+            const summaryBuildId = (buildId ? Number(buildId) : undefined) ?? (props.buildId ? Number(props.buildId) : undefined);
+            if (summaryBuildId) {
+                return <ExecutionsSummary buildId={summaryBuildId} {...componentProps} />;
+            }
+            return <div className="component-placeholder">Select a build to view the summary.</div>;
 
         default:
             return <div className="component-placeholder">Unknown component: {type}</div>;
@@ -101,8 +112,8 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
                 key: 'buildId',
                 label: 'Build ID',
                 type: 'text',
-                required: true,
-                placeholder: 'Enter build ID'
+                required: false,
+                placeholder: 'Enter build ID (optional)'
             }
         ]
     },
@@ -124,15 +135,15 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
                 key: 'projectId',
                 label: 'Project ID',
                 type: 'text',
-                required: true,
-                placeholder: 'Enter project ID'
+                required: false,
+                placeholder: 'Enter project ID (optional)'
             },
             {
                 key: 'suiteId',
                 label: 'Suite ID',
                 type: 'text',
-                required: true,
-                placeholder: 'Enter suite ID'
+                required: false,
+                placeholder: 'Enter suite ID (optional)'
             }
         ]
     },
@@ -154,8 +165,8 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
                 key: 'projectId',
                 label: 'Project ID',
                 type: 'text',
-                required: true,
-                placeholder: 'Enter project ID'
+                required: false,
+                placeholder: 'Enter project ID (optional)'
             },
             {
                 key: 'limit',
@@ -192,8 +203,8 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
                 key: 'buildId',
                 label: 'Build ID',
                 type: 'text',
-                required: true,
-                placeholder: 'Enter build ID'
+                required: false,
+                placeholder: 'Enter build ID (optional)'
             }
         ]
     },

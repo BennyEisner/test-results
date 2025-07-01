@@ -1,8 +1,9 @@
-import psycopg2
 import os
 import random
+from typing import List, Optional, Tuple
+
+import psycopg2
 from faker import Faker
-from typing import Optional, Tuple, List
 
 # Initialize Faker
 fake = Faker()
@@ -114,29 +115,124 @@ class DatabaseSeeder:
                             build_id = self.create_build(test_suite_id, build_number_str, ci_provider_str, ci_url_str, len(current_suite_test_case_ids))
                             if build_id:
                                 build_count += 1
-                                
-                                # Create executions for each test case definition in this build
-                                for test_case_def_id in current_suite_test_case_ids:
-                                    exec_time = round(random.uniform(0.01, 15.0), 3)
-                                    statuses = ["passed", "failed", "skipped", "error"]
-                                    weights = [0.70, 0.15, 0.10, 0.05] 
-                                    exec_status = random.choices(statuses, weights=weights, k=1)[0]
+                                is_bad_build = random.random() < 0.15  # 15% chance of a problematic build
+
+
+                            if not hasattr(self, 'test_case_characteristics'):
+                                # Store test case characteristics when first encountered
+                                self.test_case_characteristics = {}
+
+                            all_classnames = set()
+                            for tc_id in current_suite_test_case_ids:
+                                if tc_id in self.test_case_characteristics:
+                                    all_classnames.add(self.test_case_characteristics[tc_id]['module'])
+
+                            problem_modules = []
+                            if is_bad_build and all_classnames:
+                                # Choose 1-3 modules to be "problem areas" (but not more than available)
+                                num_problem_modules = min(random.randint(1, 3), len(all_classnames))
+                                if num_problem_modules > 0:
+                                    problem_modules = random.sample(list(all_classnames), num_problem_modules) 
+                            
+                            for test_case_def_id in current_suite_test_case_ids:
+                                # First execution of this test case? Define its characteristics
+                                if test_case_def_id not in self.test_case_characteristics:
+                                    # Get the classname for this test case
+                                    self.cursor.execute("SELECT classname FROM test_cases WHERE id = %s", (test_case_def_id,))
+                                    classname = self.cursor.fetchone()[0]
+                                    module = classname.split('.')[0] if '.' in classname else classname
                                     
-                                    execution_id = self.create_build_test_case_execution(
-                                        build_id=build_id,
-                                        test_case_id=test_case_def_id,
-                                        status=exec_status,
-                                        execution_time=exec_time
-                                    )
-                                    if execution_id:
-                                        build_test_case_executions_count += 1
-                                        if exec_status == "failed" or exec_status == "error":
+                                    # Define test's inherent reliability (some tests are just more stable)
+                                    base_reliability = random.uniform(0.6, 0.99)
+                                    
+                                    # Some tests are slow and prone to timeouts
+                                    typical_exec_time = round(random.uniform(0.01, 15.0), 3)
+                                    
+                                    # Some tests are deterministic (always same result unless broken)
+                                    # Others are flaky (inconsistent results)
+                                    flakiness = random.uniform(0, 0.5) if random.random() < 0.2 else 0
+                                    
+                                    self.test_case_characteristics[test_case_def_id] = {
+                                        'base_reliability': base_reliability,
+                                        'typical_exec_time': typical_exec_time,
+                                        'flakiness': flakiness,
+                                        'module': module
+                                    }
+
+                                # Get test characteristics
+                                tc_info = self.test_case_characteristics[test_case_def_id]
+                                
+                                # Calculate execution time (with occasional long-running outliers)
+                                if random.random() < 0.05:  # 5% chance of abnormal execution time
+                                    exec_time = round(tc_info['typical_exec_time'] * random.uniform(1.5, 3.0), 3)
+                                else:
+                                    exec_time = round(tc_info['typical_exec_time'] * random.uniform(0.8, 1.2), 3)
+                                
+                                # Calculate success probability for this specific execution
+                                reliability = tc_info['base_reliability']
+                                
+                                # Apply build quality factor
+                                if is_bad_build:
+                                    # Bad builds reduce reliability significantly
+                                    reliability *= random.uniform(0.3, 0.7)
+                                    
+                                    # Tests in "problem modules" are especially affected
+                                    if tc_info['module'] in problem_modules:
+                                        reliability *= random.uniform(0.1, 0.5)
+                                
+                                # Apply flakiness - makes the result more random
+                                if tc_info['flakiness'] > 0:
+                                    reliability = max(0.1, min(0.9, reliability + (random.random() - 0.5) * tc_info['flakiness']))
+                                
+                                # Determine status based on calculated reliability
+                                if random.random() < reliability:
+                                    exec_status = "passed"
+                                else:
+                                    # When a test fails, decide what type of failure
+                                    failure_roll = random.random()
+                                    if failure_roll < 0.7:  # Most failures are regular failures
+                                        exec_status = "failed"
+                                    elif failure_roll < 0.9:  # Some are skipped
+                                        exec_status = "skipped"
+                                    else:  # Few are errors
+                                        exec_status = "error"
+                                
+                                # Create the execution record
+                                execution_id = self.create_build_test_case_execution(
+                                    build_id=build_id,
+                                    test_case_id=test_case_def_id,
+                                    status=exec_status,
+                                    execution_time=exec_time
+                                )
+                                
+                                if execution_id:
+                                    build_test_case_executions_count += 1
+                                    if exec_status == "failed" or exec_status == "error":
+                                        # Create appropriate failure messages
+                                        if tc_info['module'] in problem_modules:
+                                            # Create related failure messages for the problem module
+                                            failure_prefix = f"Failed in {tc_info['module']}: "
+                                            failure_message = failure_prefix + fake.sentence(nb_words=8)
+                                            failure_type = random.choice([
+                                                "AssertionError", 
+                                                f"{tc_info['module']}Exception",
+                                                "TimeoutException", 
+                                                "ConnectionError"
+                                            ])
+                                        else:
+                                            # Random failure messages
                                             failure_message = fake.sentence(nb_words=10)
                                             failure_type = fake.word().capitalize() + "Error"
-                                            failure_details = fake.text(max_nb_chars=500)
-                                            failure_id = self.create_failure(execution_id, failure_message, failure_type, failure_details)
-                                            if failure_id:
-                                                failures_count +=1
+                                        
+                                        failure_details = fake.text(max_nb_chars=500)
+                                        failure_id = self.create_failure(
+                                            execution_id, 
+                                            failure_message, 
+                                            failure_type, 
+                                            failure_details
+                                        )
+                                        if failure_id:
+                                            failures_count += 1    
         self.connection.commit()
         print(f"\nSeeding complete!")
         print(f"  Total projects created: {project_count}")

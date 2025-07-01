@@ -10,12 +10,10 @@ interface BuildDoughnutChartProps {
 }
 
 const BuildDoughnutChart = ({ buildId }: BuildDoughnutChartProps) => {
-    if (!buildId) {
-        return <p className="text-center text-muted">No build ID specified.</p>;
-    }
-
     const { stats, loading } = useExecutionsSummary(buildId);
-
+    if (!buildId) {
+        return <p className="text-center text-muted">No build selected.</p>;
+    }
     if (loading) {
         return (
             <div className="d-flex justify-content-center align-items-center" style={{ height: '200px' }}>

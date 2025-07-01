@@ -2,12 +2,18 @@ import { useState, useEffect, useMemo } from "react";
 import { fetchExecutions } from "../services/api";
 import type { TestCaseExecution } from "../types";
 
-export const useExecutionsSummary = (buildId: string | number) => {
+export const useExecutionsSummary = (buildId?: string | number) => {
   const [executions, setExecutions] = useState<TestCaseExecution[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!buildId) {
+      setExecutions([]);
+      setLoading(false);
+      return;
+    }
+
     const loadExecutions = async () => {
       try {
         setLoading(true);
