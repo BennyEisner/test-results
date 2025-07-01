@@ -1,6 +1,7 @@
 export interface DashboardLayout {
   id: string;
   name: string;
+  version?: number;
   components: DashboardComponent[];
   gridLayout: GridLayoutItem[];
   settings: DashboardSettings;
@@ -18,8 +19,8 @@ export interface GridLayoutItem {
   i: string; // component id
   x: number;
   y: number;
-  w: number; 
-  h: number; 
+  w: number;
+  h: number;
   minW?: number;
   minH?: number;
   maxW?: number;
@@ -40,7 +41,7 @@ export interface ComponentProps {
 export interface ConfigField {
   key: string;
   label: string;
-  type: 'select' | 'text' | 'number' | 'boolean' | 'multi-select';
+  type: "select" | "text" | "number" | "boolean" | "multi-select";
   required?: boolean;
   options?: { value: string | number; label: string }[];
   defaultValue?: any;
@@ -49,16 +50,16 @@ export interface ConfigField {
 }
 
 export type ComponentType =
-  | 'builds-table'
-  | 'executions-summary'
-  | 'build-chart'
-  | 'build-duration-trend-chart'
-  | 'most-failed-tests-table';
+  | "builds-table"
+  | "build-chart"
+  | "build-duration-trend-chart"
+  | "most-failed-tests-table"
+  | "executions-summary";
 
 export interface DashboardSettings {
-  theme: 'light' | 'dark';
-  layout: 'grid' | 'flex';
-  spacing: 'compact' | 'normal' | 'spacious';
+  theme: "light" | "dark";
+  layout: "grid" | "flex";
+  spacing: "compact" | "normal" | "spacious";
 }
 
 export interface ComponentDefinition {
