@@ -84,9 +84,9 @@ const DashboardContainer = ({
                                 type={component.type}
                                 props={{
                                     ...component.props,
-                                    projectId: projectId ?? undefined,
-                                    suiteId: suiteId ?? undefined,
-                                    buildId: selectedBuildId ?? undefined,
+                                    ...(projectId && { projectId }),
+                                    ...(suiteId && { suiteId }),
+                                    ...(selectedBuildId && { buildId: selectedBuildId }),
                                 }}
                             />
                         </div>
