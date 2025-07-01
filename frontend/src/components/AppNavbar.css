@@ -39,18 +39,19 @@
     border-color: transparent;
     text-decoration: none;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(67, 140, 230, 0.2);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
 }
 
 .project-nav-link:focus {
     outline: none;
-    box-shadow: 0 0 0 4px rgba(67, 140, 230, 0.2);
+    box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.2);
 }
 
 .navbar-error {
-    background-color: #fef2f2;
-    color: #dc2626;
-    border: 1px solid #fca5a5;
+    background-color: var(--light-gray-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid #dc2626;
     border-radius: 8px;
     padding: 1rem;
     font-size: 0.9rem;

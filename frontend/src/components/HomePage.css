@@ -15,16 +15,17 @@
 }
 
 .dashboard-header button {
-  background-color: #007bff;
-  color: white;
+  background-color: var(--primary-color);
+  color: var(--white-color);
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 10px 15px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
+  transition: background-color 0.2s ease;
 }
 
 .dashboard-header button:hover {
-  background-color: #0056b3;
+  background-color: var(--primary-hover-color);
 }

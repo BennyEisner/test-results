@@ -1,43 +1,62 @@
-import DashboardContainer from './dashboard/DashboardContainer';
-import DashboardEditor from './dashboard/DashboardEditor';
-import { useDashboardLayouts } from '../hooks/useDashboardLayouts';
+import { Row, Col, Card, Alert } from 'react-bootstrap';
+import AppNavbar from './AppNavbar';
+import BuildsTable from './BuildsTable';
+import { fetchRecentBuilds } from '../services/api';
 import './HomePage.css';
 
 const HomePage = () => {
-  const { 
-    activeLayout, 
-    isEditing, 
-    setIsEditing,
-    updateGridLayout,
-    addComponent,
-    removeComponent,
-  } = useDashboardLayouts();
+    return (
+        <div >
+            {/* Projects Navigation Card */}
+            <Row className="mb-4">
+                <Col>
+ 
+                            <AppNavbar />
+  
+                </Col>
+            </Row>
 
-  if (!activeLayout) {
-    return <div>Loading dashboard...</div>;
-  }
+            <Row>
+                {/* Recent Builds Card */}
+                <Col md={12} className="mb-4">
+                    <Card className="overview-card">
+                        <Card.Header as="h5">Recent Builds</Card.Header>
+                        <Card.Body>
+                            <div className="builds-table-container">
+                                <BuildsTable fetchFunction={fetchRecentBuilds} title="" />
+                            </div>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
 
-  return (
-    <div className="home-page">
-      <div className="dashboard-header">
-        <h2>{activeLayout.name}</h2>
-        <button onClick={() => setIsEditing(!isEditing)}>
-          {isEditing ? 'Done' : 'Edit Dashboard'}
-        </button>
-      </div>
+            <Row>
+                {/* Global Statistics Card */}
+                <Col md={6} className="mb-4">
+                    <Card className="overview-card">
+                        <Card.Header as="h5">Global Statistics</Card.Header>
+                        <Card.Body>
+                            <Alert variant="info" className="info-alert">
+                                Placeholder for global statistics (e.g., total projects, overall pass rate).
+                            </Alert>
+                        </Card.Body>
+                    </Card>
+                </Col>
 
-      {isEditing && (
-        <DashboardEditor onAddComponent={addComponent} />
-      )}
-
-      <DashboardContainer
-        layout={activeLayout}
-        isEditing={isEditing}
-        onLayoutChange={updateGridLayout}
-        onRemoveComponent={removeComponent}
-      />
-    </div>
-  );
+                {/* Recent Failures Card */}
+                <Col md={6} className="mb-4">
+                    <Card className="overview-card">
+                        <Card.Header as="h5">Recent Failures</Card.Header>
+                        <Card.Body>
+                            <Alert variant="info" className="info-alert">
+                                Placeholder for a panel showing recent failures.
+                            </Alert>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+        </div>
+    );
 };
 
 export default HomePage;

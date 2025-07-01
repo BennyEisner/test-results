@@ -14,26 +14,29 @@ import (
 	"github.com/BennyEisner/test-results/internal/utils"
 )
 
-// BuildInput remains the same
+// BuildInput defines the input for creating a build.
 type BuildInput struct {
-	BuildNumber string `json:"build_number" xml:"build_number"`
-	CIProvider  string `json:"ci_provider" xml:"ci_provider"`
-	CIURL       string `json:"ci_url" xml:"ci_url"`
+	BuildNumber string   `json:"build_number" xml:"build_number"`
+	CIProvider  string   `json:"ci_provider" xml:"ci_provider"`
+	CIURL       string   `json:"ci_url" xml:"ci_url"`
+	Duration    *float64 `json:"duration" xml:"duration"`
 }
 
-// BuildCreateInput remains the same
+// BuildCreateInput defines the input for creating a build with a test suite ID.
 type BuildCreateInput struct {
-	TestSuiteID int    `json:"test_suite_id" xml:"test_suite_id"`
-	BuildNumber string `json:"build_number" xml:"build_number"`
-	CIProvider  string `json:"ci_provider" xml:"ci_provider"`
-	CIURL       string `json:"ci_url" xml:"ci_url"`
+	TestSuiteID int      `json:"test_suite_id" xml:"test_suite_id"`
+	BuildNumber string   `json:"build_number" xml:"build_number"`
+	CIProvider  string   `json:"ci_provider" xml:"ci_provider"`
+	CIURL       string   `json:"ci_url" xml:"ci_url"`
+	Duration    *float64 `json:"duration" xml:"duration"`
 }
 
-// BuildUpdateInput remains the same
+// BuildUpdateInput defines the input for updating a build.
 type BuildUpdateInput struct {
-	BuildNumber *string `json:"build_number" xml:"build_number"`
-	CIProvider  *string `json:"ci_provider" xml:"ci_provider"`
-	CIURL       *string `json:"ci_url" xml:"ci_url"`
+	BuildNumber *string  `json:"build_number" xml:"build_number"`
+	CIProvider  *string  `json:"ci_provider" xml:"ci_provider"`
+	CIURL       *string  `json:"ci_url" xml:"ci_url"`
+	Duration    *float64 `json:"duration" xml:"duration"`
 }
 
 // BuildHandler holds the build service.
@@ -59,6 +62,9 @@ func toAPIBuild(m *models.Build) utils.Build {
 	}
 	if m.CIURL != nil {
 		apiBuild.CIURL = *m.CIURL
+	}
+	if m.Duration != nil {
+		apiBuild.Duration = m.Duration
 	}
 	return apiBuild
 }
@@ -118,12 +124,44 @@ func (bh *BuildHandler) GetAllBuilds(w http.ResponseWriter, r *http.Request) {
 }
 
 func (bh *BuildHandler) GetRecentBuilds(w http.ResponseWriter, r *http.Request) {
-	builds, err := bh.service.GetAllBuilds()
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching recent builds: "+err.Error())
-		return
+	// Check if this is a project-specific request (from path parameter)
+	projectIDStr := r.PathValue("id")
+	if projectIDStr != "" {
+		projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
+			return
+		}
+		builds, err := bh.service.GetRecentBuildsByProjectID(projectID)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching recent builds for project: "+err.Error())
+			return
+		}
+		utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
+	} else {
+		// Check for query parameter as fallback
+		projectIDStr = r.URL.Query().Get("projectId")
+		if projectIDStr != "" {
+			projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+			if err != nil {
+				utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
+				return
+			}
+			builds, err := bh.service.GetRecentBuildsByProjectID(projectID)
+			if err != nil {
+				utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching recent builds for project: "+err.Error())
+				return
+			}
+			utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
+		} else {
+			builds, err := bh.service.GetAllBuilds()
+			if err != nil {
+				utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching recent builds: "+err.Error())
+				return
+			}
+			utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
+		}
 	}
-	utils.RespondWithJSON(w, http.StatusOK, toAPIBuilds(builds))
 }
 
 func (bh *BuildHandler) CreateBuildForTestSuite(w http.ResponseWriter, r *http.Request) {
@@ -163,6 +201,7 @@ func (bh *BuildHandler) CreateBuildForTestSuite(w http.ResponseWriter, r *http.R
 		TestSuiteID: testSuiteID,
 		BuildNumber: input.BuildNumber,
 		CIProvider:  input.CIProvider,
+		Duration:    input.Duration,
 	}
 	if strings.TrimSpace(input.CIURL) != "" {
 		modelBuild.CIURL = &input.CIURL
@@ -221,6 +260,7 @@ func (bh *BuildHandler) CreateBuild(w http.ResponseWriter, r *http.Request) {
 		TestSuiteID: testSuiteID64,
 		BuildNumber: input.BuildNumber,
 		CIProvider:  input.CIProvider,
+		Duration:    input.Duration,
 	}
 	if strings.TrimSpace(input.CIURL) != "" {
 		modelBuild.CIURL = &input.CIURL
@@ -287,7 +327,7 @@ func (bh *BuildHandler) UpdateBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updatedBuild, err := bh.service.UpdateBuild(id, input.BuildNumber, input.CIProvider, input.CIURL)
+	updatedBuild, err := bh.service.UpdateBuild(id, input.BuildNumber, input.CIProvider, input.CIURL, input.Duration)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			utils.RespondWithError(w, http.StatusNotFound, "Build not found")
@@ -299,4 +339,38 @@ func (bh *BuildHandler) UpdateBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.RespondWithJSON(w, http.StatusOK, toAPIBuild(updatedBuild))
+}
+
+func (bh *BuildHandler) GetBuildDurationTrends(w http.ResponseWriter, r *http.Request) {
+	projectIDStr := r.URL.Query().Get("projectId")
+	if projectIDStr == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "projectId query parameter is required")
+		return
+	}
+
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid projectId format")
+		return
+	}
+
+	suiteIDStr := r.URL.Query().Get("suiteId")
+	if suiteIDStr == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "suiteId query parameter is required")
+		return
+	}
+
+	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suiteId format")
+		return
+	}
+
+	trends, err := bh.service.GetBuildDurationTrends(projectID, suiteID)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching build duration trends: "+err.Error())
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, trends)
 }

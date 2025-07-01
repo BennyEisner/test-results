@@ -33,7 +33,7 @@ const ExecutionsTable = ({ executions, loading }: ExecutionsTableProps) => {
 
     return (
         <div>
-            <Table striped bordered hover responsive>
+            <Table bordered hover responsive>
                 <thead>
                     <tr>
                         <th>Execution ID</th>

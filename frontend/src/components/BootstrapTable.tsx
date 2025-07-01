@@ -1,5 +1,4 @@
 interface TableProps {
-  striped?: boolean;
   bordered?: boolean;
   hover?: boolean;
   children: React.ReactNode;
@@ -7,7 +6,6 @@ interface TableProps {
 }
 
 export const BootstrapTable = ({ 
-  striped = false, 
   bordered = false, 
   hover = false, 
   children, 
@@ -15,7 +13,6 @@ export const BootstrapTable = ({
 }: TableProps) => {
   const classes = [
     'table',
-    striped ? 'table-striped' : '',
     bordered ? 'table-bordered' : '',
     hover ? 'table-hover' : '',
     className

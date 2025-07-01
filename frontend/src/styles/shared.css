@@ -52,26 +52,30 @@
 }
 
 .accent-button-outline {
-    background-color: var(--primary-color);
+    background-color: transparent;
     border-color: var(--primary-color);
-    color: var(--white-color);
+    color: var(--primary-color);
     font-weight: 600;
 }
 
 .accent-button-outline:hover {
-    background-color: var(--primary-hover-color);
-    border-color: var(--primary-hover-color);
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--white-color);
 }
 
 .info-alert {
-    background-color: rgba(67, 140, 230, 0.1); /* Light blue background using primary color */
+    background-color: var(--light-gray-color);
     color: var(--text-color);
-    border: 1px solid var(--primary-color);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary-color);
     border-radius: 8px;
+    padding: 1rem;
 }
 
 .page-container {
     padding: 2rem;
+    padding-top: 80px; /* Adjust this value to match the height of the navbar */
 }
 
 .page-header {
@@ -113,5 +117,10 @@
 }
 
 .table-hover > tbody > tr:hover > td {
-    background-color: rgba(67, 140, 230, 0.08) !important; /* Subtle blue hover using primary color */
+    background-color: var(--light-gray-color) !important;
+}
+
+.dashboard-with-sidebar {
+    margin-left: 270px;
+    transition: margin-left 0.3s ease-in-out;
 }

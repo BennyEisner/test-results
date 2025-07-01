@@ -6,7 +6,7 @@ import type { Build } from "../types";
 
 import type { TestCaseExecution } from "../types";
 
-import type { Failure, SearchResult } from "../types";
+import type { Failure, SearchResult, BuildDurationTrend, MostFailedTest } from "../types";
 
 const API_BASE_URL = "http://localhost:8080/api";
 
@@ -30,21 +30,30 @@ export const fetchSuites = async (
 
 export const fetchBuilds = async (
   projectId: string | number,
-  suiteId: string | number,
+  suiteId?: string | number,
 ): Promise<Build[]> => {
-  const response = await fetch(
-    `${API_BASE_URL}/projects/${projectId}/suites/${suiteId}/builds`,
-  );
+  let url;
+  if (suiteId) {
+    url = `${API_BASE_URL}/projects/${projectId}/suites/${suiteId}/builds`;
+  } else {
+    // When no suiteId is provided, fetch recent builds for the project
+    url = `${API_BASE_URL}/projects/${projectId}/builds/recent`;
+  }
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error("Failed to fetch builds");
   }
   return response.json();
 };
 
-export const fetchRecentBuilds = async (): Promise<Build[]> => {
-  const response = await fetch(`${API_BASE_URL}/builds/recent`);
+export const fetchRecentBuilds = async (projectId?: string | number): Promise<Build[]> => {
+  let url = `${API_BASE_URL}/builds/recent`;
+  if (projectId) {
+    url = `${API_BASE_URL}/projects/${projectId}/builds/recent`;
+  }
+  const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("Failed to fetch builds");
+    throw new Error("Failed to fetch recent builds");
   }
   return response.json();
 };
@@ -63,7 +72,6 @@ export const fetchExecutions = async (
 export const fetchFailures = async (
   buildId: string | number,
 ): Promise<Failure[]> => {
-  // Used TestCaseExecution type
   const response = await fetch(`${API_BASE_URL}/builds/${buildId}/failures`); // Added API_BASE_URL
   if (!response.ok) {
     throw new Error("Failed to fetch executions");
@@ -80,4 +88,26 @@ export const search = async (query: string): Promise<SearchResult[]> => {
     throw new Error("Failed to search");
   }
   return response.json();
+};
+
+export const getBuildDurationTrends = async (projectId: number, suiteId: number): Promise<BuildDurationTrend[]> => {
+  const response = await fetch(`${API_BASE_URL}/builds/duration-trends?projectId=${projectId}&suiteId=${suiteId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch build duration trends');
+  }
+  const data = await response.json();
+  return data || [];
+};
+
+export const fetchMostFailedTests = async (projectId: number, limit: number, suiteId?: number): Promise<MostFailedTest[]> => {
+  let url = `${API_BASE_URL}/test-cases/most-failed?projectId=${projectId}&limit=${limit}`;
+  if (suiteId) {
+    url += `&suiteId=${suiteId}`;
+  }
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Failed to fetch most failed tests');
+  }
+  const data = await response.json();
+  return data || [];
 };

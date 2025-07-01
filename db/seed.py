@@ -39,11 +39,13 @@ class DatabaseSeeder:
             (project_id, name, time)
         )
 
-    def create_build(self, test_suite_id: int, build_number: str, ci_provider: str, ci_url: Optional[str], test_case_count: int) -> Optional[int]:
+    def create_build(self, test_suite_id: int, build_number: str, ci_provider: str, ci_url: Optional[str], test_case_count: int, duration: Optional[float] = None) -> Optional[int]:
         print(f"    Creating build: {build_number} for test_suite_id: {test_suite_id}")
+        if duration is None:
+            duration = round(random.uniform(60.0, 600.0), 2)
         return self._execute_returning_id(
-            "INSERT INTO builds (test_suite_id, build_number, ci_provider, ci_url, test_case_count) VALUES (%s, %s, %s, %s, %s) RETURNING id",
-            (test_suite_id, build_number, ci_provider, ci_url, test_case_count)
+            "INSERT INTO builds (test_suite_id, build_number, ci_provider, ci_url, test_case_count, duration) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+            (test_suite_id, build_number, ci_provider, ci_url, test_case_count, duration)
         )
 
     def create_test_case(self, suite_id: int, name: str, classname: str) -> Optional[int]:
@@ -66,7 +68,6 @@ class DatabaseSeeder:
             "INSERT INTO failures (build_test_case_execution_id, message, type, details) VALUES (%s, %s, %s, %s) RETURNING id",
             (build_test_case_execution_id, message, type, details)
         )
-
     def seed_data(self, num_projects: int, num_suites_per_project: int, num_builds_per_suite: int, num_test_case_definitions_per_suite: int):
         print("Starting database seeding...")
         project_count = 0
@@ -136,7 +137,6 @@ class DatabaseSeeder:
                                             failure_id = self.create_failure(execution_id, failure_message, failure_type, failure_details)
                                             if failure_id:
                                                 failures_count +=1
-        
         self.connection.commit()
         print(f"\nSeeding complete!")
         print(f"  Total projects created: {project_count}")

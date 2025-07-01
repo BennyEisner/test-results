@@ -21,16 +21,12 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction }: BuildsTableProps) =>
         const loadBuilds = async () => {
             try {
                 setLoading(true);
-                let data;
+                let data: Build[] = [];
                 // Handle component based on props
                 if (fetchFunction) {
                     data = await fetchFunction();
-                } else if (projectId && suiteId) {
-                    // Pass projectId and suiteId to fetchBuilds
+                } else if (projectId) {
                     data = await fetchBuilds(projectId, suiteId);
-                }
-                else {
-                    throw new Error("Either fetchFunction or projectId and suiteId must be specified");
                 }
                 setBuilds(data);
                 setError(null);
@@ -72,7 +68,7 @@ const BuildsTable = ({ projectId, suiteId, fetchFunction }: BuildsTableProps) =>
 
     return (
         <div className="builds-table-container" style={{ height: '350px', overflowY: 'auto' }}>
-            <Table striped bordered hover responsive>
+            <Table bordered hover responsive>
                 <thead>
                     <tr>
                         <th>Build ID</th>

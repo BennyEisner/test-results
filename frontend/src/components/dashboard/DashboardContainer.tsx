@@ -12,6 +12,7 @@ interface DashboardContainerProps {
   isEditing?: boolean;
   onLayoutChange?: (gridLayout: GridLayoutItem[]) => void;
   onRemoveComponent?: (componentId: string) => void;
+  projectId?: string | number | null;
 }
 
 const DashboardContainer = ({
@@ -19,6 +20,7 @@ const DashboardContainer = ({
   isEditing = false,
   onLayoutChange,
   onRemoveComponent,
+  projectId,
 }: DashboardContainerProps) => {
   const handleGridLayoutChange = (newGridLayout: any[]) => {
     if (onLayoutChange) {
@@ -50,12 +52,12 @@ const DashboardContainer = ({
                 className="remove-btn"
                 onClick={() => onRemoveComponent && onRemoveComponent(component.id)}
               >
-                ×
+                x
               </button>
             </div>
           )}
           <div className="component-content">
-            <ComponentRegistry type={component.type} props={component.props} />
+            <ComponentRegistry type={component.type} props={component.props} projectId={projectId ?? undefined} />
           </div>
         </div>
       ))}

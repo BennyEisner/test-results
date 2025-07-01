@@ -61,7 +61,7 @@ const ProjectsTable = () => {
                 <Card className="overview-card">
                     <Card.Header as="h5">All Projects</Card.Header>
                     <Card.Body>
-                        <Table striped bordered hover responsive>
+                        <Table bordered hover responsive>
                             <thead>
                                 <tr>
                                     <th>ID</th>

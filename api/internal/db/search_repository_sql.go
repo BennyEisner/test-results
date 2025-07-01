@@ -17,14 +17,19 @@ func NewSearchRepository(db *sql.DB) *SearchRepository {
 
 func (r *SearchRepository) Search(query string) ([]models.SearchResult, error) {
 	rows, err := r.DB.Query(`
-		SELECT 'project' as type, id, name, '/projects/' || id as url FROM projects WHERE name ILIKE $1
-		UNION ALL
-		SELECT 'test_suite' as type, id, name, '/suites/' || id as url FROM test_suites WHERE name ILIKE $1
-		UNION ALL
-		SELECT 'build' as type, id, build_number as name, '/builds/' || id as url FROM builds WHERE build_number ILIKE $1
-		UNION ALL
-		SELECT 'test_case' as type, id, name, '/cases/' || id as url FROM test_cases WHERE name ILIKE $1
-	`, fmt.Sprintf("%%%s%%", query))
+    SELECT 'project' as type, p.id, p.name, '/projects/' || p.id as url
+    FROM projects p
+    WHERE p.name ILIKE $1
+    UNION ALL
+    SELECT 'test_suite' as type, ts.id, ts.name, '/projects/' || ts.project_id || '/suites/' || ts.id as url
+    FROM test_suites ts
+    WHERE ts.name ILIKE $1
+    UNION ALL
+    SELECT 'build' as type, b.id, b.build_number as name, '/projects/' || ts.project_id || '/suites/' || b.test_suite_id || '/builds/' || b.id as url
+    FROM builds b
+    JOIN test_suites ts ON b.test_suite_id = ts.id
+    WHERE b.build_number ILIKE $1
+    `, fmt.Sprintf("%%%s%%", query))
 	if err != nil {
 		return nil, err
 	}

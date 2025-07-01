@@ -13,6 +13,7 @@ export interface Build {
   ci_url?: string;
   created_at: string;
   test_case_count: number;
+  duration?: number;
 }
 
 export interface Suite {
@@ -47,4 +48,17 @@ export interface SearchResult {
   id: number;
   name: string;
   url: string;
+}
+
+export interface BuildDurationTrend {
+  build_number: string;
+  duration: number;
+  created_at: string;
+}
+
+export interface MostFailedTest {
+  test_case_id: number;
+  name: string;
+  classname: string;
+  failure_count: number;
 }

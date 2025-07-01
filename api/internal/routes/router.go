@@ -73,9 +73,11 @@ func NewRouter(db *sql.DB) http.Handler {
 	mux.HandleFunc("GET /api/builds", buildHandler.GetAllBuilds)
 	mux.HandleFunc("POST /api/builds", buildHandler.CreateBuild)
 	mux.HandleFunc("GET /api/builds/recent", buildHandler.GetRecentBuilds)
+	mux.HandleFunc("GET /api/projects/{id}/builds/recent", buildHandler.GetRecentBuilds)
 	mux.HandleFunc("GET /api/builds/{id}", buildHandler.GetBuildByID)
 	mux.HandleFunc("PATCH /api/builds/{id}", buildHandler.UpdateBuild)
 	mux.HandleFunc("DELETE /api/builds/{id}", buildHandler.DeleteBuild)
+	mux.HandleFunc("GET /api/builds/duration-trends", buildHandler.GetBuildDurationTrends)
 	mux.HandleFunc("GET /api/builds/{id}/executions", buildExecutionHandler.GetBuildExecutions)
 	mux.HandleFunc("GET /api/builds/{id}/failures", failuresHandler.GetBuildFailures)
 
@@ -86,6 +88,7 @@ func NewRouter(db *sql.DB) http.Handler {
 
 	// Test Case related endpoints
 	mux.HandleFunc("GET /api/cases/{id}", testCaseHandler.GetTestCaseByID)
+	mux.HandleFunc("GET /api/test-cases/most-failed", testCaseHandler.GetMostFailedTests)
 
 	// Nested project/suite routes
 	mux.HandleFunc("GET /api/projects/{id}/suites", testSuiteHandler.GetTestSuitesByProjectID)

@@ -1,8 +1,9 @@
 {/*   /projects/{projectId}   */ }
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Alert } from 'react-bootstrap';
+import { Button, Alert, Card } from 'react-bootstrap';
 import SuitesTable from './SuitesTable.tsx';
+import BuildsTable from './BuildsTable';
 
 const ProjectDetail = () => {
     const { projectId } = useParams<{ projectId: string }>();
@@ -28,7 +29,17 @@ const ProjectDetail = () => {
                 </Button>
                 <h1 className="page-title">Project: #{projectId}</h1>
             </div>
-            <SuitesTable projectId={projectId} />
+            <div className="grid-container">
+
+                        <SuitesTable projectId={projectId} />
+
+                <Card className="overview-card">
+                    <Card.Header as="h5">Recent Builds</Card.Header>
+                    <Card.Body>
+                        <BuildsTable projectId={projectId} />
+                    </Card.Body>
+                </Card>
+            </div>
         </div>
     );
 };
