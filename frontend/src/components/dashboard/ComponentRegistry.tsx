@@ -1,9 +1,9 @@
 import { ComponentType, ComponentProps, ComponentDefinition } from '../../types/dashboard';
-import BuildsTable from '../BuildsTable';
-import ExecutionsSummary from '../ExecutionsSummary';
-import BuildDoughnutChart from '../BuildDoughnutChart';
-import BuildDurationTrendChart from '../BuildDurationTrendChart';
-import MostFailedTestsTable from '../MostFailedTestsTable';
+import BuildsTable from '../build/BuildsTable';
+import ExecutionsSummary from '../execution/ExecutionsSummary';
+import BuildDoughnutChart from '../build/BuildDoughnutChart';
+import BuildDurationTrendChart from '../build/BuildDurationTrendChart';
+import MostFailedTestsTable from '../test/MostFailedTestsTable';
 import { fetchRecentBuilds } from '../../services/api';
 
 interface ComponentRegistryProps {

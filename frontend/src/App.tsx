@@ -1,12 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom';
-import ProjectsTable from './components/ProjectsTable';
-import ProjectDetail from './components/ProjectDetail';
-import SuiteDetail from './components/SuiteDetail';
-import BuildsTable from './components/BuildsTable';
-import BuildDetail from './components/BuildDetail.tsx';
-import HomePage from './components/HomePage';
-import DashboardPage from './components/DashboardPage';
-import PageLayout from './components/PageLayout';
+import ProjectsTable from './components/project/ProjectsTable';
+import ProjectDetail from './components/project/ProjectDetail';
+import SuiteDetail from './components/suite/SuiteDetail';
+import BuildsTable from './components/build/BuildsTable';
+import BuildDetail from './components/build/BuildDetail.tsx';
+import HomePage from './components/page/HomePage';
+import DashboardPage from './components/page/DashboardPage';
+import PageLayout from './components/common/PageLayout';
 import './styles/shared.css';
 import './styles/tables.css';
 
@@ -36,7 +36,7 @@ function App() {
 
 // Wrapper component to extract params and pass them to BuildsTable
 const BuildsTableWrapper = () => {
-    const { projectId, suiteId } = useParams<{ projectId: string; suiteId:string }>();
+    const { projectId, suiteId } = useParams<{ projectId: string; suiteId: string }>();
 
     if (!projectId || !suiteId) {
         // Handle the case where params are not available, though this shouldn't happen with a matched route
