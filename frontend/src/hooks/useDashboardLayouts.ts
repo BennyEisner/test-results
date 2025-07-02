@@ -178,11 +178,14 @@ export const useDashboardLayouts = () => {
       updateLayout({ ...activeLayout, gridLayout });
     }
   };
+
   const addComponent = (
     type: ComponentType,
     props?: ComponentProps,
     isStatic?: boolean,
   ) => {
+
+
     const activeLayout = layouts.find((l) => l.id === activeLayoutId);
     if (!activeLayout) return;
 
