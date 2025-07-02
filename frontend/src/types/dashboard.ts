@@ -12,6 +12,7 @@ export interface DashboardComponent {
   type: ComponentType;
   props: ComponentProps;
   visible: boolean;
+  isStatic?: boolean;
 }
 
 // matches react-grid-layout's expected format

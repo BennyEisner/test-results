@@ -8,11 +8,13 @@ interface ComponentConfigModalProps {
     isOpen: boolean;
     onClose: () => void;
     componentType: ComponentType | null;
-    onSave: (componentType: ComponentType, props: ComponentProps) => void;
+    onSave: (componentType: ComponentType, props: ComponentProps, isStatic: boolean) => void;
+    initialIsStatic?: boolean;
 }
 
-const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave }: ComponentConfigModalProps) => {
+const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialIsStatic = false }: ComponentConfigModalProps) => {
     const [config, setConfig] = useState<ComponentProps>({});
+    const [isStatic, setIsStatic] = useState(initialIsStatic);
 
     const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
 
@@ -30,7 +32,7 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave }: Compon
 
     const handleSave = () => {
         const finalProps = { ...componentDef.defaultProps, ...config };
-        onSave(componentType, finalProps);
+        onSave(componentType, finalProps, isStatic);
         onClose();
     };
 
@@ -87,7 +89,17 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave }: Compon
                 <Modal.Title>Configure {componentDef.name}</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-                <Form>{componentDef.configFields?.map(renderField)}</Form>
+                <Form>
+                    {componentDef.configFields?.map(renderField)}
+                    <Form.Group className="mb-3">
+                        <Form.Check
+                            type="checkbox"
+                            label="Make Static"
+                            checked={isStatic}
+                            onChange={(e) => setIsStatic(e.target.checked)}
+                        />
+                    </Form.Group>
+                </Form>
             </Modal.Body>
             <Modal.Footer>
                 <Button variant="secondary" onClick={onClose}>

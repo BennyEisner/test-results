@@ -82,12 +82,16 @@ const DashboardContainer = ({
                         <div className="component-content">
                             <ComponentRegistry
                                 type={component.type}
-                                props={{
-                                    ...component.props,
-                                    ...(projectId && { projectId }),
-                                    ...(suiteId && { suiteId }),
-                                    ...(selectedBuildId && { buildId: selectedBuildId }),
-                                }}
+                                props={
+                                    component.isStatic
+                                        ? component.props
+                                        : {
+                                            ...component.props,
+                                            ...(projectId && { projectId }),
+                                            ...(suiteId && { suiteId }),
+                                            ...(selectedBuildId && { buildId: selectedBuildId }),
+                                        }
+                                }
                             />
                         </div>
                     </div>

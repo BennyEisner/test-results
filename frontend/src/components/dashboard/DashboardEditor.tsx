@@ -5,7 +5,7 @@ import ComponentConfigModal from './ComponentConfigModal';
 import './DashboardEditor.css';
 
 interface DashboardEditorProps {
-  onAddComponent: (type: ComponentType, props?: ComponentProps) => void;
+  onAddComponent: (type: ComponentType, props?: ComponentProps, isStatic?: boolean) => void;
 }
 
 const DashboardEditor = ({ onAddComponent }: DashboardEditorProps) => {
@@ -21,12 +21,12 @@ const DashboardEditor = ({ onAddComponent }: DashboardEditorProps) => {
       setShowConfigModal(true);
     } else {
       // Add component directly with default props
-      onAddComponent(componentType, componentDef.defaultProps);
+      onAddComponent(componentType, componentDef.defaultProps, false);
     }
   };
 
-  const handleConfigSave = (componentType: ComponentType, props: ComponentProps) => {
-    onAddComponent(componentType, props);
+  const handleConfigSave = (componentType: ComponentType, props: ComponentProps, isStatic: boolean) => {
+    onAddComponent(componentType, props, isStatic);
     setShowConfigModal(false);
     setSelectedComponentType(null);
   };
