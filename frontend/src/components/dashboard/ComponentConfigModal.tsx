@@ -21,8 +21,9 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialI
     useEffect(() => {
         if (isOpen) {
             fetchProjects().then(setProjects);
+            setIsStatic(initialIsStatic);
         }
-    }, [isOpen]);
+    }, [isOpen, initialIsStatic]);
 
     if (!componentType) {
         return null;
@@ -90,15 +91,7 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialI
             </Modal.Header>
             <Modal.Body>
                 <Form>
-                    {componentDef.configFields?.map(renderField)}
-                    <Form.Group className="mb-3">
-                        <Form.Check
-                            type="checkbox"
-                            label="Make Static"
-                            checked={isStatic}
-                            onChange={(e) => setIsStatic(e.target.checked)}
-                        />
-                    </Form.Group>
+                    {isStatic && componentDef.configFields?.map(renderField)}
                 </Form>
             </Modal.Body>
             <Modal.Footer>

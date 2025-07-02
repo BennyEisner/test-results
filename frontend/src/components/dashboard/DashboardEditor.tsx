@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ComponentType, ComponentProps } from '../../types/dashboard';
 import { COMPONENT_DEFINITIONS } from './ComponentRegistry';
 import ComponentConfigModal from './ComponentConfigModal';
+import AddWidgetModal from './AddWidgetModal';
 import './DashboardEditor.css';
 
 interface DashboardEditorProps {
@@ -9,20 +10,21 @@ interface DashboardEditorProps {
 }
 
 const DashboardEditor = ({ onAddComponent }: DashboardEditorProps) => {
+  const [showAddModal, setShowAddModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedComponentType, setSelectedComponentType] = useState<ComponentType | null>(null);
+  const [isStatic, setIsStatic] = useState(false);
 
-  const handleComponentSelect = (componentType: ComponentType) => {
-    const componentDef = COMPONENT_DEFINITIONS[componentType];
-    
-    if (componentDef.configFields && componentDef.configFields.length > 0) {
-      // Show configuration modal
-      setSelectedComponentType(componentType);
+  const handleAddComponent = (type: ComponentType, props?: ComponentProps, isStatic?: boolean) => {
+    const componentDef = COMPONENT_DEFINITIONS[type];
+    if (isStatic && componentDef.configFields && componentDef.configFields.length > 0) {
+      setSelectedComponentType(type);
+      setIsStatic(true);
       setShowConfigModal(true);
     } else {
-      // Add component directly with default props
-      onAddComponent(componentType, componentDef.defaultProps, false);
+      onAddComponent(type, props, isStatic);
     }
+    setShowAddModal(false);
   };
 
   const handleConfigSave = (componentType: ComponentType, props: ComponentProps, isStatic: boolean) => {
@@ -34,28 +36,27 @@ const DashboardEditor = ({ onAddComponent }: DashboardEditorProps) => {
   const handleConfigClose = () => {
     setShowConfigModal(false);
     setSelectedComponentType(null);
+    setIsStatic(false);
   };
 
   return (
     <div className="dashboard-editor">
-      <h4>Add Widget</h4>
-      <div className="component-list">
-        {Object.entries(COMPONENT_DEFINITIONS).map(([type, def]) => (
-          <button 
-            key={type} 
-            className="add-component-btn"
-            onClick={() => handleComponentSelect(type as ComponentType)}
-          >
-            + {def.name}
-          </button>
-        ))}
-      </div>
+      <button className="add-widget-button" onClick={() => setShowAddModal(true)}>
+        Add Widget
+      </button>
       
+      <AddWidgetModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAddComponent={handleAddComponent}
+      />
+
       <ComponentConfigModal
         isOpen={showConfigModal}
         onClose={handleConfigClose}
         componentType={selectedComponentType}
         onSave={handleConfigSave}
+        initialIsStatic={isStatic}
       />
     </div>
   );

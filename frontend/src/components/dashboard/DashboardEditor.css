@@ -1,32 +1,23 @@
 .dashboard-editor {
-  background-color: var(--white-color);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 1rem;
 }
 
-.dashboard-editor h4 {
-  margin: 0 0 12px 0;
-  font-size: 16px;
-  font-weight: 600;
+.add-widget-button {
+    background-color: var(--primary-color);
+    color: var(--white-color);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s ease-in-out;
 }
 
-.component-list {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.add-component-btn {
-  background-color: var(--primary-color);
-  color: var(--white-color);
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
+.add-widget-button:hover {
+    background-color: var(--primary-hover-color);
 }
 
 .add-component-btn:hover {
