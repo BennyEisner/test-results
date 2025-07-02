@@ -39,6 +39,9 @@ func NewRouter(db *sql.DB) http.Handler {
 	searchService := service.NewSearchService(db)
 	searchHandler := handler.NewSearchHandler(searchService)
 
+	userConfigService := service.NewUserConfigService(db)
+	userConfigHandler := handler.NewUserConfigHandler(userConfigService)
+
 	// Health and monitoring endpoints
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -100,6 +103,10 @@ func NewRouter(db *sql.DB) http.Handler {
 
 	// Search function route
 	mux.HandleFunc("GET /api/search", searchHandler.HandleSearch)
+
+	// User Config related endpoints
+	mux.HandleFunc("GET /api/users/{userId}/configs", userConfigHandler.GetUserConfig)
+	mux.HandleFunc("POST /api/users/{userId}/configs", userConfigHandler.SaveUserConfig)
 
 	// Apply middleware
 	var finalMux http.Handler = mux

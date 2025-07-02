@@ -7,6 +7,7 @@ import {
 } from "../types/dashboard";
 import { COMPONENT_DEFINITIONS } from "../components/dashboard/ComponentRegistry";
 import { fetchRecentBuilds } from "../services/api";
+import { dashboardApi } from "../services/dashboardApi";
 
 const STORAGE_KEY = "dashboard-layouts";
 
@@ -63,38 +64,106 @@ export const useDashboardLayouts = () => {
   const [layouts, setLayouts] = useState<DashboardLayout[]>([defaultLayout]);
   const [activeLayoutId, setActiveLayoutId] = useState<string>("default");
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Load layouts from API or localStorage
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+    const loadLayouts = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
-        const parsed = JSON.parse(stored);
-        if (
-          parsed.layouts &&
-          parsed.layouts.length > 0 &&
-          parsed.layouts[0].version >= LAYOUT_VERSION
-        ) {
-          setLayouts(parsed.layouts);
-          setActiveLayoutId(parsed.activeLayoutId || parsed.layouts[0].id);
-        } else {
-          // Clear old layout if version is outdated or not present
-          localStorage.removeItem(STORAGE_KEY);
+        // Try API first
+        const data = await dashboardApi.getLayouts();
+        if (data && data.layouts && data.layouts.length > 0) {
+          setLayouts(data.layouts);
+          setActiveLayoutId(data.activeId || data.layouts[0].id);
+
+          // Update localStorage with server data
+          localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+              layouts: data.layouts,
+              activeLayoutId: data.activeId || data.layouts[0].id,
+            }),
+          );
+
+          setIsLoading(false);
+          return;
         }
       } catch (e) {
-        console.error("Failed to parse layouts from localStorage", e);
-        // Clear corrupted layout from storage
-        localStorage.removeItem(STORAGE_KEY);
+        console.warn(
+          "Failed to load layouts from API, using localStorage fallback",
+          e,
+        );
+        setError("Could not connect to the server. Displaying cached data.");
+        // Continue to localStorage fallback
       }
-    }
+
+      // Fallback to localStorage
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (
+            parsed.layouts &&
+            parsed.layouts.length > 0 &&
+            parsed.layouts[0].version >= LAYOUT_VERSION
+          ) {
+            setLayouts(parsed.layouts);
+            setActiveLayoutId(parsed.activeLayoutId || parsed.layouts[0].id);
+          } else {
+            // If localStorage is empty or outdated, use default
+            setLayouts([defaultLayout]);
+            setActiveLayoutId("default");
+          }
+        } catch (e) {
+          console.error("Failed to parse layouts from localStorage", e);
+          localStorage.removeItem(STORAGE_KEY);
+          setLayouts([defaultLayout]);
+          setActiveLayoutId("default");
+        }
+      } else {
+        // If no localStorage, use default
+        setLayouts([defaultLayout]);
+        setActiveLayoutId("default");
+      }
+      setIsLoading(false);
+    };
+
+    loadLayouts();
   }, []);
 
-  const saveLayouts = (newLayouts: DashboardLayout[], newActiveId: string) => {
+  const saveLayouts = async (
+    newLayouts: DashboardLayout[],
+    newActiveId: string,
+  ) => {
+    // Update state immediately
     setLayouts(newLayouts);
     setActiveLayoutId(newActiveId);
+
+    // Always save to localStorage
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ layouts: newLayouts, activeLayoutId: newActiveId }),
     );
+
+    // Try API
+    setIsSaving(true);
+    setError(null);
+    try {
+      await dashboardApi.saveLayouts(newLayouts, newActiveId);
+    } catch (e) {
+      console.error("Failed to save layouts to API", e);
+      setError("Changes saved locally but couldn't sync with server.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const changeActiveLayoutId = (layoutId: string) => {
+    saveLayouts(layouts, layoutId);
   };
 
   const updateLayout = (updatedLayout: DashboardLayout) => {
@@ -103,15 +172,17 @@ export const useDashboardLayouts = () => {
     );
     saveLayouts(newLayouts, activeLayoutId);
   };
-
   const updateGridLayout = (gridLayout: GridLayoutItem[]) => {
     const activeLayout = layouts.find((l) => l.id === activeLayoutId);
     if (activeLayout) {
       updateLayout({ ...activeLayout, gridLayout });
     }
   };
-
-  const addComponent = (type: ComponentType, props?: ComponentProps, isStatic?: boolean) => {
+  const addComponent = (
+    type: ComponentType,
+    props?: ComponentProps,
+    isStatic?: boolean,
+  ) => {
     const activeLayout = layouts.find((l) => l.id === activeLayoutId);
     if (!activeLayout) return;
 
@@ -166,9 +237,13 @@ export const useDashboardLayouts = () => {
     layouts,
     activeLayout,
     updateLayout,
-    setActiveLayoutId,
+    saveLayouts,
+    setActiveLayoutId: changeActiveLayoutId,
     isEditing,
     setIsEditing,
+    isLoading,
+    isSaving,
+    error,
     updateGridLayout,
     addComponent,
     removeComponent,
