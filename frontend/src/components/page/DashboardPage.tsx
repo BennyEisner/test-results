@@ -6,6 +6,7 @@ import DashboardEditor from '../dashboard/DashboardEditor';
 import { useDashboardLayouts } from '../../hooks/useDashboardLayouts';
 import PageLayout from '../common/PageLayout';
 import './HomePage.css';
+import { ComponentType, ComponentProps } from '../../types/dashboard';
 
 const DashboardPage = () => {
     const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -21,26 +22,19 @@ const DashboardPage = () => {
     } = useDashboardLayouts();
 
     const handleProjectSelect = (projectId: number) => {
-        setSelectedSuiteId(null);
         setSelectedProjectId(projectId);
-        if (activeLayout) {
-            const updatedComponents = activeLayout.components.map(c => {
-                const newProps = { ...c.props, projectId: projectId };
-                if (c.props && 'suiteId' in c.props) {
-                    newProps.suiteId = undefined;
-                }
-                return { ...c, props: newProps };
-            });
-            updateLayout({ ...activeLayout, components: updatedComponents });
-        }
+        setSelectedSuiteId(null);
     };
 
     const handleSuiteSelect = (suiteId: number | string) => {
         setSelectedSuiteId(typeof suiteId === 'string' ? parseInt(suiteId, 10) : suiteId);
+    };
+
+    const updateWidgetProps = (widgetId: string, props: Record<string, any>) => {
         if (activeLayout) {
             const updatedComponents = activeLayout.components.map(c => {
-                if (c.props && 'suiteId' in c.props) {
-                    return { ...c, props: { ...c.props, suiteId: suiteId } };
+                if (c.id === widgetId) {
+                    return { ...c, props: { ...c.props, ...props } };
                 }
                 return c;
             });
@@ -48,12 +42,16 @@ const DashboardPage = () => {
         }
     };
 
+    const handleAddComponent = (type: ComponentType, props?: ComponentProps, isStatic?: boolean) => {
+        addComponent(type, props, isStatic);
+    };
+
     if (!activeLayout) {
         return <div>Loading dashboard...</div>;
     }
 
     return (
-        <DashboardContext.Provider value={{ selectedProjectId, selectedSuiteId, onProjectSelect: handleProjectSelect, onSuiteSelect: handleSuiteSelect }}>
+        <DashboardContext.Provider value={{ selectedProjectId, selectedSuiteId, onProjectSelect: handleProjectSelect, onSuiteSelect: handleSuiteSelect, updateWidgetProps }}>
             <PageLayout>
                 {selectedProjectId && (
                     <SuiteMenu
@@ -70,7 +68,7 @@ const DashboardPage = () => {
                     </div>
 
                     {isEditing && (
-                        <DashboardEditor onAddComponent={addComponent} />
+                        <DashboardEditor onAddComponent={handleAddComponent} />
                     )}
 
                     <DashboardContainer

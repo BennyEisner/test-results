@@ -1,0 +1,48 @@
+.modal-content {
+    background-color: var(--white-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.nav-tabs .nav-link {
+    color: var(--text-light-color);
+    background-color: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.component-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 1rem;
+}
+
+.widget-btn {
+    background-color: var(--light-gray-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease-in-out;
+}
+
+.widget-btn:hover {
+    background-color: var(--primary-color);
+    color: var(--white-color);
+    border-color: var(--primary-color);
+}
