@@ -15,7 +15,8 @@ import (
 func NewRouter(db *sql.DB) http.Handler {
 	mux := http.NewServeMux()
 
-	projectService := service.NewProjectService(db)
+	projectRepo := db.NewSQLProjectRepository(db)
+	var projectService service.ProjectServiceInterface = service.NewProjectService(projectRepo)
 	projectHandler := handler.NewProjectHandler(projectService)
 
 	buildService := service.NewBuildService(db)

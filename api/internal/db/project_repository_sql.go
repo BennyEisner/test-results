@@ -50,3 +50,29 @@ func (r *SQLProjectRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM projects WHERE id = $1`, id)
 	return err
 }
+
+func (r *SQLProjectRepository) GetByName(ctx context.Context, name string) (*models.Project, error) {
+	row := r.DB.QueryRowContext(ctx, `SELECT id, name FROM projects WHERE name = $1`, name)
+	p := &models.Project{}
+	if err := p.ScanFromRow(row); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func (r *SQLProjectRepository) Update(ctx context.Context, id int64, name string) (*models.Project, error) {
+	row := r.DB.QueryRowContext(ctx, `UPDATE projects SET name = $1 WHERE id = $2 RETURNING id, name`, name, id)
+	p := &models.Project{}
+	if err := p.ScanFromRow(row); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func (r *SQLProjectRepository) Count(ctx context.Context) (int, error) {
+	var count int
+	if err := r.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM projects`).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}

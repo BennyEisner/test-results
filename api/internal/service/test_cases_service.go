@@ -21,13 +21,12 @@ type TestCaseService struct {
 	DB *sql.DB
 }
 
+// NewTestCaseService creates a new TestCaseService with the given database connection.
 func NewTestCaseService(db *sql.DB) *TestCaseService {
 	return &TestCaseService{DB: db}
 }
 
-// CheckTestSuiteExists checks if a test suite with the given ID exists.
-// This is duplicated from TestSuiteService for now to avoid inter-service dependency at this stage.
-// Ideally, this could be a shared utility or TestSuiteService could be injected.
+// CheckTestSuiteExists returns true if a test suite with the given ID exists.
 func (s *TestCaseService) CheckTestSuiteExists(suiteID int64) (bool, error) {
 	var exists bool
 	err := s.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM test_suites WHERE id = $1)", suiteID).Scan(&exists)
@@ -37,7 +36,7 @@ func (s *TestCaseService) CheckTestSuiteExists(suiteID int64) (bool, error) {
 	return exists, nil
 }
 
-// GetTestCasesBySuiteID fetches all test cases for a given suiteID.
+// GetTestCasesBySuiteID fetches all test cases for a given suite ID.
 func (s *TestCaseService) GetTestCasesBySuiteID(suiteID int64) ([]models.TestCase, error) {
 	rows, err := s.DB.Query("SELECT id, suite_id, name, classname FROM test_cases WHERE suite_id = $1 ORDER BY name", suiteID)
 	if err != nil {
@@ -59,7 +58,7 @@ func (s *TestCaseService) GetTestCasesBySuiteID(suiteID int64) ([]models.TestCas
 	return cases, nil
 }
 
-// CreateTestCase creates a new test case definition.
+// CreateTestCase creates a new test case with the given suite ID, name, and classname.
 func (s *TestCaseService) CreateTestCase(suiteID int64, name string, classname string) (*models.TestCase, error) {
 	var createdCase models.TestCase
 	err := s.DB.QueryRow(
@@ -74,7 +73,7 @@ func (s *TestCaseService) CreateTestCase(suiteID int64, name string, classname s
 	return &createdCase, nil
 }
 
-// GetTestCaseByID fetches a single test case by its ID.
+// GetTestCaseByID fetches a test case by its ID.
 func (s *TestCaseService) GetTestCaseByID(caseID int64) (*models.TestCase, error) {
 	var tc models.TestCase
 	err := s.DB.QueryRow("SELECT id, suite_id, name, classname FROM test_cases WHERE id = $1", caseID).Scan(
@@ -88,8 +87,7 @@ func (s *TestCaseService) GetTestCaseByID(caseID int64) (*models.TestCase, error
 	return &tc, nil
 }
 
-// FindOrCreateTestCaseWithTx finds an existing test case by suite_id, name, and classname,
-// or creates a new one if it doesn't exist, within an existing transaction.
+// FindOrCreateTestCaseWithTx finds or creates a test case within a transaction.
 func (s *TestCaseService) FindOrCreateTestCaseWithTx(tx *sql.Tx, suiteID int64, name string, classname string) (*models.TestCase, error) {
 	var tc models.TestCase
 
@@ -129,6 +127,7 @@ func (s *TestCaseService) FindOrCreateTestCaseWithTx(tx *sql.Tx, suiteID int64, 
 	return &createdCase, nil
 }
 
+// GetMostFailedTests returns the most failed test cases for a project and optional suite, limited by the given number.
 func (s *TestCaseService) GetMostFailedTests(projectID int64, suiteID *int64, limit int) ([]models.MostFailedTest, error) {
 	var query string
 	var args []interface{}

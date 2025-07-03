@@ -44,10 +44,14 @@ func NewJUnitImportService(
 // ProcessJUnitData will contain the core logic for parsing and saving JUnit data
 // It creates a new Build for this import, associated with the given projectID and suiteID
 func (s *JUnitImportService) ProcessJUnitData(projectID int64, suiteID int64, junitData *models.JUnitTestSuites) (*models.Build, []string, error) {
+	return s.processJUnitDataWithTx(projectID, suiteID, junitData)
+}
+
+// processJUnitDataWithTx manages the transaction and delegates to helpers.
+func (s *JUnitImportService) processJUnitDataWithTx(projectID int64, suiteID int64, junitData *models.JUnitTestSuites) (*models.Build, []string, error) {
 	var processingErrors []string
 	var createdBuild *models.Build
 
-	// 1. Start a database transaction.
 	tx, err := s.DB.Begin()
 	if err != nil {
 		return nil, processingErrors, fmt.Errorf("failed to begin transaction: %w", err)
@@ -55,137 +59,129 @@ func (s *JUnitImportService) ProcessJUnitData(projectID int64, suiteID int64, ju
 	defer func() {
 		if p := recover(); p != nil {
 			tx.Rollback()
-			panic(p) // Re-panic after rollback
+			panic(p)
 		} else if err != nil {
-			tx.Rollback() // Rollback on error
+			tx.Rollback()
 		} else {
-			err = tx.Commit() // Commit on success
+			err = tx.Commit()
 			if err != nil {
 				processingErrors = append(processingErrors, "Failed to commit transaction: "+err.Error())
 			}
 		}
 	}()
 
-	// 2. Validate that the provided suiteID exists for the projectID.
-	_, err = s.TestSuiteService.GetProjectTestSuiteByIDWithTx(tx, projectID, suiteID)
+	if err := s.validateSuiteExists(tx, projectID, suiteID); err != nil {
+		return nil, processingErrors, err
+	}
+
+	createdBuild, err = s.createBuildWithTx(tx, suiteID, junitData)
+	if err != nil {
+		return nil, processingErrors, err
+	}
+
+	processingErrors = s.processTestSuitesWithTx(tx, createdBuild, suiteID, junitData, processingErrors)
+
+	return createdBuild, processingErrors, err
+}
+
+// validateSuiteExists checks that the suite exists for the project.
+func (s *JUnitImportService) validateSuiteExists(tx *sql.Tx, projectID, suiteID int64) error {
+	_, err := s.TestSuiteService.GetProjectTestSuiteByIDWithTx(tx, projectID, suiteID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, processingErrors, fmt.Errorf("test suite ID %d not found for project ID %d", suiteID, projectID)
+			return fmt.Errorf("test suite ID %d not found for project ID %d", suiteID, projectID)
 		}
-		return nil, processingErrors, fmt.Errorf("failed to validate suite ID %d for project %d: %w", suiteID, projectID, err)
+		return fmt.Errorf("failed to validate suite ID %d for project %d: %w", suiteID, projectID, err)
 	}
+	return nil
+}
 
-	// 3. Create a new models.Build using BuildService (associated with projectID and suiteID).
-	buildName := "JUnit Import" // Default name
-	if junitData.Name != "" {   // Use name from <testsuites name="X"> if present
+// createBuildWithTx creates a new build for the suite.
+func (s *JUnitImportService) createBuildWithTx(tx *sql.Tx, suiteID int64, junitData *models.JUnitTestSuites) (*models.Build, error) {
+	buildName := "JUnit Import"
+	if junitData.Name != "" {
 		buildName = junitData.Name
-	} else if len(junitData.TestSuites) == 1 && junitData.TestSuites[0].Name != "" { // Or from the single <testsuite name="Y">
+	} else if len(junitData.TestSuites) == 1 && junitData.TestSuites[0].Name != "" {
 		buildName = junitData.TestSuites[0].Name
 	}
-
-	// Timestamp for the build. Could also parse from junitData.TestSuites[0].Timestamp if available and reliable.
 	buildTimestamp := time.Now()
-	// Example: Parsing timestamp from JUnit XML if needed
-	// if len(junitData.TestSuites) > 0 && junitData.TestSuites[0].Timestamp != "" {
-	//	parsedTs, tsErr := time.Parse(time.RFC3339Nano, junitData.TestSuites[0].Timestamp) // Or other expected format
-	//	if tsErr == nil {
-	//		buildTimestamp = parsedTs
-	//	} else {
-	//		processingErrors = append(processingErrors, fmt.Sprintf("Warning: could not parse build timestamp '%s': %v", junitData.TestSuites[0].Timestamp, tsErr))
-	//	}
-	//}
-
-	// Calculate total test case count from all test suites
 	var totalTestCaseCount int64
 	for _, junitSuite := range junitData.TestSuites {
 		totalTestCaseCount += int64(len(junitSuite.TestCases))
 	}
-
 	buildToCreate := &models.Build{
 		TestSuiteID:   suiteID,
-		BuildNumber:   buildName,      // Using the derived name as BuildNumber
-		CIProvider:    "JUnit Import", // Or derive from junitData.TestSuites[0].Hostname
-		CIURL:         nil,            // Can be set if available in XML
+		BuildNumber:   buildName,
+		CIProvider:    "JUnit Import",
+		CIURL:         nil,
 		CreatedAt:     buildTimestamp,
 		TestCaseCount: totalTestCaseCount,
 	}
+	return s.BuildService.CreateBuildWithTx(tx, buildToCreate)
+}
 
-	createdBuild, err = s.BuildService.CreateBuildWithTx(tx, buildToCreate)
-	if err != nil {
-		return nil, processingErrors, fmt.Errorf("failed to create build: %w", err)
-	}
-
-	// 4. Iterate through junitData.TestSuites.
+// processTestSuitesWithTx processes all test suites and their test cases.
+func (s *JUnitImportService) processTestSuitesWithTx(tx *sql.Tx, createdBuild *models.Build, suiteID int64, junitData *models.JUnitTestSuites, processingErrors []string) []string {
 	for _, junitSuite := range junitData.TestSuites {
-		// Optional: Validate junitSuite.Name against the name of the suite from suiteID if desired.
-		// log.Printf("Processing TestSuite from XML: %s (DB Suite ID: %d, Build ID: %d)\n", junitSuite.Name, suiteID, createdBuild.ID)
-
-		var executionInputs []models.BuildExecutionInput
-
-		// 5. For each JUnitTestCase within the JUnitTestSuite(s):
-		for _, junitCase := range junitSuite.TestCases {
-			testCase, tcErr := s.TestCaseService.FindOrCreateTestCaseWithTx(tx, suiteID, junitCase.Name, junitCase.Classname)
-			if tcErr != nil {
-				errMsg := fmt.Sprintf("Error finding/creating test case '%s' (class: '%s'): %v", junitCase.Name, junitCase.Classname, tcErr)
-				processingErrors = append(processingErrors, errMsg)
-				continue // Skip this test case, proceed with others
-			}
-
-			status := "passed"
-			var failureMessage, failureType, failureDetails *string
-
-			if junitCase.Failure != nil {
-				status = "failed"
-				failureMessage = &junitCase.Failure.Message
-				failureType = &junitCase.Failure.Type
-				failureDetails = &junitCase.Failure.Value
-			} else if junitCase.Error != nil {
-				status = "error"
-				failureMessage = &junitCase.Error.Message
-				failureType = &junitCase.Error.Type
-				failureDetails = &junitCase.Error.Value
-			} else if junitCase.Skipped != nil {
-				status = "skipped"
-				if junitCase.Skipped.Message != "" { // Store skipped message if available
-					// Assuming FailureMessage can be used for skipped messages, or add a specific field
-					failureMessage = &junitCase.Skipped.Message
-				}
-			}
-
-			currentExecutionInput := models.BuildExecutionInput{
-				TestCaseID:     testCase.ID,
-				Status:         status,
-				ExecutionTime:  junitCase.Time,
-				FailureMessage: failureMessage,
-				FailureType:    failureType,
-				FailureDetails: failureDetails,
-			}
-			executionInputs = append(executionInputs, currentExecutionInput)
-		}
-
-		// b. Create models.BuildTestCaseExecution records using BuildExecutionService.
+		executionInputs, errs := s.createExecutionInputsForSuite(tx, suiteID, junitSuite)
+		processingErrors = append(processingErrors, errs...)
 		if len(executionInputs) > 0 {
 			_, batchErrors, execErr := s.BuildExecutionService.CreateBuildExecutionsWithTx(tx, createdBuild.ID, executionInputs)
 			if execErr != nil {
-				// This is a more fatal error for this batch of executions
 				errMsg := fmt.Sprintf("Fatal error during batch creation of executions for build %d, suite '%s': %v", createdBuild.ID, junitSuite.Name, execErr)
 				processingErrors = append(processingErrors, errMsg)
-				// Depending on severity, you might choose to return `createdBuild, processingErrors, execErr` here to force rollback.
-				// For now, we collect the error and let the transaction attempt to commit with partial data if other parts succeeded.
 			}
-			if len(batchErrors) > 0 {
-				for _, batchErr := range batchErrors {
-					processingErrors = append(processingErrors, fmt.Sprintf("Error creating execution for build %d, suite '%s': %s", createdBuild.ID, junitSuite.Name, batchErr))
-				}
+			for _, batchErr := range batchErrors {
+				processingErrors = append(processingErrors, fmt.Sprintf("Error creating execution for build %d, suite '%s': %s", createdBuild.ID, junitSuite.Name, batchErr))
 			}
 		}
 	}
-	if len(processingErrors) > 0 {
-		// Even if there are processing errors, the transaction might still commit if `err` is nil here.
-		// The `err` variable in the defer function's scope is key.
-		// If we want to force a rollback on processingErrors, we should set `err` here.
-		// For now, let's assume processingErrors are non-fatal for the transaction itself unless a DB operation failed.
-	}
+	return processingErrors
+}
 
-	return createdBuild, processingErrors, err // err will be nil if commit was successful, or the commit error
+// createExecutionInputsForSuite creates execution inputs for all test cases in a suite.
+func (s *JUnitImportService) createExecutionInputsForSuite(tx *sql.Tx, suiteID int64, junitSuite models.JUnitTestSuite) ([]models.BuildExecutionInput, []string) {
+	var executionInputs []models.BuildExecutionInput
+	var processingErrors []string
+	for _, junitCase := range junitSuite.TestCases {
+		testCase, tcErr := s.TestCaseService.FindOrCreateTestCaseWithTx(tx, suiteID, junitCase.Name, junitCase.Classname)
+		if tcErr != nil {
+			errMsg := fmt.Sprintf("Error finding/creating test case '%s' (class: '%s'): %v", junitCase.Name, junitCase.Classname, tcErr)
+			processingErrors = append(processingErrors, errMsg)
+			continue
+		}
+		status, failureMessage, failureType, failureDetails := getJUnitCaseStatus(junitCase)
+		currentExecutionInput := models.BuildExecutionInput{
+			TestCaseID:     testCase.ID,
+			Status:         status,
+			ExecutionTime:  junitCase.Time,
+			FailureMessage: failureMessage,
+			FailureType:    failureType,
+			FailureDetails: failureDetails,
+		}
+		executionInputs = append(executionInputs, currentExecutionInput)
+	}
+	return executionInputs, processingErrors
+}
+
+// getJUnitCaseStatus determines the status and failure details for a JUnit test case.
+func getJUnitCaseStatus(junitCase models.JUnitTestCase) (status string, failureMessage, failureType, failureDetails *string) {
+	status = "passed"
+	if junitCase.Failure != nil {
+		status = "failed"
+		failureMessage = &junitCase.Failure.Message
+		failureType = &junitCase.Failure.Type
+		failureDetails = &junitCase.Failure.Value
+	} else if junitCase.Error != nil {
+		status = "error"
+		failureMessage = &junitCase.Error.Message
+		failureType = &junitCase.Error.Type
+		failureDetails = &junitCase.Error.Value
+	} else if junitCase.Skipped != nil {
+		status = "skipped"
+		if junitCase.Skipped.Message != "" {
+			failureMessage = &junitCase.Skipped.Message
+		}
+	}
+	return
 }
