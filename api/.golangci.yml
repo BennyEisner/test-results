@@ -3,6 +3,7 @@ run:
   timeout: 5m
   modules-download-mode: readonly
   go: '1.24'
+  build-tags: []
 
 linters:
   disable-all: true
@@ -14,8 +15,6 @@ linters:
     - gosimple
     - unused
     - ineffassign
-
-
 
 issues:
   exclude-rules:
