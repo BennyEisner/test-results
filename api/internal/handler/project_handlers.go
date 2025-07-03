@@ -160,8 +160,8 @@ func (ph *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 	}
 	defer r.Body.Close()
 
-	if err := validateProjectName(projectName); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
+	if validationErr := validateProjectName(projectName); validationErr != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, validationErr.Error())
 		return
 	}
 
@@ -212,13 +212,13 @@ func (ph *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) 
 
 	contentType := r.Header.Get("Content-Type")
 	if strings.Contains(contentType, "application/json") {
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			utils.RespondWithError(w, http.StatusBadRequest, "Invalid JSON request: "+err.Error())
+		if decodeErr := json.NewDecoder(r.Body).Decode(&payload); decodeErr != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid JSON request: "+decodeErr.Error())
 			return
 		}
 	} else if strings.Contains(contentType, "application/xml") {
-		if err := xml.NewDecoder(r.Body).Decode(&payload); err != nil {
-			utils.RespondWithError(w, http.StatusBadRequest, "Invalid XML request: "+err.Error())
+		if decodeErr := xml.NewDecoder(r.Body).Decode(&payload); decodeErr != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid XML request: "+decodeErr.Error())
 			return
 		}
 	} else {

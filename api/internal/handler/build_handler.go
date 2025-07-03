@@ -372,8 +372,8 @@ func (bh *BuildHandler) UpdateBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validateBuildUpdateInput(input); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
+	if validationErr := validateBuildUpdateInput(input); validationErr != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, validationErr.Error())
 		return
 	}
 

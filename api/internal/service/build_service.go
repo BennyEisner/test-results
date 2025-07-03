@@ -64,9 +64,9 @@ func (s *BuildService) GetAllBuilds() ([]models.Build, error) {
 		var ciURL sql.NullString
 		var duration sql.NullFloat64
 
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
-			&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration); err != nil {
-			return nil, fmt.Errorf("error scanning build: %w", err)
+		if scanErr := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
+			&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration); scanErr != nil {
+			return nil, fmt.Errorf("error scanning build: %w", scanErr)
 		}
 
 		if ciURL.Valid {
@@ -109,9 +109,9 @@ func (s *BuildService) GetRecentBuildsByProjectID(projectID int64) ([]models.Bui
 		var ciURL sql.NullString
 		var duration sql.NullFloat64
 
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
-			&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration); err != nil {
-			return nil, fmt.Errorf("error scanning build for project ID %d: %w", projectID, err)
+		if scanErr := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
+			&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration); scanErr != nil {
+			return nil, fmt.Errorf("error scanning build for project ID %d: %w", projectID, scanErr)
 		}
 
 		if ciURL.Valid {
@@ -191,9 +191,9 @@ func (s *BuildService) GetBuildsByTestSuiteID(testSuiteID int64) ([]models.Build
 		var ciURL sql.NullString
 		var duration sql.NullFloat64
 
-		if err := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
-			&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration); err != nil {
-			return nil, fmt.Errorf("error scanning build for test suite ID %d: %w", testSuiteID, err)
+		if scanErr := rows.Scan(&b.ID, &b.TestSuiteID, &b.ProjectID, &b.BuildNumber, &b.CIProvider,
+			&ciURL, &b.CreatedAt, &b.TestCaseCount, &duration); scanErr != nil {
+			return nil, fmt.Errorf("error scanning build for test suite ID %d: %w", testSuiteID, scanErr)
 		}
 
 		if ciURL.Valid {
@@ -368,8 +368,8 @@ func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *str
 		return nil, fmt.Errorf("error checking build existence before update: %w", err)
 	}
 
-	if err := validateUpdateBuildFields(buildNumber, ciProvider); err != nil {
-		return nil, err
+	if validationErr := validateUpdateBuildFields(buildNumber, ciProvider); validationErr != nil {
+		return nil, validationErr
 	}
 
 	query, args, err := buildUpdateQuery(id, buildNumber, ciProvider, ciURL, duration)
@@ -405,8 +405,8 @@ func (s *BuildService) GetBuildDurationTrends(projectID, suiteID int64) ([]model
 	var trends []models.BuildDurationTrend
 	for rows.Next() {
 		var trend models.BuildDurationTrend
-		if err := rows.Scan(&trend.BuildNumber, &trend.Duration, &trend.CreatedAt); err != nil {
-			return nil, fmt.Errorf("error scanning build duration trend for project ID %d: %w", projectID, err)
+		if scanErr := rows.Scan(&trend.BuildNumber, &trend.Duration, &trend.CreatedAt); scanErr != nil {
+			return nil, fmt.Errorf("error scanning build duration trend for project ID %d: %w", projectID, scanErr)
 		}
 		trends = append(trends, trend)
 	}

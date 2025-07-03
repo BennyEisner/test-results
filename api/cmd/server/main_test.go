@@ -158,5 +158,3 @@ func TestRunServer(t *testing.T) {
 		t.Error("expected error with invalid address, got none")
 	}
 }
-
-

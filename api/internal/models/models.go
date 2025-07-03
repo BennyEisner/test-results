@@ -6,4 +6,3 @@ const (
 	StatusFailed  = "failed"
 	StatusSkipped = "skipped"
 )
-

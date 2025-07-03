@@ -17,14 +17,14 @@ type FailuresService struct {
 
 // FailureWithTestCase represents a failure with associated test case information
 type FailureWithTestCase struct {
-	ID                       int64   `json:"id"`
-	BuildTestCaseExecutionID int64   `json:"build_test_case_execution_id"`
-	Message                  *string `json:"message,omitempty"`
-	Type                     *string `json:"type,omitempty"`
-	Details                  *string `json:"details,omitempty"`
-	TestCaseName             string  `json:"test_case_name"`
-	TestCaseClassname        string  `json:"test_case_classname"`
-	ExecutionStatus          string  `json:"execution_status"`
+	ID                       int64    `json:"id"`
+	BuildTestCaseExecutionID int64    `json:"build_test_case_execution_id"`
+	Message                  *string  `json:"message,omitempty"`
+	Type                     *string  `json:"type,omitempty"`
+	Details                  *string  `json:"details,omitempty"`
+	TestCaseName             string   `json:"test_case_name"`
+	TestCaseClassname        string   `json:"test_case_classname"`
+	ExecutionStatus          string   `json:"execution_status"`
 	ExecutionTime            *float64 `json:"execution_time,omitempty"`
 }
 
