@@ -39,6 +39,11 @@ jobs:
       - name: Setup tools
         run: task setup
 
+      - name: Ensure Go modules are up-to-date
+        run: |
+          go mod tidy
+          go mod download        
+
       - name: Install dependencies
         run: task deps
 
