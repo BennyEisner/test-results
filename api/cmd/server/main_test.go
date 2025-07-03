@@ -120,18 +120,10 @@ func TestCreateServer(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Set up mock expectations for router initialization
-	mock.ExpectQuery("SELECT").WillReturnRows(sqlmock.NewRows([]string{"id", "name"}))
-
 	server := createServer(db)
 
 	if server == nil {
 		t.Fatal("expected server to be created, got nil")
-	}
-
-	// Test that the server is not nil
-	if server == nil {
-		t.Error("expected server to be created")
 	}
 
 	// Test that the server can handle requests
@@ -145,6 +137,7 @@ func TestCreateServer(t *testing.T) {
 		t.Errorf("expected status 200, got %d", rr.Code)
 	}
 
+	// Verify no unexpected database calls were made
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("mock expectations not met: %v", err)
 	}
