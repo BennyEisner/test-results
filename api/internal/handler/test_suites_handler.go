@@ -36,7 +36,20 @@ func (tsh *TestSuiteHandler) GetTestSuitesByProjectID(w http.ResponseWriter, r *
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
 		return
 	}
-
+	name := r.URL.Query().Get("name")
+	if name != "" {
+		suite, err := tsh.service.GetTestSuiteByName(projectID, name)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				utils.RespondWithError(w, http.StatusNotFound, "Suite not found")
+			} else {
+				utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
+			}
+			return
+		}
+		utils.RespondWithJSON(w, http.StatusOK, suite)
+		return
+	}
 	suites, err := tsh.service.GetTestSuitesByProjectID(projectID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching test suites: "+err.Error())

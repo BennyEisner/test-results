@@ -17,6 +17,7 @@ type TestSuiteServiceInterface interface {
 	GetProjectTestSuiteByIDWithTx(tx *sql.Tx, projectID int64, suiteID int64) (*models.TestSuite, error) // New transactional method
 	CheckProjectExists(projectID int64) (bool, error)
 	CheckTestSuiteExists(suiteID int64) (bool, error) // For validating parent_id
+	GetTestSuiteByName(projectID int64, name string) (*models.TestSuite, error)
 }
 
 // TestSuiteService provides services related to test suites.
@@ -157,6 +158,24 @@ func (s *TestSuiteService) GetProjectTestSuiteByID(projectID int64, suiteID int6
 		return nil, fmt.Errorf("database error fetching test suite ID %d for project ID %d: %w", suiteID, projectID, err)
 	}
 
+	if parentID.Valid {
+		ts.ParentID = &parentID.Int64
+	}
+	return &ts, nil
+}
+
+// GetTestSuiteByName fetches a single test suite by its name and projectID.
+func (s *TestSuiteService) GetTestSuiteByName(projectID int64, name string) (*models.TestSuite, error) {
+	var ts models.TestSuite
+	var parentID sql.NullInt64
+	err := s.DB.QueryRow("SELECT id, project_id, name, parent_id, time FROM test_suites WHERE project_id = $1 AND name = $2", projectID, name).Scan(
+		&ts.ID, &ts.ProjectID, &ts.Name, &parentID, &ts.Time)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, err // Let handler decide on 404
+		}
+		return nil, fmt.Errorf("database error fetching test suite by name %s for project %d: %w", name, projectID, err)
+	}
 	if parentID.Valid {
 		ts.ParentID = &parentID.Int64
 	}

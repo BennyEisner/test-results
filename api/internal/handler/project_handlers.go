@@ -76,6 +76,20 @@ func (ph *ProjectHandler) GetProjectByID(w http.ResponseWriter, r *http.Request)
 }
 
 func (ph *ProjectHandler) GetProjects(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	if name != "" {
+		projectModel, err := ph.service.GetProjectByName(name)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				utils.RespondWithError(w, http.StatusNotFound, "Project not found")
+			} else {
+				utils.RespondWithError(w, http.StatusInternalServerError, "Database error: "+err.Error())
+			}
+			return
+		}
+		utils.RespondWithJSON(w, http.StatusOK, toAPIProject(projectModel))
+		return
+	}
 	log.Println("✅ GetProjects called via ProjectHandler") // Keep log for now
 	projectModels, err := ph.service.GetAllProjects()
 	if err != nil {

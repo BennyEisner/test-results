@@ -15,6 +15,7 @@ type ProjectServiceInterface interface {
 	UpdateProject(id int64, name string) (*models.Project, error)
 	DeleteProject(id int64) (int64, error) // Returns rows affected
 	GetDBTestProjectCount() (int, error)
+	GetProjectByName(name string) (*models.Project, error)
 }
 
 // ProjectService provides services related to projects.
@@ -110,4 +111,17 @@ func (s *ProjectService) UpdateProject(id int64, name string) (*models.Project, 
 		return nil, fmt.Errorf("database error updating project ID %d: %w", id, err)
 	}
 	return &updatedProject, nil
+}
+
+// GetProjectByName fetches a single project by its name.
+func (s *ProjectService) GetProjectByName(name string) (*models.Project, error) {
+	var p models.Project
+	err := s.DB.QueryRow("SELECT id, name FROM projects WHERE name = $1", name).Scan(&p.ID, &p.Name)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, err // Let handler decide on 404
+		}
+		return nil, fmt.Errorf("database error fetching project by name %s: %w", name, err)
+	}
+	return &p, nil
 }
