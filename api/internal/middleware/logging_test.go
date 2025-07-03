@@ -2,6 +2,7 @@ package middleware_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -80,8 +81,7 @@ func TestLoggingMiddleware(t *testing.T) {
 			if !strings.Contains(logOutput, tc.path) {
 				t.Errorf("log missing path %q: %s", tc.path, logOutput)
 			}
-			if !strings.Contains(logOutput, http.StatusText(tc.statusCode)) &&
-				!strings.Contains(logOutput, "status="+string(rune(tc.statusCode))) {
+			if !strings.Contains(logOutput, "status="+fmt.Sprintf("%d", tc.statusCode)) {
 				t.Errorf("log missing status %d: %s", tc.statusCode, logOutput)
 			}
 		})

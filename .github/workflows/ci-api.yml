@@ -31,16 +31,20 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install dependencies
-        run: go mod tidy
-
-      - name: Install golangci-lint
+      - name: Install go-task
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.56.2
+          curl -sSLf https://github.com/go-task/task/releases/latest/download/task_linux_amd64.deb -o task.deb
+          sudo dpkg -i task.deb
 
-      - name: Run golangci-lint
-        run: golangci-lint run ./...
+      - name: Setup tools
+        run: task setup
 
-      - name: Run tests
-        run: go test ./...
+      - name: Install dependencies
+        run: task deps
+
+      - name: Lint
+        run: task lint
+
+      - name: Test
+        run: task test
 
