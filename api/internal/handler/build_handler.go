@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -215,44 +216,68 @@ func (bh *BuildHandler) CreateBuildForTestSuite(w http.ResponseWriter, r *http.R
 	utils.RespondWithJSON(w, http.StatusCreated, toAPIBuild(createdBuild))
 }
 
-func (bh *BuildHandler) CreateBuild(w http.ResponseWriter, r *http.Request) {
+// decodeBuildCreateInput decodes the request body into BuildCreateInput based on content type
+func decodeBuildCreateInput(r *http.Request) (BuildCreateInput, error) {
 	var input BuildCreateInput
 	contentType := r.Header.Get("Content-Type")
-	var decodeErr error
-
 	if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
-		decodeErr = xml.NewDecoder(r.Body).Decode(&input)
+		if err := xml.NewDecoder(r.Body).Decode(&input); err != nil {
+			return input, err
+		}
 	} else {
-		decodeErr = json.NewDecoder(r.Body).Decode(&input)
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			return input, err
+		}
 	}
-	defer r.Body.Close()
+	return input, nil
+}
 
+// validateBuildCreateInput validates the BuildCreateInput fields
+func validateBuildCreateInput(input BuildCreateInput) error {
+	if input.TestSuiteID == 0 {
+		return errors.New("Test Suite ID is required and must be valid")
+	}
+	if strings.TrimSpace(input.BuildNumber) == "" {
+		return errors.New("Build number is required")
+	}
+	if strings.TrimSpace(input.CIProvider) == "" {
+		return errors.New("CI provider is required")
+	}
+	return nil
+}
+
+// checkTestSuiteExists checks if the test suite exists
+func (bh *BuildHandler) checkTestSuiteExists(testSuiteID int64) error {
+	exists, err := bh.service.CheckTestSuiteExists(testSuiteID)
+	if err != nil {
+		return fmt.Errorf("Database error checking test suite: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("Test suite with ID %d not found", testSuiteID)
+	}
+	return nil
+}
+
+func (bh *BuildHandler) CreateBuild(w http.ResponseWriter, r *http.Request) {
+	input, decodeErr := decodeBuildCreateInput(r)
 	if decodeErr != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+decodeErr.Error())
 		return
 	}
+	defer r.Body.Close()
 
-	if input.TestSuiteID == 0 {
-		utils.RespondWithError(w, http.StatusBadRequest, "Test Suite ID is required and must be valid")
-		return
-	}
-	if strings.TrimSpace(input.BuildNumber) == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Build number is required")
-		return
-	}
-	if strings.TrimSpace(input.CIProvider) == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "CI provider is required")
+	if err := validateBuildCreateInput(input); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	testSuiteID64 := int64(input.TestSuiteID)
-	exists, err := bh.service.CheckTestSuiteExists(testSuiteID64)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking test suite: "+err.Error())
-		return
-	}
-	if !exists {
-		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Test suite with ID %d not found", input.TestSuiteID))
+	if err := bh.checkTestSuiteExists(testSuiteID64); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			utils.RespondWithError(w, http.StatusNotFound, err.Error())
+		} else {
+			utils.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
@@ -294,6 +319,44 @@ func (bh *BuildHandler) DeleteBuild(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, map[string]string{"message": "Build deleted successfully"})
 }
 
+// decodeBuildUpdateInput decodes the request body into BuildUpdateInput based on content type
+func decodeBuildUpdateInput(r *http.Request) (BuildUpdateInput, error) {
+	var input BuildUpdateInput
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
+		if err := xml.NewDecoder(r.Body).Decode(&input); err != nil {
+			return input, err
+		}
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			return input, err
+		}
+	}
+	return input, nil
+}
+
+// validateBuildUpdateInput validates the BuildUpdateInput fields
+func validateBuildUpdateInput(input BuildUpdateInput) error {
+	if input.BuildNumber != nil && strings.TrimSpace(*input.BuildNumber) == "" {
+		return errors.New("Build number cannot be empty if provided")
+	}
+	if input.CIProvider != nil && strings.TrimSpace(*input.CIProvider) == "" {
+		return errors.New("CI provider cannot be empty if provided")
+	}
+	return nil
+}
+
+// respondUpdateBuildError handles error responses for UpdateBuild
+func respondUpdateBuildError(w http.ResponseWriter, err error) {
+	if err == sql.ErrNoRows {
+		utils.RespondWithError(w, http.StatusNotFound, "Build not found")
+	} else if strings.Contains(err.Error(), "no valid fields provided for update") {
+		utils.RespondWithError(w, http.StatusBadRequest, "No valid fields provided for update")
+	} else {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Update build failed: "+err.Error())
+	}
+}
+
 func (bh *BuildHandler) UpdateBuild(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
@@ -301,41 +364,22 @@ func (bh *BuildHandler) UpdateBuild(w http.ResponseWriter, r *http.Request) {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID format: "+err.Error())
 		return
 	}
-
-	var input BuildUpdateInput
-	contentType := r.Header.Get("Content-Type")
-	var decodeErr error
-
-	if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
-		decodeErr = xml.NewDecoder(r.Body).Decode(&input)
-	} else {
-		decodeErr = json.NewDecoder(r.Body).Decode(&input)
-	}
 	defer r.Body.Close()
 
+	input, decodeErr := decodeBuildUpdateInput(r)
 	if decodeErr != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+decodeErr.Error())
 		return
 	}
 
-	if input.BuildNumber != nil && strings.TrimSpace(*input.BuildNumber) == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Build number cannot be empty if provided")
-		return
-	}
-	if input.CIProvider != nil && strings.TrimSpace(*input.CIProvider) == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "CI provider cannot be empty if provided")
+	if err := validateBuildUpdateInput(input); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	updatedBuild, err := bh.service.UpdateBuild(id, input.BuildNumber, input.CIProvider, input.CIURL, input.Duration)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			utils.RespondWithError(w, http.StatusNotFound, "Build not found")
-		} else if strings.Contains(err.Error(), "no valid fields provided for update") {
-			utils.RespondWithError(w, http.StatusBadRequest, "No valid fields provided for update")
-		} else {
-			utils.RespondWithError(w, http.StatusInternalServerError, "Update build failed: "+err.Error())
-		}
+		respondUpdateBuildError(w, err)
 		return
 	}
 	utils.RespondWithJSON(w, http.StatusOK, toAPIBuild(updatedBuild))

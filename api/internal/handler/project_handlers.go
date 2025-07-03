@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -99,54 +100,45 @@ func (ph *ProjectHandler) GetProjects(w http.ResponseWriter, r *http.Request) {
 	utils.RespondWithJSON(w, http.StatusOK, toAPIProjects(projectModels))
 }
 
-func (ph *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
+// decodeProjectName decodes the project name from the request body based on content type
+func decodeProjectName(r *http.Request) (string, error) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Error reading request body", http.StatusBadRequest)
-		return
+		return "", err
 	}
-	defer r.Body.Close()
-
-	var projectName string
 	contentType := r.Header.Get("Content-Type")
-
 	if strings.Contains(contentType, "application/json") {
 		var payload struct {
 			Name string `json:"name"`
 		}
 		if err := json.Unmarshal(body, &payload); err != nil {
-			utils.RespondWithError(w, http.StatusBadRequest, "Invalid JSON request: "+err.Error())
-			return
+			return "", fmt.Errorf("Invalid JSON request: %w", err)
 		}
-		projectName = payload.Name
+		return payload.Name, nil
 	} else if strings.Contains(contentType, "application/xml") || strings.Contains(contentType, "text/xml") {
 		var projectXML struct {
 			XMLName xml.Name `xml:"project"`
 			Name    string   `xml:"name"`
 		}
 		if err := xml.Unmarshal(body, &projectXML); err != nil {
-			utils.RespondWithError(w, http.StatusBadRequest, "Invalid XML request: "+err.Error())
-			return
+			return "", fmt.Errorf("Invalid XML request: %w", err)
 		}
-		projectName = projectXML.Name
-	} else {
-		utils.RespondWithError(w, http.StatusUnsupportedMediaType, "Content type must be application/xml or application/json")
-		return
+		return projectXML.Name, nil
 	}
+	return "", fmt.Errorf("Content type must be application/xml or application/json")
+}
 
-	if strings.TrimSpace(projectName) == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Project Name is required")
-		return
+// validateProjectName checks if the project name is valid
+func validateProjectName(name string) error {
+	if strings.TrimSpace(name) == "" {
+		return errors.New("Project Name is required")
 	}
+	return nil
+}
 
-	createdProjectModel, err := ph.service.CreateProject(projectName)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database Error: "+err.Error())
-		return
-	}
-
+// respondProjectCreated formats the response for a created project
+func respondProjectCreated(w http.ResponseWriter, r *http.Request, createdProjectModel *models.Project) {
 	apiProject := toAPIProject(createdProjectModel)
-
 	acceptHeader := r.Header.Get("Accept")
 	if strings.Contains(acceptHeader, "application/xml") {
 		w.Header().Set("Content-Type", "application/xml")
@@ -158,6 +150,28 @@ func (ph *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 	} else {
 		utils.RespondWithJSON(w, http.StatusCreated, apiProject)
 	}
+}
+
+func (ph *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
+	projectName, err := decodeProjectName(r)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	if err := validateProjectName(projectName); err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	createdProjectModel, err := ph.service.CreateProject(projectName)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database Error: "+err.Error())
+		return
+	}
+
+	respondProjectCreated(w, r, createdProjectModel)
 }
 
 func (ph *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {

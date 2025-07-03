@@ -306,41 +306,36 @@ func (s *BuildService) DeleteBuild(id int64) (int64, error) {
 	return rowsAffected, nil
 }
 
-// UpdateBuild updates an existing build.
-// Only non-nil fields in the input will be updated.
-func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *string, duration *float64) (*models.Build, error) {
-	// First, check if build exists
-	_, err := s.GetBuildByID(id) // Leverage existing method
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, err // Propagate ErrNoRows for handler to interpret as 404
-		}
-		return nil, fmt.Errorf("error checking build existence before update: %w", err)
+// validateUpdateBuildFields validates the fields for update
+func validateUpdateBuildFields(buildNumber, ciProvider *string) error {
+	if buildNumber != nil && strings.TrimSpace(*buildNumber) == "" {
+		return fmt.Errorf("build number cannot be empty if provided for update")
 	}
+	if ciProvider != nil && strings.TrimSpace(*ciProvider) == "" {
+		return fmt.Errorf("ci provider cannot be empty if provided for update")
+	}
+	return nil
+}
 
+// buildUpdateQuery builds the update query and args for the build update
+func buildUpdateQuery(id int64, buildNumber, ciProvider, ciURL *string, duration *float64) (string, []interface{}, error) {
 	updateFields := []string{}
 	args := []interface{}{}
 	argID := 1
 
 	if buildNumber != nil {
-		if strings.TrimSpace(*buildNumber) == "" {
-			return nil, fmt.Errorf("build number cannot be empty if provided for update")
-		}
 		updateFields = append(updateFields, fmt.Sprintf("build_number = $%d", argID))
 		args = append(args, *buildNumber)
 		argID++
 	}
 
 	if ciProvider != nil {
-		if strings.TrimSpace(*ciProvider) == "" {
-			return nil, fmt.Errorf("ci provider cannot be empty if provided for update")
-		}
 		updateFields = append(updateFields, fmt.Sprintf("ci_provider = $%d", argID))
 		args = append(args, *ciProvider)
 		argID++
 	}
 
-	if ciURL != nil { // If CIURL key is present
+	if ciURL != nil {
 		ciURLToUpdate := sql.NullString{String: *ciURL, Valid: strings.TrimSpace(*ciURL) != ""}
 		updateFields = append(updateFields, fmt.Sprintf("ci_url = $%d", argID))
 		args = append(args, ciURLToUpdate)
@@ -354,21 +349,39 @@ func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *str
 	}
 
 	if len(updateFields) == 0 {
-		// No fields to update, maybe return current build or an error
-		// For now, let's return the current build as if no update occurred, or an error
-		return nil, fmt.Errorf("no valid fields provided for update")
+		return "", nil, fmt.Errorf("no valid fields provided for update")
 	}
 
 	args = append(args, id)
 	query := fmt.Sprintf("UPDATE builds SET %s WHERE id = $%d",
 		strings.Join(updateFields, ", "), argID)
+	return query, args, nil
+}
+
+func (s *BuildService) UpdateBuild(id int64, buildNumber, ciProvider, ciURL *string, duration *float64) (*models.Build, error) {
+	// First, check if build exists
+	_, err := s.GetBuildByID(id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, err
+		}
+		return nil, fmt.Errorf("error checking build existence before update: %w", err)
+	}
+
+	if err := validateUpdateBuildFields(buildNumber, ciProvider); err != nil {
+		return nil, err
+	}
+
+	query, args, err := buildUpdateQuery(id, buildNumber, ciProvider, ciURL, duration)
+	if err != nil {
+		return nil, err
+	}
 
 	_, err = s.DB.Exec(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("update build failed: %w", err)
 	}
 
-	// After successful update, fetch the updated build with project_id
 	return s.GetBuildByID(id)
 }
 

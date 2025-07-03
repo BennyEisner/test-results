@@ -38,7 +38,7 @@ tasks:
 
   ci:
     desc: Run full CI pipeline
-    deps: [setup, deps, lint, test]
+    deps: [setup, deps, lint, test, cyclo]
 
   cyclo:
     desc: Analyze cyclomatic complexity in api/ (over 10)

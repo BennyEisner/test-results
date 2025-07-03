@@ -156,7 +156,10 @@ func (s *BuildExecutionService) createSingleExecution(buildID int64, input model
 	}
 	defer func() {
 		if err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				// Log rollback error but don't return it since we're already returning an error
+				_ = rbErr
+			}
 		}
 	}()
 
