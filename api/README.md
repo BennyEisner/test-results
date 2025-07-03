@@ -102,3 +102,25 @@ docker run -p 8080:8080 test-results-api
 
 MIT License. See [LICENSE](../LICENSE) file for details.
 
+## Cyclomatic Complexity Analysis
+
+This project uses [gocyclo](https://github.com/fzipp/gocyclo) to check for functions with high cyclomatic complexity.
+
+### Install gocyclo
+
+```
+go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+```
+
+Make sure your Go bin directory (e.g., `$HOME/go/bin`) is in your `PATH`.
+
+### Usage
+
+To check for functions with a cyclomatic complexity over 10, run:
+
+```
+task cyclo
+```
+
+This will report all functions in the `api/` directory with complexity greater than 10.
+
