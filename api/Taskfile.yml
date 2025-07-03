@@ -14,10 +14,12 @@ tasks:
     desc: Install Go dependencies
     cmds:
       - go mod tidy
+      - go mod download
+      - go list -m github.com/DATA-DOG/go-sqlmock
 
   lint:
     desc: Run golangci-lint
-    deps: [setup]
+    deps: [setup, deps]
     cmds:
       - golangci-lint run ./...
 
