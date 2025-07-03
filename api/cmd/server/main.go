@@ -4,14 +4,16 @@ import (
 	"database/sql"
 	_ "encoding/xml"
 	"fmt"
-	"github.com/BennyEisner/test-results/internal/routes"
-	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	_ "strconv"
 	_ "time"
+
+	"github.com/BennyEisner/test-results/internal/routes"
+	_ "github.com/lib/pq"
+	_ "go.uber.org/automaxprocs"
 )
 
 func main() {
@@ -44,13 +46,10 @@ func main() {
 	fmt.Println("Connected to database")
 
 	addr := ":8080"
-	mux := http.NewServeMux()
-
-	// Register routes
-	routes.RegisterRoutes(mux, db)
+	router := routes.NewRouter(db)
 
 	log.Printf("Starting server on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(addr, router); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

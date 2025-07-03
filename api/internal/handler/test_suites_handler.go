@@ -29,44 +29,14 @@ func NewTestSuiteHandler(s service.TestSuiteServiceInterface) *TestSuiteHandler 
 	return &TestSuiteHandler{service: s}
 }
 
-// HandleProjectTestSuites handles GET and POST requests for test suites associated with a specific project.
-// Expected path: /api/projects/{projectID}/suites
-func (tsh *TestSuiteHandler) HandleProjectTestSuites(w http.ResponseWriter, r *http.Request) {
-	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/projects/"), "/")
-
-	if len(pathSegments) < 2 || pathSegments[0] == "" || pathSegments[1] != "suites" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid URL path for project suites. Expected /api/projects/{projectID}/suites")
-		return
-	}
-
-	projectIDStr := pathSegments[0]
+func (tsh *TestSuiteHandler) GetTestSuitesByProjectID(w http.ResponseWriter, r *http.Request) {
+	projectIDStr := r.PathValue("id")
 	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
 		return
 	}
 
-	projectExists, err := tsh.service.CheckProjectExists(projectID)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking project existence: "+err.Error())
-		return
-	}
-	if !projectExists {
-		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Project with ID %d not found", projectID))
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		tsh.getTestSuitesByProjectID(w, r, projectID)
-	case http.MethodPost:
-		tsh.createTestSuiteForProject(w, r, projectID)
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed for this endpoint")
-	}
-}
-
-func (tsh *TestSuiteHandler) getTestSuitesByProjectID(w http.ResponseWriter, r *http.Request, projectID int64) {
 	suites, err := tsh.service.GetTestSuitesByProjectID(projectID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching test suites: "+err.Error())
@@ -75,7 +45,14 @@ func (tsh *TestSuiteHandler) getTestSuitesByProjectID(w http.ResponseWriter, r *
 	utils.RespondWithJSON(w, http.StatusOK, suites)
 }
 
-func (tsh *TestSuiteHandler) createTestSuiteForProject(w http.ResponseWriter, r *http.Request, projectID int64) {
+func (tsh *TestSuiteHandler) CreateTestSuiteForProject(w http.ResponseWriter, r *http.Request) {
+	projectIDStr := r.PathValue("id")
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
+		return
+	}
+
 	var input TestSuiteCreateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
@@ -88,7 +65,6 @@ func (tsh *TestSuiteHandler) createTestSuiteForProject(w http.ResponseWriter, r 
 		return
 	}
 
-	// Optional: Validate parentID if provided
 	if input.ParentID != nil {
 		parentExists, err := tsh.service.CheckTestSuiteExists(*input.ParentID)
 		if err != nil {
@@ -99,9 +75,6 @@ func (tsh *TestSuiteHandler) createTestSuiteForProject(w http.ResponseWriter, r 
 			utils.RespondWithError(w, http.StatusBadRequest, fmt.Sprintf("Parent test suite with ID %d not found", *input.ParentID))
 			return
 		}
-		// Further validation: ensure parent suite belongs to the same projectID.
-		// This might require an additional service method or logic here.
-		// For now, assuming DB constraints or later checks handle this.
 	}
 
 	createdSuite, err := tsh.service.CreateTestSuite(projectID, input.Name, input.ParentID, input.Time)
@@ -112,11 +85,21 @@ func (tsh *TestSuiteHandler) createTestSuiteForProject(w http.ResponseWriter, r 
 	utils.RespondWithJSON(w, http.StatusCreated, createdSuite)
 }
 
-// GetProjectTestSuiteByID fetches a specific test suite by its ID and projectID.
-// This function is called by the router, so it needs to be a method of TestSuiteHandler.
-func (tsh *TestSuiteHandler) GetProjectTestSuiteByID(w http.ResponseWriter, r *http.Request, projectID int64, suiteID int64) {
-	// Project existence check can be done first by the service or here.
-	// The service method GetProjectTestSuiteByID implicitly handles this by querying with projectID.
+func (tsh *TestSuiteHandler) GetProjectTestSuiteByID(w http.ResponseWriter, r *http.Request) {
+	projectIDStr := r.PathValue("projectId")
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format: "+err.Error())
+		return
+	}
+
+	suiteIDStr := r.PathValue("suiteId")
+	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suite ID format: "+err.Error())
+		return
+	}
+
 	projectExists, err := tsh.service.CheckProjectExists(projectID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking project: "+err.Error())
@@ -139,33 +122,14 @@ func (tsh *TestSuiteHandler) GetProjectTestSuiteByID(w http.ResponseWriter, r *h
 	utils.RespondWithJSON(w, http.StatusOK, ts)
 }
 
-// HandleTestSuiteByPath handles GET requests for a specific test suite by its ID only.
-// Expected path: /api/suites/{suiteId}
-func (tsh *TestSuiteHandler) HandleTestSuiteByPath(w http.ResponseWriter, r *http.Request) {
-	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/suites/"), "/")
-	if len(pathSegments) < 1 || pathSegments[0] == "" || strings.Contains(pathSegments[0], "/") {
-		// If pathSegments[0] contains "/", it means it's likely /api/suites/{id}/cases, which is handled elsewhere
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid test suite ID in URL. Expected /api/suites/{id}")
-		return
-	}
-
-	suiteIDStr := pathSegments[0]
+func (tsh *TestSuiteHandler) GetTestSuiteByID(w http.ResponseWriter, r *http.Request) {
+	suiteIDStr := r.PathValue("id")
 	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid test suite ID format: "+err.Error())
 		return
 	}
 
-	switch r.Method {
-	case http.MethodGet:
-		tsh.getTestSuiteByID(w, r, suiteID)
-	// Add PUT, DELETE later if needed
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed for this endpoint")
-	}
-}
-
-func (tsh *TestSuiteHandler) getTestSuiteByID(w http.ResponseWriter, r *http.Request, suiteID int64) {
 	ts, err := tsh.service.GetTestSuiteByID(suiteID)
 	if err != nil {
 		if err == sql.ErrNoRows {

@@ -20,7 +20,9 @@ CREATE TABLE builds (
     build_number TEXT NOT NULL,
     ci_provider TEXT NOT NULL,
     ci_url TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    test_case_count INTEGER,
+    duration DOUBLE PRECISION
 );
 
 -- Table: test_cases

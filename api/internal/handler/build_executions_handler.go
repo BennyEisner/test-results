@@ -22,48 +22,16 @@ func NewBuildExecutionHandler(s service.BuildExecutionServiceInterface) *BuildEx
 	return &BuildExecutionHandler{service: s}
 }
 
-// HandleBuildExecutions handles GET and POST requests for test case executions of a specific build.
-// Expected path: /api/builds/{buildId}/executions
-func (beh *BuildExecutionHandler) HandleBuildExecutions(w http.ResponseWriter, r *http.Request) {
-	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/builds/"), "/")
-
-	if len(pathSegments) < 2 || pathSegments[0] == "" || pathSegments[1] != "executions" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid URL path for build executions. Expected /api/builds/{buildId}/executions")
-		return
-	}
-
-	buildIDStr := pathSegments[0]
+func (beh *BuildExecutionHandler) GetBuildExecutions(w http.ResponseWriter, r *http.Request) {
+	buildIDStr := r.PathValue("id")
 	buildID, err := strconv.ParseInt(buildIDStr, 10, 64)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid build ID format: "+err.Error())
 		return
 	}
 
-	buildExists, err := beh.service.CheckBuildExists(buildID)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking build existence: "+err.Error())
-		return
-	}
-	if !buildExists {
-		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Build with ID %d not found", buildID))
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		beh.getBuildExecutions(w, r, buildID)
-	case http.MethodPost:
-		beh.createBuildExecutions(w, r, buildID)
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed for this endpoint")
-	}
-}
-
-func (beh *BuildExecutionHandler) getBuildExecutions(w http.ResponseWriter, r *http.Request, buildID int64) {
 	executions, err := beh.service.GetBuildExecutions(buildID)
 	if err != nil {
-		// The service's GetBuildExecutions already returns []models.BuildExecutionDetail (formerly handler.BuildExecutionDetail)
-		// So, no specific error handling for sql.ErrNoRows here, service handles it.
 		utils.RespondWithError(w, http.StatusInternalServerError, "Error fetching build executions: "+err.Error())
 		return
 	}

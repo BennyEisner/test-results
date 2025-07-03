@@ -3,7 +3,6 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,43 +27,14 @@ func NewTestCaseHandler(s service.TestCaseServiceInterface) *TestCaseHandler {
 	return &TestCaseHandler{service: s}
 }
 
-// HandleSuiteTestCases handles GET and POST requests for test case definitions associated with a specific test suite.
-// Expected path: /api/suites/{suiteId}/cases
-func (tch *TestCaseHandler) HandleSuiteTestCases(w http.ResponseWriter, r *http.Request) {
-	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/suites/"), "/")
-
-	if len(pathSegments) < 2 || pathSegments[0] == "" || pathSegments[1] != "cases" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid URL path for suite test cases. Expected /api/suites/{suiteId}/cases")
-		return
-	}
-	suiteIDStr := pathSegments[0]
+func (tch *TestCaseHandler) GetSuiteTestCases(w http.ResponseWriter, r *http.Request) {
+	suiteIDStr := r.PathValue("id")
 	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suite ID format: "+err.Error())
 		return
 	}
 
-	suiteExists, err := tch.service.CheckTestSuiteExists(suiteID)
-	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Database error checking suite existence: "+err.Error())
-		return
-	}
-	if !suiteExists {
-		utils.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("Test suite with ID %d not found", suiteID))
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		tch.getTestCasesBySuiteID(w, r, suiteID)
-	case http.MethodPost:
-		tch.createTestCaseForSuite(w, r, suiteID)
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed for this endpoint")
-	}
-}
-
-func (tch *TestCaseHandler) getTestCasesBySuiteID(w http.ResponseWriter, r *http.Request, suiteID int64) {
 	cases, err := tch.service.GetTestCasesBySuiteID(suiteID)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching test case definitions: "+err.Error())
@@ -73,7 +43,14 @@ func (tch *TestCaseHandler) getTestCasesBySuiteID(w http.ResponseWriter, r *http
 	utils.RespondWithJSON(w, http.StatusOK, cases)
 }
 
-func (tch *TestCaseHandler) createTestCaseForSuite(w http.ResponseWriter, r *http.Request, suiteID int64) {
+func (tch *TestCaseHandler) CreateTestCaseForSuite(w http.ResponseWriter, r *http.Request) {
+	suiteIDStr := r.PathValue("id")
+	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid suite ID format: "+err.Error())
+		return
+	}
+
 	var input TestCaseCreateInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request payload: "+err.Error())
@@ -98,31 +75,14 @@ func (tch *TestCaseHandler) createTestCaseForSuite(w http.ResponseWriter, r *htt
 	utils.RespondWithJSON(w, http.StatusCreated, createdCase)
 }
 
-// HandleTestCaseByPath handles GET requests for a specific test case definition.
-// Expected path: /api/cases/{caseId}
-func (tch *TestCaseHandler) HandleTestCaseByPath(w http.ResponseWriter, r *http.Request) {
-	pathSegments := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/cases/"), "/")
-	if len(pathSegments) != 1 || pathSegments[0] == "" {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid test case ID in URL")
-		return
-	}
-
-	caseIDStr := pathSegments[0]
+func (tch *TestCaseHandler) GetTestCaseByID(w http.ResponseWriter, r *http.Request) {
+	caseIDStr := r.PathValue("id")
 	caseID, err := strconv.ParseInt(caseIDStr, 10, 64)
 	if err != nil {
 		utils.RespondWithError(w, http.StatusBadRequest, "Invalid test case ID format: "+err.Error())
 		return
 	}
 
-	switch r.Method {
-	case http.MethodGet:
-		tch.getTestCaseByID(w, r, caseID)
-	default:
-		utils.RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed for this endpoint")
-	}
-}
-
-func (tch *TestCaseHandler) getTestCaseByID(w http.ResponseWriter, r *http.Request, caseID int64) {
 	tc, err := tch.service.GetTestCaseByID(caseID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -133,4 +93,47 @@ func (tch *TestCaseHandler) getTestCaseByID(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	utils.RespondWithJSON(w, http.StatusOK, tc)
+}
+
+func (tch *TestCaseHandler) GetMostFailedTests(w http.ResponseWriter, r *http.Request) {
+	projectIDStr := r.URL.Query().Get("projectId")
+	if projectIDStr == "" {
+		utils.RespondWithError(w, http.StatusBadRequest, "projectId query parameter is required")
+		return
+	}
+
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusBadRequest, "Invalid projectId format")
+		return
+	}
+
+	suiteIDStr := r.URL.Query().Get("suiteId")
+	var suiteID *int64
+	if suiteIDStr != "" {
+		sID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+		if err != nil {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid suiteId format")
+			return
+		}
+		suiteID = &sID
+	}
+
+	limitStr := r.URL.Query().Get("limit")
+	limit := 10 // Default limit
+	if limitStr != "" {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil || limit <= 0 {
+			utils.RespondWithError(w, http.StatusBadRequest, "Invalid limit format")
+			return
+		}
+	}
+
+	tests, err := tch.service.GetMostFailedTests(projectID, suiteID, limit)
+	if err != nil {
+		utils.RespondWithError(w, http.StatusInternalServerError, "Database error fetching most failed tests: "+err.Error())
+		return
+	}
+
+	utils.RespondWithJSON(w, http.StatusOK, tests)
 }

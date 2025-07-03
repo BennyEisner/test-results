@@ -1,0 +1,50 @@
+.dashboard-grid {
+  background-color: var(--off-white-color);
+}
+
+.dashboard-item {
+  background-color: var(--white-color);
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+}
+
+.react-grid-item.react-grid-placeholder {
+  background-color: var(--primary-color) !important;
+  opacity: 0.2;
+  border-radius: 8px;
+}
+
+.component-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: var(--light-gray-color);
+  border-bottom: 1px solid var(--border-color);
+  cursor: move;
+}
+
+.component-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.remove-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+  z-index: 10;
+}
+
+.component-content {
+  padding: 16px;
+  flex-grow: 1;
+  overflow-y: auto;
+}

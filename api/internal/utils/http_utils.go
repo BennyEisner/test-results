@@ -13,13 +13,15 @@ type Project struct {
 }
 
 type Build struct {
-	ID          int       `json:"id"`
-	TestSuiteID int       `json:"test_suite_id"`
-	ProjectID   int       `json:"project_id"`
-	BuildNumber string    `json:"build_number"`
-	CIProvider  string    `json:"ci_provider"`
-	CIURL       string    `json:"ci_url, omitempty"`
-	CreatedAt   time.Time `json:"created_at, omitempty"`
+	ID            int       `json:"id"`
+	TestSuiteID   int       `json:"test_suite_id"`
+	ProjectID     int       `json:"project_id"`
+	BuildNumber   string    `json:"build_number"`
+	CIProvider    string    `json:"ci_provider"`
+	CIURL         string    `json:"ci_url,omitempty"`
+	CreatedAt     time.Time `json:"created_at,omitempty"`
+	TestCaseCount int       `json:"test_case_count,omitempty"`
+	Duration      *float64  `json:"duration,omitempty"`
 }
 
 func RespondWithJSON(w http.ResponseWriter, status int, data interface{}) {

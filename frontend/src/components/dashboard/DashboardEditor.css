@@ -1,0 +1,25 @@
+.dashboard-editor {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.add-widget-button {
+    background-color: var(--primary-color);
+    color: var(--white-color);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.add-widget-button:hover {
+    background-color: var(--primary-hover-color);
+}
+
+.add-component-btn:hover {
+  background-color: var(--primary-hover-color);
+}
