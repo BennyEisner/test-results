@@ -9,12 +9,8 @@ linters:
     - errcheck
     - staticcheck
     - gosimple
-    - structcheck
     - unused
-    - varcheck
     - ineffassign
-    - deadcode
-    - typecheck
 
 linters-settings:
   govet:
