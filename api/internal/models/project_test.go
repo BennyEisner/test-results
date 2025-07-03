@@ -68,6 +68,41 @@ func TestProject_ScanFromRow(t *testing.T) {
 	}
 }
 
+// setupMockRows sets up mock rows for the test
+func setupMockRows(mock sqlmock.Sqlmock, rows [][]driver.Value) {
+	mockRows := sqlmock.NewRows([]string{"id", "name"})
+	for _, row := range rows {
+		mockRows.AddRow(row...)
+	}
+	mock.ExpectQuery("SELECT").WillReturnRows(mockRows)
+}
+
+// validateProjects validates that the scanned projects match the expected projects
+func validateProjects(t *testing.T, projects, expected []Project) {
+	if len(projects) != len(expected) {
+		t.Errorf("expected %d projects, got %d", len(expected), len(projects))
+		return
+	}
+
+	for i, expected := range expected {
+		if i >= len(projects) {
+			t.Errorf("missing project at index %d", i)
+			continue
+		}
+		validateSingleProject(t, i, projects[i], expected)
+	}
+}
+
+// validateSingleProject validates a single project
+func validateSingleProject(t *testing.T, index int, project, expected Project) {
+	if project.ID != expected.ID {
+		t.Errorf("project %d: expected ID %d, got %d", index, expected.ID, project.ID)
+	}
+	if project.Name != expected.Name {
+		t.Errorf("project %d: expected Name %s, got %s", index, expected.Name, project.Name)
+	}
+}
+
 func TestProject_ScanFromRows(t *testing.T) {
 	tests := []struct {
 		testName string
@@ -106,11 +141,7 @@ func TestProject_ScanFromRows(t *testing.T) {
 			}
 			defer db.Close()
 
-			rows := sqlmock.NewRows([]string{"id", "name"})
-			for _, row := range tt.rows {
-				rows.AddRow(row...)
-			}
-			mock.ExpectQuery("SELECT").WillReturnRows(rows)
+			setupMockRows(mock, tt.rows)
 
 			rowsResult, err := db.Query("SELECT id, name FROM projects")
 			if err != nil {
@@ -128,22 +159,7 @@ func TestProject_ScanFromRows(t *testing.T) {
 				projects = append(projects, *project)
 			}
 
-			if len(projects) != len(tt.expected) {
-				t.Errorf("expected %d projects, got %d", len(tt.expected), len(projects))
-			}
-
-			for i, expected := range tt.expected {
-				if i >= len(projects) {
-					t.Errorf("missing project at index %d", i)
-					continue
-				}
-				if projects[i].ID != expected.ID {
-					t.Errorf("project %d: expected ID %d, got %d", i, expected.ID, projects[i].ID)
-				}
-				if projects[i].Name != expected.Name {
-					t.Errorf("project %d: expected Name %s, got %s", i, expected.Name, projects[i].Name)
-				}
-			}
+			validateProjects(t, projects, tt.expected)
 
 			if err := mock.ExpectationsWereMet(); err != nil {
 				t.Errorf("mock expectations not met: %v", err)

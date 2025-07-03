@@ -120,88 +120,110 @@ func (s *BuildExecutionService) GetBuildExecutions(buildID int64) ([]models.Buil
 	return executions, nil
 }
 
+// validateBuildExecutionInput validates a single build execution input
+func (s *BuildExecutionService) validateBuildExecutionInput(input models.BuildExecutionInput) error {
+	validStatuses := map[string]bool{"passed": true, "failed": true, "skipped": true, "error": true}
+
+	tcExists, err := s.CheckTestCaseExists(input.TestCaseID)
+	if err != nil {
+		return fmt.Errorf("error checking test case %d: %w", input.TestCaseID, err)
+	}
+	if !tcExists {
+		return fmt.Errorf("test case with ID %d not found", input.TestCaseID)
+	}
+
+	statusToInsert := strings.ToLower(input.Status)
+	if !validStatuses[statusToInsert] {
+		return fmt.Errorf("invalid status '%s' for test case ID %d. Must be one of: passed, failed, skipped, error", input.Status, input.TestCaseID)
+	}
+
+	return nil
+}
+
+// shouldInsertFailureDetails determines if failure details should be inserted
+func (s *BuildExecutionService) shouldInsertFailureDetails(status string, input models.BuildExecutionInput) bool {
+	return (status == "failed" || status == "error") &&
+		(input.FailureMessage != nil || input.FailureType != nil || input.FailureDetails != nil)
+}
+
+// createSingleExecution creates a single build execution with transaction handling
+func (s *BuildExecutionService) createSingleExecution(buildID int64, input models.BuildExecutionInput) (*models.BuildTestCaseExecution, error) {
+	statusToInsert := strings.ToLower(input.Status)
+
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to start database transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	var executionID int64
+	err = tx.QueryRow(
+		`INSERT INTO build_test_case_executions (build_id, test_case_id, status, execution_time)
+		 VALUES ($1, $2, $3, $4)
+		 RETURNING id`,
+		buildID, input.TestCaseID, statusToInsert, input.ExecutionTime,
+	).Scan(&executionID)
+
+	if err != nil {
+		return nil, fmt.Errorf("error inserting execution for test case %d: %w", input.TestCaseID, err)
+	}
+
+	// Handle failure details if needed
+	if s.shouldInsertFailureDetails(statusToInsert, input) {
+		if err := s.insertFailureDetails(tx, executionID, input); err != nil {
+			return nil, fmt.Errorf("error inserting failure details for test case %d: %w", input.TestCaseID, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("error committing transaction for test case %d: %w", input.TestCaseID, err)
+	}
+
+	return &models.BuildTestCaseExecution{
+		ID:            executionID,
+		BuildID:       buildID,
+		TestCaseID:    input.TestCaseID,
+		Status:        statusToInsert,
+		ExecutionTime: input.ExecutionTime,
+	}, nil
+}
+
+// insertFailureDetails inserts failure details into the database
+func (s *BuildExecutionService) insertFailureDetails(tx *sql.Tx, executionID int64, input models.BuildExecutionInput) error {
+	_, err := tx.Exec(
+		`INSERT INTO failures (build_test_case_execution_id, message, type, details)
+		 VALUES ($1, $2, $3, $4)`,
+		executionID, input.FailureMessage, input.FailureType, input.FailureDetails,
+	)
+	return err
+}
+
 // CreateBuildExecutions handles the creation of multiple build execution records.
 // It returns a slice of successfully created executions, a slice of error messages for individual failures,
 // and a general error if a non-recoverable issue occurs (e.g., cannot start transaction).
-func (s *BuildExecutionService) CreateBuildExecutions(buildID int64, inputs []models.BuildExecutionInput) ([]models.BuildTestCaseExecution, []string, error) { // Changed to models.BuildExecutionInput
+func (s *BuildExecutionService) CreateBuildExecutions(buildID int64, inputs []models.BuildExecutionInput) ([]models.BuildTestCaseExecution, []string, error) {
 	var createdExecutions []models.BuildTestCaseExecution
 	var processingErrors []string
-	validStatuses := map[string]bool{"passed": true, "failed": true, "skipped": true, "error": true}
 
 	for _, input := range inputs {
-		tcExists, err := s.CheckTestCaseExists(input.TestCaseID)
+		// Validate input
+		if err := s.validateBuildExecutionInput(input); err != nil {
+			processingErrors = append(processingErrors, err.Error())
+			continue
+		}
+
+		// Create execution
+		execution, err := s.createSingleExecution(buildID, input)
 		if err != nil {
-			processingErrors = append(processingErrors, fmt.Sprintf("Error checking test case %d: %s", input.TestCaseID, err.Error()))
-			continue
-		}
-		if !tcExists {
-			processingErrors = append(processingErrors, fmt.Sprintf("Test case with ID %d not found.", input.TestCaseID))
+			processingErrors = append(processingErrors, err.Error())
 			continue
 		}
 
-		statusToInsert := strings.ToLower(input.Status)
-		if !validStatuses[statusToInsert] {
-			processingErrors = append(processingErrors, fmt.Sprintf("Invalid status '%s' for test case ID %d. Must be one of: passed, failed, skipped, error.", input.Status, input.TestCaseID))
-			continue
-		}
-
-		tx, err := s.DB.Begin()
-		if err != nil {
-			// This is a more global error, return it directly
-			return createdExecutions, processingErrors, fmt.Errorf("failed to start database transaction: %w", err)
-		}
-
-		var executionID int64
-		err = tx.QueryRow(
-			`INSERT INTO build_test_case_executions (build_id, test_case_id, status, execution_time)
-			 VALUES ($1, $2, $3, $4)
-			 RETURNING id`,
-			buildID, input.TestCaseID, statusToInsert, input.ExecutionTime,
-		).Scan(&executionID)
-
-		if err != nil {
-			if rbErr := tx.Rollback(); rbErr != nil {
-				// Log rollback error but return the original error
-				processingErrors = append(processingErrors, fmt.Sprintf("Error inserting execution for test case %d: %s (rollback error: %s)", input.TestCaseID, err.Error(), rbErr.Error()))
-			} else {
-				processingErrors = append(processingErrors, fmt.Sprintf("Error inserting execution for test case %d: %s", input.TestCaseID, err.Error()))
-			}
-			continue
-		}
-
-		if (statusToInsert == "failed" || statusToInsert == "error") &&
-			(input.FailureMessage != nil || input.FailureType != nil || input.FailureDetails != nil) {
-			_, err = tx.Exec(
-				`INSERT INTO failures (build_test_case_execution_id, message, type, details)
-				 VALUES ($1, $2, $3, $4)`,
-				executionID, input.FailureMessage, input.FailureType, input.FailureDetails,
-			)
-			if err != nil {
-				if rbErr := tx.Rollback(); rbErr != nil {
-					// Log rollback error but return the original error
-					processingErrors = append(processingErrors, fmt.Sprintf("Error inserting failure details for test case %d (execution %d): %s (rollback error: %s)", input.TestCaseID, executionID, err.Error(), rbErr.Error()))
-				} else {
-					processingErrors = append(processingErrors, fmt.Sprintf("Error inserting failure details for test case %d (execution %d): %s", input.TestCaseID, executionID, err.Error()))
-				}
-				continue
-			}
-		}
-
-		if err := tx.Commit(); err != nil {
-			processingErrors = append(processingErrors, fmt.Sprintf("Error committing transaction for test case %d: %s", input.TestCaseID, err.Error()))
-			continue
-		}
-
-		// For simplicity, we're just adding a basic model here.
-		// The handler might want to re-fetch or construct a more detailed DTO if needed.
-		createdExecutions = append(createdExecutions, models.BuildTestCaseExecution{
-			ID:            executionID,
-			BuildID:       buildID,
-			TestCaseID:    input.TestCaseID,
-			Status:        statusToInsert,
-			ExecutionTime: input.ExecutionTime,
-			// CreatedAt would be set by DB, not available here without another query
-		})
+		createdExecutions = append(createdExecutions, *execution)
 	}
 
 	return createdExecutions, processingErrors, nil

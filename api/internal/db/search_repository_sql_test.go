@@ -25,6 +25,51 @@ func TestNewSearchRepository(t *testing.T) {
 	}
 }
 
+// setupMockExpectations sets up mock expectations for a search test
+func setupMockExpectations(mock sqlmock.Sqlmock, query string, expected []models.SearchResult) {
+	rows := sqlmock.NewRows([]string{"type", "id", "name", "url"})
+	for _, result := range expected {
+		rows.AddRow(result.Type, result.ID, result.Name, result.URL)
+	}
+
+	expectedPattern := "%" + query + "%"
+	mock.ExpectQuery("SELECT 'project' as type, p.id, p.name, '/projects/' \\|\\| p.id as url").
+		WithArgs(expectedPattern).
+		WillReturnRows(rows)
+}
+
+// validateSearchResults validates that the search results match the expected results
+func validateSearchResults(t *testing.T, results, expected []models.SearchResult) {
+	if len(results) != len(expected) {
+		t.Errorf("expected %d results, got %d", len(expected), len(results))
+		return
+	}
+
+	for i, expected := range expected {
+		if i >= len(results) {
+			t.Errorf("missing result at index %d", i)
+			continue
+		}
+		validateSingleResult(t, i, results[i], expected)
+	}
+}
+
+// validateSingleResult validates a single search result
+func validateSingleResult(t *testing.T, index int, result, expected models.SearchResult) {
+	if result.Type != expected.Type {
+		t.Errorf("result %d: expected Type %s, got %s", index, expected.Type, result.Type)
+	}
+	if result.ID != expected.ID {
+		t.Errorf("result %d: expected ID %d, got %d", index, expected.ID, result.ID)
+	}
+	if result.Name != expected.Name {
+		t.Errorf("result %d: expected Name %s, got %s", index, expected.Name, result.Name)
+	}
+	if result.URL != expected.URL {
+		t.Errorf("result %d: expected URL %s, got %s", index, expected.URL, result.URL)
+	}
+}
+
 func TestSearchRepository_Search(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -88,17 +133,7 @@ func TestSearchRepository_Search(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set up mock expectations for the complex UNION query
-			rows := sqlmock.NewRows([]string{"type", "id", "name", "url"})
-			for _, result := range tt.expected {
-				rows.AddRow(result.Type, result.ID, result.Name, result.URL)
-			}
-
-			// The search query uses ILIKE with %query% pattern
-			expectedPattern := "%" + tt.query + "%"
-			mock.ExpectQuery("SELECT 'project' as type, p.id, p.name, '/projects/' \\|\\| p.id as url").
-				WithArgs(expectedPattern).
-				WillReturnRows(rows)
+			setupMockExpectations(mock, tt.query, tt.expected)
 
 			results, err := repo.Search(tt.query)
 
@@ -111,30 +146,10 @@ func TestSearchRepository_Search(t *testing.T) {
 
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
+				return
 			}
 
-			if len(results) != len(tt.expected) {
-				t.Errorf("expected %d results, got %d", len(tt.expected), len(results))
-			}
-
-			for i, expected := range tt.expected {
-				if i >= len(results) {
-					t.Errorf("missing result at index %d", i)
-					continue
-				}
-				if results[i].Type != expected.Type {
-					t.Errorf("result %d: expected Type %s, got %s", i, expected.Type, results[i].Type)
-				}
-				if results[i].ID != expected.ID {
-					t.Errorf("result %d: expected ID %d, got %d", i, expected.ID, results[i].ID)
-				}
-				if results[i].Name != expected.Name {
-					t.Errorf("result %d: expected Name %s, got %s", i, expected.Name, results[i].Name)
-				}
-				if results[i].URL != expected.URL {
-					t.Errorf("result %d: expected URL %s, got %s", i, expected.URL, results[i].URL)
-				}
-			}
+			validateSearchResults(t, results, tt.expected)
 		})
 	}
 

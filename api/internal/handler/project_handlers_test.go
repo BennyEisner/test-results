@@ -94,7 +94,8 @@ func TestProjectHandler_GetProjectByID(t *testing.T) {
 	}
 }
 
-func TestProjectHandler_GetProjects(t *testing.T) {
+// setupGetProjectsTest sets up the test environment for GetProjects tests
+func setupGetProjectsTest() *ProjectHandler {
 	mockSvc := &mockProjectService{
 		GetAllProjectsFunc: func() ([]models.Project, error) {
 			return []models.Project{{ID: 1, Name: "A"}, {ID: 2, Name: "B"}}, nil
@@ -106,38 +107,58 @@ func TestProjectHandler_GetProjects(t *testing.T) {
 			return nil, sql.ErrNoRows
 		},
 	}
-	h := NewProjectHandler(mockSvc)
+	return NewProjectHandler(mockSvc)
+}
+
+// validateProjectsResponse validates the response for projects endpoint
+func validateProjectsResponse(t *testing.T, rr *httptest.ResponseRecorder, expectedStatus int, expectedCount int) {
+	if rr.Code != expectedStatus {
+		t.Errorf("expected status %d, got %d", expectedStatus, rr.Code)
+	}
+
+	if expectedCount > 0 {
+		var got []utils.Project
+		if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+		if len(got) != expectedCount {
+			t.Errorf("expected %d projects, got %d", expectedCount, len(got))
+		}
+	}
+}
+
+// validateSingleProjectResponse validates the response for a single project
+func validateSingleProjectResponse(t *testing.T, rr *httptest.ResponseRecorder, expectedStatus int, expectedName string) {
+	if rr.Code != expectedStatus {
+		t.Errorf("expected status %d, got %d", expectedStatus, rr.Code)
+	}
+
+	if expectedName != "" {
+		var got utils.Project
+		if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+		if got.Name != expectedName {
+			t.Errorf("expected project name %s, got %s", expectedName, got.Name)
+		}
+	}
+}
+
+func TestProjectHandler_GetProjects(t *testing.T) {
+	h := setupGetProjectsTest()
 
 	t.Run("all projects", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/projects", nil)
 		rr := httptest.NewRecorder()
 		h.GetProjects(rr, req)
-		if rr.Code != http.StatusOK {
-			t.Errorf("expected status 200, got %d", rr.Code)
-		}
-		var got []utils.Project
-		if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
-			t.Fatalf("failed to decode response: %v", err)
-		}
-		if len(got) != 2 || got[0].Name != "A" || got[1].Name != "B" {
-			t.Errorf("unexpected projects: %+v", got)
-		}
+		validateProjectsResponse(t, rr, http.StatusOK, 2)
 	})
 
 	t.Run("by name found", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/projects?name=A", nil)
 		rr := httptest.NewRecorder()
 		h.GetProjects(rr, req)
-		if rr.Code != http.StatusOK {
-			t.Errorf("expected status 200, got %d", rr.Code)
-		}
-		var got utils.Project
-		if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
-			t.Fatalf("failed to decode response: %v", err)
-		}
-		if got.Name != "A" {
-			t.Errorf("expected project A, got %+v", got)
-		}
+		validateSingleProjectResponse(t, rr, http.StatusOK, "A")
 	})
 
 	t.Run("by name not found", func(t *testing.T) {
