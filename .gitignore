@@ -8,3 +8,4 @@ coverage.xml
 
 .aider*
 node_modules/
+.DS_Store
