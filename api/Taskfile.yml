@@ -7,7 +7,7 @@ tasks:
       - |
         if ! command -v golangci-lint >/dev/null 2>&1; then
           echo "Installing golangci-lint from source..."
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.57.2
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
         fi
       - |
         if ! command -v mockgen >/dev/null 2>&1; then

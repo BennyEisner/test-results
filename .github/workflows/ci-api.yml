@@ -47,12 +47,7 @@ jobs:
       - name: Install dependencies
         run: task deps
 
-      - name: Setup Go 1.21.x for linting
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.21.10'
-
-      - name: Lint (Go 1.21.x)
+      - name: Lint
         run: task lint
 
       - name: Test
