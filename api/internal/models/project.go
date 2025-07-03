@@ -11,7 +11,7 @@ type Project struct {
 }
 type ProjectXML struct {
 	XMLName xml.Name `xml:"project"`
-	Project Project  `xml:",inline"`
+	Project Project  `xml:"project"`
 }
 
 // ScanFromRow scans a single row into a Project

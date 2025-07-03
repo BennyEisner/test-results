@@ -7,40 +7,41 @@ import (
 	"os"
 	"time"
 
+	dbrepo "github.com/BennyEisner/test-results/internal/db"
 	"github.com/BennyEisner/test-results/internal/handler"
 	"github.com/BennyEisner/test-results/internal/middleware"
 	"github.com/BennyEisner/test-results/internal/service"
 )
 
-func NewRouter(db *sql.DB) http.Handler {
+func NewRouter(sqlDB *sql.DB) http.Handler {
 	mux := http.NewServeMux()
 
-	projectRepo := db.NewSQLProjectRepository(db)
+	projectRepo := dbrepo.NewSQLProjectRepository(sqlDB)
 	var projectService service.ProjectServiceInterface = service.NewProjectService(projectRepo)
 	projectHandler := handler.NewProjectHandler(projectService)
 
-	buildService := service.NewBuildService(db)
+	buildService := service.NewBuildService(sqlDB)
 	buildHandler := handler.NewBuildHandler(buildService)
 
-	buildExecutionService := service.NewBuildExecutionService(db)
+	buildExecutionService := service.NewBuildExecutionService(sqlDB)
 	buildExecutionHandler := handler.NewBuildExecutionHandler(buildExecutionService)
 
-	testSuiteService := service.NewTestSuiteService(db)
+	testSuiteService := service.NewTestSuiteService(sqlDB)
 	testSuiteHandler := handler.NewTestSuiteHandler(testSuiteService)
 
-	testCaseService := service.NewTestCaseService(db)
+	testCaseService := service.NewTestCaseService(sqlDB)
 	testCaseHandler := handler.NewTestCaseHandler(testCaseService)
 
-	failuresService := service.NewFailuresService(db)
+	failuresService := service.NewFailuresService(sqlDB)
 	failuresHandler := handler.NewFailuresHandler(failuresService)
 
-	junitImportService := service.NewJUnitImportService(db, buildService, testSuiteService, testCaseService, buildExecutionService)
+	junitImportService := service.NewJUnitImportService(sqlDB, buildService, testSuiteService, testCaseService, buildExecutionService)
 	junitImportHandler := handler.NewJUnitImportHandler(junitImportService)
 
-	searchService := service.NewSearchService(db)
+	searchService := service.NewSearchService(sqlDB)
 	searchHandler := handler.NewSearchHandler(searchService)
 
-	userConfigService := service.NewUserConfigService(db)
+	userConfigService := service.NewUserConfigService(sqlDB)
 	userConfigHandler := handler.NewUserConfigHandler(userConfigService)
 
 	// Health and monitoring endpoints

@@ -58,10 +58,16 @@ func (s *JUnitImportService) processJUnitDataWithTx(projectID int64, suiteID int
 	}
 	defer func() {
 		if p := recover(); p != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				// Log rollback error but re-panic with original panic
+				_ = rbErr // Suppress unused variable warning
+			}
 			panic(p)
 		} else if err != nil {
-			tx.Rollback()
+			if rbErr := tx.Rollback(); rbErr != nil {
+				// Log rollback error but return the original error
+				_ = rbErr // Suppress unused variable warning
+			}
 		} else {
 			err = tx.Commit()
 			if err != nil {

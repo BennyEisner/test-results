@@ -30,7 +30,9 @@ func TestLoggingMiddleware(t *testing.T) {
 			statusCode: http.StatusOK,
 			handler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				io.WriteString(w, "OK")
+				if _, err := io.WriteString(w, "OK"); err != nil {
+					t.Errorf("failed to write response: %v", err)
+				}
 			},
 		},
 		{

@@ -160,8 +160,12 @@ func (s *BuildExecutionService) CreateBuildExecutions(buildID int64, inputs []mo
 		).Scan(&executionID)
 
 		if err != nil {
-			tx.Rollback()
-			processingErrors = append(processingErrors, fmt.Sprintf("Error inserting execution for test case %d: %s", input.TestCaseID, err.Error()))
+			if rbErr := tx.Rollback(); rbErr != nil {
+				// Log rollback error but return the original error
+				processingErrors = append(processingErrors, fmt.Sprintf("Error inserting execution for test case %d: %s (rollback error: %s)", input.TestCaseID, err.Error(), rbErr.Error()))
+			} else {
+				processingErrors = append(processingErrors, fmt.Sprintf("Error inserting execution for test case %d: %s", input.TestCaseID, err.Error()))
+			}
 			continue
 		}
 
@@ -173,8 +177,12 @@ func (s *BuildExecutionService) CreateBuildExecutions(buildID int64, inputs []mo
 				executionID, input.FailureMessage, input.FailureType, input.FailureDetails,
 			)
 			if err != nil {
-				tx.Rollback()
-				processingErrors = append(processingErrors, fmt.Sprintf("Error inserting failure details for test case %d (execution %d): %s", input.TestCaseID, executionID, err.Error()))
+				if rbErr := tx.Rollback(); rbErr != nil {
+					// Log rollback error but return the original error
+					processingErrors = append(processingErrors, fmt.Sprintf("Error inserting failure details for test case %d (execution %d): %s (rollback error: %s)", input.TestCaseID, executionID, err.Error(), rbErr.Error()))
+				} else {
+					processingErrors = append(processingErrors, fmt.Sprintf("Error inserting failure details for test case %d (execution %d): %s", input.TestCaseID, executionID, err.Error()))
+				}
 				continue
 			}
 		}

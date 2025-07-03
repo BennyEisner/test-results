@@ -152,7 +152,9 @@ func (ph *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) 
 		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusCreated)
 		xmlResponse := models.ProjectXML{Project: models.Project{ID: createdProjectModel.ID, Name: createdProjectModel.Name}}
-		xml.NewEncoder(w).Encode(xmlResponse)
+		if err := xml.NewEncoder(w).Encode(xmlResponse); err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
 	} else {
 		utils.RespondWithJSON(w, http.StatusCreated, apiProject)
 	}

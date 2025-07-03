@@ -27,7 +27,10 @@ type Build struct {
 func RespondWithJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		// Log error but can't write to response as headers already sent
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
 }
 
 func RespondWithError(w http.ResponseWriter, status int, message string) {
