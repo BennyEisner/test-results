@@ -113,10 +113,10 @@ This project uses [uber-go/mock](https://github.com/uber-go/mock) for interface-
 
 #### 1. Define Interfaces
 
-Interfaces are already defined in the codebase:
+Interfaces are defined in the hexagonal architecture domain layer:
 
 ```go
-// internal/models/project_repository.go
+// internal/domain/ports.go
 type ProjectRepository interface {
     GetByID(ctx context.Context, id int64) (*Project, error)
     GetAll(ctx context.Context) ([]*Project, error)
@@ -124,10 +124,9 @@ type ProjectRepository interface {
     // ... other methods
 }
 
-// internal/service/project_service.go
-type ProjectServiceInterface interface {
-    GetProjectByID(id int64) (*models.Project, error)
-    CreateProject(name string) (*models.Project, error)
+type ProjectService interface {
+    GetProjectByID(ctx context.Context, id int64) (*Project, error)
+    CreateProject(ctx context.Context, name string) (*Project, error)
     // ... other methods
 }
 ```
@@ -138,20 +137,17 @@ type ProjectServiceInterface interface {
 task mocks
 ```
 
-This generates mocks for all interfaces:
-- `internal/models/mocks/project_repository_mock.go`
-- `internal/service/mocks/project_service_mock.go`
-- And many more...
+This generates mocks for all domain interfaces in a single file:
+- `internal/domain/mocks.go` - Contains all repository and service mocks
 
 #### 3. Write Tests Using Mocks
 
 ```go
-package service
+package application
 
 import (
     "testing"
-    "github.com/BennyEisner/test-results/internal/models"
-    mock_models "github.com/BennyEisner/test-results/internal/models/mocks"
+    "github.com/BennyEisner/test-results/internal/domain"
     "github.com/stretchr/testify/assert"
     "go.uber.org/mock/gomock"
 )
@@ -162,19 +158,19 @@ func TestProjectService_GetProjectByID(t *testing.T) {
     defer ctrl.Finish()
     
     // Create mock repository
-    mockRepo := mock_models.NewMockProjectRepository(ctrl)
+    mockRepo := domain.NewMockProjectRepository(ctrl)
     
     // Create service with mock
     service := NewProjectService(mockRepo)
 
     t.Run("success", func(t *testing.T) {
-        expectedProject := &models.Project{ID: 1, Name: "Test Project"}
+        expectedProject := &domain.Project{ID: 1, Name: "Test Project"}
         
         // Set up mock expectations
         mockRepo.EXPECT().GetByID(gomock.Any(), int64(1)).Return(expectedProject, nil)
         
         // Call the service method
-        result, err := service.GetProjectByID(1)
+        result, err := service.GetProjectByID(context.Background(), 1)
         
         // Assertions
         assert.NoError(t, err)
@@ -190,23 +186,22 @@ func TestProjectService_GetProjectByID(t *testing.T) {
 task test
 
 # Run specific test
-go test ./internal/service -v -run TestProjectService_GetProjectByID
+go test ./internal/application -v -run TestProjectService_GetProjectByID
 
 # Run all mock-based tests
-go test ./internal/service -v -run ".*WithMock"
+go test ./internal/application -v -run ".*WithMock"
 ```
 
 ### Mock Generation Details
 
-The `task mocks` command generates mocks for:
+The `task mocks` command generates mocks for all domain interfaces:
 
-- **Repository interfaces**: `ProjectRepository`, `SearchRepository`
-- **Service interfaces**: All service interfaces in the `service` package
-- **Custom interfaces**: Any other interfaces defined in the codebase
+- **Repository interfaces**: `ProjectRepository`, `TestSuiteRepository`, `TestCaseRepository`, etc.
+- **Service interfaces**: `ProjectService`, `TestSuiteService`, `TestCaseService`, etc.
+- **All domain interfaces**: Any other interfaces defined in the domain layer
 
 Generated mocks are placed in:
-- `internal/models/mocks/` - For repository mocks
-- `internal/service/mocks/` - For service mocks
+- `internal/domain/mocks.go` - Single file containing all mocks
 
 ### Key Mock Features
 

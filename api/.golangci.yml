@@ -22,5 +22,4 @@ issues:
       linters:
         - errcheck
   exclude:
-    - "cmd/server/main_test.go"
-    - "internal/db/.*_test.go" 
+    - "cmd/server/main_test.go" 
