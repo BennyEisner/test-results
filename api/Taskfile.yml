@@ -30,8 +30,10 @@ tasks:
     desc: Generate mocks for hexagonal architecture domain interfaces
     deps: [setup, deps]
     cmds:
-      # Generate all mocks in a single file to avoid package conflicts
-      - mockgen -source=internal/domain/ports.go -destination=internal/domain/mocks.go -package=domain
+      # Generate mocks for repositories
+      - mockgen -source=internal/domain/ports/repositories.go -destination=internal/domain/ports/repositories_mock.go -package=ports
+      # Generate mocks for services
+      - mockgen -source=internal/domain/ports/services.go -destination=internal/domain/ports/services_mock.go -package=ports
 
   lint:
     desc: Run golangci-lint

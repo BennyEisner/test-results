@@ -3,35 +3,45 @@ package application
 import (
 	"context"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// BuildExecutionServiceAdapter adapts BuildTestCaseExecutionService to BuildExecutionService
 type BuildExecutionServiceAdapter struct {
-	inner domain.BuildTestCaseExecutionService
+	buildTestCaseExecutionService ports.BuildTestCaseExecutionService
 }
 
-func NewBuildExecutionServiceAdapter(inner domain.BuildTestCaseExecutionService) domain.BuildExecutionService {
-	return &BuildExecutionServiceAdapter{inner: inner}
+// NewBuildExecutionServiceAdapter creates a new adapter
+func NewBuildExecutionServiceAdapter(buildTestCaseExecutionService ports.BuildTestCaseExecutionService) ports.BuildExecutionService {
+	return &BuildExecutionServiceAdapter{
+		buildTestCaseExecutionService: buildTestCaseExecutionService,
+	}
 }
 
-func (a *BuildExecutionServiceAdapter) CreateBuildExecutions(ctx context.Context, buildID int64, executions []*domain.BuildExecution) error {
-	for _, exec := range executions {
-		if exec == nil {
+// GetBuildExecutions implements BuildExecutionService
+func (a *BuildExecutionServiceAdapter) GetBuildExecutions(ctx context.Context, buildID int64) ([]*models.BuildExecution, error) {
+	// This is a stub implementation - the adapter doesn't need to implement this for JUnitImportService
+	return nil, nil
+}
+
+// CreateBuildExecutions implements BuildExecutionService
+func (a *BuildExecutionServiceAdapter) CreateBuildExecutions(ctx context.Context, buildID int64, executions []*models.BuildExecution) error {
+	for _, execution := range executions {
+		if execution == nil {
 			continue
 		}
-		input := &domain.BuildExecutionInput{
-			TestCaseID:    exec.TestCaseID,
-			Status:        exec.Status,
-			ExecutionTime: exec.ExecutionTime,
+
+		input := &models.BuildExecutionInput{
+			TestCaseID:    execution.TestCaseID,
+			Status:        execution.Status,
+			ExecutionTime: execution.ExecutionTime,
 		}
-		_, err := a.inner.CreateExecution(ctx, buildID, input)
+
+		_, err := a.buildTestCaseExecutionService.CreateExecution(ctx, buildID, input)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (a *BuildExecutionServiceAdapter) GetBuildExecutions(ctx context.Context, buildID int64) ([]*domain.BuildExecution, error) {
-	return []*domain.BuildExecution{}, nil // Not implemented
 }

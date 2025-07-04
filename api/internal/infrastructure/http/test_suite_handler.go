@@ -5,131 +5,125 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// TestSuiteHandler handles HTTP requests for test suites
 type TestSuiteHandler struct {
-	svc domain.TestSuiteService
+	Service ports.TestSuiteService
 }
 
-func NewTestSuiteHandler(svc domain.TestSuiteService) *TestSuiteHandler {
-	return &TestSuiteHandler{svc: svc}
+// NewTestSuiteHandler creates a new TestSuiteHandler
+func NewTestSuiteHandler(service ports.TestSuiteService) *TestSuiteHandler {
+	return &TestSuiteHandler{Service: service}
 }
 
+// GetTestSuiteByID handles GET /test-suites/{id}
 func (h *TestSuiteHandler) GetTestSuiteByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid test suite ID")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	ts, err := h.svc.GetTestSuiteByID(ctx, id)
+	suite, err := h.Service.GetTestSuiteByID(r.Context(), id)
 	if err != nil {
-		switch err {
-		case domain.ErrTestSuiteNotFound:
-			respondWithError(w, http.StatusNotFound, "test suite not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "internal error")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, ts)
+	if suite == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(suite); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// GetTestSuitesByProjectID handles GET /projects/{projectID}/test-suites
 func (h *TestSuiteHandler) GetTestSuitesByProjectID(w http.ResponseWriter, r *http.Request) {
-	projectIDStr := r.PathValue("id")
+	projectIDStr := r.URL.Query().Get("project_id")
 	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid project ID")
+		http.Error(w, "invalid project_id", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	ts, err := h.svc.GetTestSuitesByProjectID(ctx, projectID)
+	suites, err := h.Service.GetTestSuitesByProjectID(r.Context(), projectID)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "failed to get test suites")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, ts)
+	if err := json.NewEncoder(w).Encode(suites); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// CreateTestSuite handles POST /test-suites
 func (h *TestSuiteHandler) CreateTestSuite(w http.ResponseWriter, r *http.Request) {
-	projectIDStr := r.PathValue("id")
-	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid project ID")
-		return
-	}
 	var req struct {
-		Name     string `json:"name"`
-		ParentID *int64 `json:"parent_id,omitempty"`
+		ProjectID int64  `json:"project_id"`
+		Name      string `json:"name"`
+		ParentID  *int64 `json:"parent_id,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	ts, err := h.svc.CreateTestSuite(ctx, projectID, req.Name, req.ParentID)
+	suite, err := h.Service.CreateTestSuite(r.Context(), req.ProjectID, req.Name, req.ParentID)
 	if err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		case domain.ErrDuplicateTestSuite:
-			respondWithError(w, http.StatusConflict, "test suite already exists")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to create test suite")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusCreated, ts)
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(suite); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// UpdateTestSuite handles PUT /test-suites/{id}
 func (h *TestSuiteHandler) UpdateTestSuite(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid test suite ID")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 	var req struct {
 		Name string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	ts, err := h.svc.UpdateTestSuite(ctx, id, req.Name)
+	suite, err := h.Service.UpdateTestSuite(r.Context(), id, req.Name)
 	if err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to update test suite")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, ts)
+	if suite == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(suite); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// DeleteTestSuite handles DELETE /test-suites/{id}
 func (h *TestSuiteHandler) DeleteTestSuite(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid test suite ID")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	if err := h.svc.DeleteTestSuite(ctx, id); err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to delete test suite")
-		}
+	if err := h.Service.DeleteTestSuite(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, map[string]string{"message": "test suite deleted successfully"})
+	w.WriteHeader(http.StatusNoContent)
 }

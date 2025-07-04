@@ -3,80 +3,141 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// SQLTestCaseRepository implements the TestCaseRepository interface
 type SQLTestCaseRepository struct {
 	db *sql.DB
 }
 
-func NewSQLTestCaseRepository(db *sql.DB) domain.TestCaseRepository {
+// NewSQLTestCaseRepository creates a new SQL test case repository
+func NewSQLTestCaseRepository(db *sql.DB) ports.TestCaseRepository {
 	return &SQLTestCaseRepository{db: db}
 }
 
-func (r *SQLTestCaseRepository) GetByID(ctx context.Context, id int64) (*domain.TestCase, error) {
+// GetByID retrieves a test case by its ID
+func (r *SQLTestCaseRepository) GetByID(ctx context.Context, id int64) (*models.TestCase, error) {
 	query := `SELECT id, suite_id, name, classname FROM test_cases WHERE id = $1`
-	testCase := &domain.TestCase{}
-	if err := r.db.QueryRowContext(ctx, query, id).Scan(&testCase.ID, &testCase.SuiteID, &testCase.Name, &testCase.Classname); err != nil {
+
+	var testCase models.TestCase
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&testCase.ID, &testCase.SuiteID, &testCase.Name, &testCase.Classname,
+	)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to get test case by ID: %w", err)
 	}
-	return testCase, nil
+
+	return &testCase, nil
 }
 
-func (r *SQLTestCaseRepository) GetAllBySuiteID(ctx context.Context, suiteID int64) ([]*domain.TestCase, error) {
+// GetAllBySuiteID retrieves all test cases for a suite
+func (r *SQLTestCaseRepository) GetAllBySuiteID(ctx context.Context, suiteID int64) ([]*models.TestCase, error) {
 	query := `SELECT id, suite_id, name, classname FROM test_cases WHERE suite_id = $1 ORDER BY name`
+
 	rows, err := r.db.QueryContext(ctx, query, suiteID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get test cases by suite ID: %w", err)
 	}
 	defer rows.Close()
 
-	var testCases []*domain.TestCase
+	var testCases []*models.TestCase
 	for rows.Next() {
-		testCase := &domain.TestCase{}
-		if err := rows.Scan(&testCase.ID, &testCase.SuiteID, &testCase.Name, &testCase.Classname); err != nil {
-			return nil, err
+		var testCase models.TestCase
+
+		err := rows.Scan(
+			&testCase.ID, &testCase.SuiteID, &testCase.Name, &testCase.Classname,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan test case: %w", err)
 		}
-		testCases = append(testCases, testCase)
+
+		testCases = append(testCases, &testCase)
 	}
+
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error iterating test cases: %w", err)
 	}
+
 	return testCases, nil
 }
 
-func (r *SQLTestCaseRepository) GetByName(ctx context.Context, suiteID int64, name string) (*domain.TestCase, error) {
+// GetByName retrieves a test case by its name within a suite
+func (r *SQLTestCaseRepository) GetByName(ctx context.Context, suiteID int64, name string) (*models.TestCase, error) {
 	query := `SELECT id, suite_id, name, classname FROM test_cases WHERE suite_id = $1 AND name = $2`
-	testCase := &domain.TestCase{}
-	if err := r.db.QueryRowContext(ctx, query, suiteID, name).Scan(&testCase.ID, &testCase.SuiteID, &testCase.Name, &testCase.Classname); err != nil {
+
+	var testCase models.TestCase
+
+	err := r.db.QueryRowContext(ctx, query, suiteID, name).Scan(
+		&testCase.ID, &testCase.SuiteID, &testCase.Name, &testCase.Classname,
+	)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to get test case by name: %w", err)
 	}
-	return testCase, nil
+
+	return &testCase, nil
 }
 
-func (r *SQLTestCaseRepository) Create(ctx context.Context, tc *domain.TestCase) error {
+// Create creates a new test case
+func (r *SQLTestCaseRepository) Create(ctx context.Context, testCase *models.TestCase) error {
 	query := `INSERT INTO test_cases (suite_id, name, classname) VALUES ($1, $2, $3) RETURNING id`
-	return r.db.QueryRowContext(ctx, query, tc.SuiteID, tc.Name, tc.Classname).Scan(&tc.ID)
-}
 
-func (r *SQLTestCaseRepository) Update(ctx context.Context, id int64, name, classname string) (*domain.TestCase, error) {
-	query := `UPDATE test_cases SET name = $1, classname = $2 WHERE id = $3 RETURNING id, suite_id, name, classname`
-	testCase := &domain.TestCase{}
-	if err := r.db.QueryRowContext(ctx, query, name, classname, id).Scan(&testCase.ID, &testCase.SuiteID, &testCase.Name, &testCase.Classname); err != nil {
-		return nil, err
+	err := r.db.QueryRowContext(ctx, query,
+		testCase.SuiteID, testCase.Name, testCase.Classname,
+	).Scan(&testCase.ID)
+	if err != nil {
+		return fmt.Errorf("failed to create test case: %w", err)
 	}
-	return testCase, nil
+
+	return nil
 }
 
+// Update updates an existing test case
+func (r *SQLTestCaseRepository) Update(ctx context.Context, id int64, name, classname string) (*models.TestCase, error) {
+	query := `UPDATE test_cases SET name = $1, classname = $2 WHERE id = $3 RETURNING id, suite_id, name, classname`
+
+	var testCase models.TestCase
+
+	err := r.db.QueryRowContext(ctx, query, name, classname, id).Scan(
+		&testCase.ID, &testCase.SuiteID, &testCase.Name, &testCase.Classname,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to update test case: %w", err)
+	}
+
+	return &testCase, nil
+}
+
+// Delete deletes a test case by its ID
 func (r *SQLTestCaseRepository) Delete(ctx context.Context, id int64) error {
 	query := `DELETE FROM test_cases WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, id)
-	return err
+
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete test case: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("test case not found")
+	}
+
+	return nil
 }

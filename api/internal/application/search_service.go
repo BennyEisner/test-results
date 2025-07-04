@@ -4,28 +4,27 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// SearchService implements the SearchService interface
 type SearchService struct {
-	searchRepo domain.SearchRepository
+	repo ports.SearchRepository
 }
 
-func NewSearchService(searchRepo domain.SearchRepository) domain.SearchService {
-	return &SearchService{
-		searchRepo: searchRepo,
-	}
+func NewSearchService(repo ports.SearchRepository) ports.SearchService {
+	return &SearchService{repo: repo}
 }
 
-func (s *SearchService) Search(ctx context.Context, query string) ([]*domain.SearchResult, error) {
+func (s *SearchService) Search(ctx context.Context, query string) ([]*models.SearchResult, error) {
 	if query == "" {
-		return []*domain.SearchResult{}, nil
+		return []*models.SearchResult{}, nil
 	}
 
-	results, err := s.searchRepo.Search(ctx, query)
+	results, err := s.repo.Search(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search: %w", err)
 	}
-
 	return results, nil
 }

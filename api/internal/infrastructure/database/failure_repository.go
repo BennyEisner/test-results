@@ -3,28 +3,39 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// SQLFailureRepository implements the FailureRepository interface
 type SQLFailureRepository struct {
 	db *sql.DB
 }
 
-func NewSQLFailureRepository(db *sql.DB) domain.FailureRepository {
+// NewSQLFailureRepository creates a new SQL failure repository
+func NewSQLFailureRepository(db *sql.DB) ports.FailureRepository {
 	return &SQLFailureRepository{db: db}
 }
 
-func (r *SQLFailureRepository) GetByID(ctx context.Context, id int64) (*domain.Failure, error) {
+// GetByID retrieves a failure by its ID
+func (r *SQLFailureRepository) GetByID(ctx context.Context, id int64) (*models.Failure, error) {
 	query := `SELECT id, build_test_case_execution_id, message, type, details FROM failures WHERE id = $1`
-	failure := &domain.Failure{}
+
+	var failure models.Failure
 	var message, failureType, details sql.NullString
-	if err := r.db.QueryRowContext(ctx, query, id).Scan(&failure.ID, &failure.BuildTestCaseExecutionID, &message, &failureType, &details); err != nil {
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&failure.ID, &failure.BuildTestCaseExecutionID, &message, &failureType, &details,
+	)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to get failure by ID: %w", err)
 	}
+
 	if message.Valid {
 		failure.Message = &message.String
 	}
@@ -34,19 +45,27 @@ func (r *SQLFailureRepository) GetByID(ctx context.Context, id int64) (*domain.F
 	if details.Valid {
 		failure.Details = &details.String
 	}
-	return failure, nil
+
+	return &failure, nil
 }
 
-func (r *SQLFailureRepository) GetByExecutionID(ctx context.Context, executionID int64) (*domain.Failure, error) {
+// GetByExecutionID retrieves a failure by execution ID
+func (r *SQLFailureRepository) GetByExecutionID(ctx context.Context, executionID int64) (*models.Failure, error) {
 	query := `SELECT id, build_test_case_execution_id, message, type, details FROM failures WHERE build_test_case_execution_id = $1`
-	failure := &domain.Failure{}
+
+	var failure models.Failure
 	var message, failureType, details sql.NullString
-	if err := r.db.QueryRowContext(ctx, query, executionID).Scan(&failure.ID, &failure.BuildTestCaseExecutionID, &message, &failureType, &details); err != nil {
+
+	err := r.db.QueryRowContext(ctx, query, executionID).Scan(
+		&failure.ID, &failure.BuildTestCaseExecutionID, &message, &failureType, &details,
+	)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to get failure by execution ID: %w", err)
 	}
+
 	if message.Valid {
 		failure.Message = &message.String
 	}
@@ -56,59 +75,71 @@ func (r *SQLFailureRepository) GetByExecutionID(ctx context.Context, executionID
 	if details.Valid {
 		failure.Details = &details.String
 	}
-	return failure, nil
+
+	return &failure, nil
 }
 
-func (r *SQLFailureRepository) Create(ctx context.Context, failure *domain.Failure) error {
+// Create creates a new failure
+func (r *SQLFailureRepository) Create(ctx context.Context, failure *models.Failure) error {
 	query := `INSERT INTO failures (build_test_case_execution_id, message, type, details) VALUES ($1, $2, $3, $4) RETURNING id`
-	var message interface{} = nil
-	var failureType interface{} = nil
-	var details interface{} = nil
-	if failure.Message != nil {
-		message = *failure.Message
+
+	err := r.db.QueryRowContext(ctx, query,
+		failure.BuildTestCaseExecutionID, failure.Message, failure.Type, failure.Details,
+	).Scan(&failure.ID)
+	if err != nil {
+		return fmt.Errorf("failed to create failure: %w", err)
 	}
-	if failure.Type != nil {
-		failureType = *failure.Type
-	}
-	if failure.Details != nil {
-		details = *failure.Details
-	}
-	return r.db.QueryRowContext(ctx, query, failure.BuildTestCaseExecutionID, message, failureType, details).Scan(&failure.ID)
+
+	return nil
 }
 
-func (r *SQLFailureRepository) Update(ctx context.Context, id int64, failure *domain.Failure) (*domain.Failure, error) {
-	query := `UPDATE failures SET build_test_case_execution_id = $1, message = $2, type = $3, details = $4 WHERE id = $5 RETURNING id, build_test_case_execution_id, message, type, details`
-	var message interface{} = nil
-	var failureType interface{} = nil
-	var details interface{} = nil
-	if failure.Message != nil {
-		message = *failure.Message
+// Update updates an existing failure
+func (r *SQLFailureRepository) Update(ctx context.Context, id int64, failure *models.Failure) (*models.Failure, error) {
+	query := `UPDATE failures SET message = $1, type = $2, details = $3 WHERE id = $4 RETURNING id, build_test_case_execution_id, message, type, details`
+
+	var updatedFailure models.Failure
+	var message, failureType, details sql.NullString
+
+	err := r.db.QueryRowContext(ctx, query, failure.Message, failure.Type, failure.Details, id).Scan(
+		&updatedFailure.ID, &updatedFailure.BuildTestCaseExecutionID, &message, &failureType, &details,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to update failure: %w", err)
 	}
-	if failure.Type != nil {
-		failureType = *failure.Type
+
+	if message.Valid {
+		updatedFailure.Message = &message.String
 	}
-	if failure.Details != nil {
-		details = *failure.Details
+	if failureType.Valid {
+		updatedFailure.Type = &failureType.String
 	}
-	updatedFailure := &domain.Failure{}
-	var messageNull, failureTypeNull, detailsNull sql.NullString
-	if err := r.db.QueryRowContext(ctx, query, failure.BuildTestCaseExecutionID, message, failureType, details, id).Scan(&updatedFailure.ID, &updatedFailure.BuildTestCaseExecutionID, &messageNull, &failureTypeNull, &detailsNull); err != nil {
-		return nil, err
+	if details.Valid {
+		updatedFailure.Details = &details.String
 	}
-	if messageNull.Valid {
-		updatedFailure.Message = &messageNull.String
-	}
-	if failureTypeNull.Valid {
-		updatedFailure.Type = &failureTypeNull.String
-	}
-	if detailsNull.Valid {
-		updatedFailure.Details = &detailsNull.String
-	}
-	return updatedFailure, nil
+
+	return &updatedFailure, nil
 }
 
+// Delete deletes a failure by its ID
 func (r *SQLFailureRepository) Delete(ctx context.Context, id int64) error {
 	query := `DELETE FROM failures WHERE id = $1`
-	_, err := r.db.ExecContext(ctx, query, id)
-	return err
+
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete failure: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("failure not found")
+	}
+
+	return nil
 }

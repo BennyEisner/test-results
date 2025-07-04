@@ -32,11 +32,8 @@ func ExampleHexagonalMain() {
 	}
 	defer db.Close()
 
-	// Create dependency injection container
-	container := infrastructure.NewContainer(db)
-
 	// Create router with hexagonal architecture
-	router := infrastructure.NewRouter(container)
+	router := infrastructure.NewRouter(db)
 
 	// Create server
 	server := &http.Server{

@@ -5,24 +5,26 @@ import (
 	"fmt"
 
 	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
 // ProjectService implements the domain ProjectService interface
 type ProjectService struct {
-	projectRepo domain.ProjectRepository
+	projectRepo ports.ProjectRepository
 }
 
 // NewProjectService creates a new ProjectService
-func NewProjectService(projectRepo domain.ProjectRepository) domain.ProjectService {
+func NewProjectService(projectRepo ports.ProjectRepository) ports.ProjectService {
 	return &ProjectService{
 		projectRepo: projectRepo,
 	}
 }
 
 // GetProjectByID retrieves a project by its ID
-func (s *ProjectService) GetProjectByID(ctx context.Context, id int64) (*domain.Project, error) {
+func (s *ProjectService) GetProjectByID(ctx context.Context, id int64) (*models.Project, error) {
 	if id <= 0 {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidProjectName
 	}
 
 	project, err := s.projectRepo.GetByID(ctx, id)
@@ -38,7 +40,7 @@ func (s *ProjectService) GetProjectByID(ctx context.Context, id int64) (*domain.
 }
 
 // GetAllProjects retrieves all projects
-func (s *ProjectService) GetAllProjects(ctx context.Context) ([]*domain.Project, error) {
+func (s *ProjectService) GetAllProjects(ctx context.Context) ([]*models.Project, error) {
 	projects, err := s.projectRepo.GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all projects: %w", err)
@@ -48,18 +50,18 @@ func (s *ProjectService) GetAllProjects(ctx context.Context) ([]*domain.Project,
 }
 
 // CreateProject creates a new project
-func (s *ProjectService) CreateProject(ctx context.Context, name string) (*domain.Project, error) {
+func (s *ProjectService) CreateProject(ctx context.Context, name string) (*models.Project, error) {
 	if name == "" {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidProjectName
 	}
 
 	// Check if project with same name already exists
 	existingProject, err := s.projectRepo.GetByName(ctx, name)
 	if err == nil && existingProject != nil {
-		return nil, domain.ErrDuplicateProject
+		return nil, domain.ErrProjectAlreadyExists
 	}
 
-	project := &domain.Project{
+	project := &models.Project{
 		Name: name,
 	}
 
@@ -71,9 +73,9 @@ func (s *ProjectService) CreateProject(ctx context.Context, name string) (*domai
 }
 
 // UpdateProject updates an existing project
-func (s *ProjectService) UpdateProject(ctx context.Context, id int64, name string) (*domain.Project, error) {
+func (s *ProjectService) UpdateProject(ctx context.Context, id int64, name string) (*models.Project, error) {
 	if id <= 0 || name == "" {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidProjectName
 	}
 
 	// Check if project exists
@@ -88,7 +90,7 @@ func (s *ProjectService) UpdateProject(ctx context.Context, id int64, name strin
 	// Check if new name conflicts with existing project
 	conflictingProject, err := s.projectRepo.GetByName(ctx, name)
 	if err == nil && conflictingProject != nil && conflictingProject.ID != id {
-		return nil, domain.ErrDuplicateProject
+		return nil, domain.ErrProjectAlreadyExists
 	}
 
 	updatedProject, err := s.projectRepo.Update(ctx, id, name)
@@ -102,7 +104,7 @@ func (s *ProjectService) UpdateProject(ctx context.Context, id int64, name strin
 // DeleteProject deletes a project by its ID
 func (s *ProjectService) DeleteProject(ctx context.Context, id int64) error {
 	if id <= 0 {
-		return domain.ErrInvalidInput
+		return domain.ErrInvalidProjectName
 	}
 
 	// Check if project exists
@@ -122,9 +124,9 @@ func (s *ProjectService) DeleteProject(ctx context.Context, id int64) error {
 }
 
 // GetProjectByName retrieves a project by its name
-func (s *ProjectService) GetProjectByName(ctx context.Context, name string) (*domain.Project, error) {
+func (s *ProjectService) GetProjectByName(ctx context.Context, name string) (*models.Project, error) {
 	if name == "" {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidProjectName
 	}
 
 	project, err := s.projectRepo.GetByName(ctx, name)

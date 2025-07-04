@@ -7,15 +7,16 @@ import (
 	"strconv"
 
 	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
 // ProjectHandler handles HTTP requests for project operations
 type ProjectHandler struct {
-	projectService domain.ProjectService
+	projectService ports.ProjectService
 }
 
 // NewProjectHandler creates a new project handler
-func NewProjectHandler(projectService domain.ProjectService) *ProjectHandler {
+func NewProjectHandler(projectService ports.ProjectService) *ProjectHandler {
 	return &ProjectHandler{
 		projectService: projectService,
 	}
@@ -41,7 +42,7 @@ func (h *ProjectHandler) GetProjectByID(w http.ResponseWriter, r *http.Request) 
 		switch err {
 		case domain.ErrProjectNotFound:
 			respondWithError(w, http.StatusNotFound, "project not found")
-		case domain.ErrInvalidInput:
+		case domain.ErrInvalidProjectName:
 			respondWithError(w, http.StatusBadRequest, "invalid input")
 		default:
 			respondWithError(w, http.StatusInternalServerError, "internal server error")
@@ -79,9 +80,9 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 	project, err := h.projectService.CreateProject(ctx, request.Name)
 	if err != nil {
 		switch err {
-		case domain.ErrInvalidInput:
+		case domain.ErrInvalidProjectName:
 			respondWithError(w, http.StatusBadRequest, "project name is required")
-		case domain.ErrDuplicateProject:
+		case domain.ErrProjectAlreadyExists:
 			respondWithError(w, http.StatusConflict, "project with this name already exists")
 		default:
 			respondWithError(w, http.StatusInternalServerError, "failed to create project")
@@ -121,9 +122,9 @@ func (h *ProjectHandler) UpdateProject(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case domain.ErrProjectNotFound:
 			respondWithError(w, http.StatusNotFound, "project not found")
-		case domain.ErrInvalidInput:
+		case domain.ErrInvalidProjectName:
 			respondWithError(w, http.StatusBadRequest, "project name is required")
-		case domain.ErrDuplicateProject:
+		case domain.ErrProjectAlreadyExists:
 			respondWithError(w, http.StatusConflict, "project with this name already exists")
 		default:
 			respondWithError(w, http.StatusInternalServerError, "failed to update project")
@@ -154,7 +155,7 @@ func (h *ProjectHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case domain.ErrProjectNotFound:
 			respondWithError(w, http.StatusNotFound, "project not found")
-		case domain.ErrInvalidInput:
+		case domain.ErrInvalidProjectName:
 			respondWithError(w, http.StatusBadRequest, "invalid input")
 		default:
 			respondWithError(w, http.StatusInternalServerError, "failed to delete project")
@@ -179,7 +180,7 @@ func (h *ProjectHandler) GetProjectByName(w http.ResponseWriter, r *http.Request
 		switch err {
 		case domain.ErrProjectNotFound:
 			respondWithError(w, http.StatusNotFound, "project not found")
-		case domain.ErrInvalidInput:
+		case domain.ErrInvalidProjectName:
 			respondWithError(w, http.StatusBadRequest, "invalid input")
 		default:
 			respondWithError(w, http.StatusInternalServerError, "failed to retrieve project")

@@ -1,112 +1,55 @@
 package http
 
 import (
-	"encoding/xml"
-	"io"
+	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// JUnitImportHandler handles HTTP requests for JUnit imports
 type JUnitImportHandler struct {
-	importService domain.JUnitImportService
+	Service ports.JUnitImportService
 }
 
-func NewJUnitImportHandler(importService domain.JUnitImportService) *JUnitImportHandler {
-	return &JUnitImportHandler{importService: importService}
+// NewJUnitImportHandler creates a new JUnitImportHandler
+func NewJUnitImportHandler(service ports.JUnitImportService) *JUnitImportHandler {
+	return &JUnitImportHandler{Service: service}
 }
 
-// HandleJUnitImport handles the import of a JUnit XML file for a specific project and suite.
-// It expects a POST request to /api/projects/{projectID}/suites/{suiteID}/junit_imports with a multipart form containing a 'junitFile'.
-func (h *JUnitImportHandler) HandleJUnitImport(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		respondWithError(w, http.StatusMethodNotAllowed, "Only POST method is allowed.")
+// ProcessJUnitData handles POST /import/junit
+func (h *JUnitImportHandler) ProcessJUnitData(w http.ResponseWriter, r *http.Request) {
+	projectIDStr := r.URL.Query().Get("project_id")
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid project_id", http.StatusBadRequest)
 		return
 	}
 
-	projectID, suiteID, err := parseProjectAndSuiteIDs(r.URL.Path)
+	suiteIDStr := r.URL.Query().Get("suite_id")
+	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+		http.Error(w, "invalid suite_id", http.StatusBadRequest)
 		return
 	}
 
-	fileBytes, fileName, err := extractJUnitFileFromRequest(r)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+	var junitData models.JUnitTestSuites
+	if err := json.NewDecoder(r.Body).Decode(&junitData); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	parsedData, err := parseJUnitXML(fileBytes)
+	build, err := h.Service.ProcessJUnitData(r.Context(), projectID, suiteID, &junitData)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	createdBuild, err := h.importService.ProcessJUnitData(r.Context(), projectID, suiteID, parsedData)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error processing JUnit data: "+err.Error())
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(build); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
 	}
-
-	response := map[string]interface{}{
-		"message":        "JUnit XML processed.",
-		"projectID":      projectID,
-		"suiteID":        suiteID,
-		"fileName":       fileName,
-		"createdBuildID": createdBuild.ID,
-	}
-	respondWithJSON(w, http.StatusCreated, response)
-}
-
-func parseProjectAndSuiteIDs(path string) (int64, int64, error) {
-	pathSegments := strings.Split(strings.TrimPrefix(path, "/api/projects/"), "/")
-	if len(pathSegments) != 4 || pathSegments[1] != "suites" || pathSegments[3] != "junit_imports" {
-		return 0, 0, http.ErrNotSupported
-	}
-	projectID, err := strconv.ParseInt(pathSegments[0], 10, 64)
-	if err != nil {
-		return 0, 0, err
-	}
-	suiteID, err := strconv.ParseInt(pathSegments[2], 10, 64)
-	if err != nil {
-		return 0, 0, err
-	}
-	return projectID, suiteID, nil
-}
-
-func extractJUnitFileFromRequest(r *http.Request) ([]byte, string, error) {
-	contentType := r.Header.Get("Content-Type")
-	if !strings.Contains(contentType, "multipart/form-data") {
-		return nil, "", http.ErrNotSupported
-	}
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		return nil, "", err
-	}
-	file, handler, err := r.FormFile("junitFile")
-	if err != nil {
-		return nil, "", err
-	}
-	defer file.Close()
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		return nil, "", err
-	}
-	return fileBytes, handler.Filename, nil
-}
-
-func parseJUnitXML(fileBytes []byte) (*domain.JUnitTestSuites, error) {
-	var parsedData domain.JUnitTestSuites
-	if err := xml.Unmarshal(fileBytes, &parsedData); err != nil {
-		var singleSuite domain.JUnitTestSuite
-		if errSingle := xml.Unmarshal(fileBytes, &singleSuite); errSingle == nil {
-			parsedData.TestSuites = []domain.JUnitTestSuite{singleSuite}
-			parsedData.Name = singleSuite.Name
-			return &parsedData, nil
-		} else {
-			return nil, err
-		}
-	}
-	return &parsedData, nil
 }

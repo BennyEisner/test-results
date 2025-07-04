@@ -5,19 +5,22 @@ import (
 	"fmt"
 
 	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// TestSuiteService implements the TestSuiteService interface
 type TestSuiteService struct {
-	repo domain.TestSuiteRepository
+	repo ports.TestSuiteRepository
 }
 
-func NewTestSuiteService(repo domain.TestSuiteRepository) domain.TestSuiteService {
+func NewTestSuiteService(repo ports.TestSuiteRepository) ports.TestSuiteService {
 	return &TestSuiteService{repo: repo}
 }
 
-func (s *TestSuiteService) GetTestSuiteByID(ctx context.Context, id int64) (*domain.TestSuite, error) {
+func (s *TestSuiteService) GetTestSuiteByID(ctx context.Context, id int64) (*models.TestSuite, error) {
 	if id <= 0 {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidTestSuiteName
 	}
 	ts, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -29,9 +32,9 @@ func (s *TestSuiteService) GetTestSuiteByID(ctx context.Context, id int64) (*dom
 	return ts, nil
 }
 
-func (s *TestSuiteService) GetTestSuitesByProjectID(ctx context.Context, projectID int64) ([]*domain.TestSuite, error) {
+func (s *TestSuiteService) GetTestSuitesByProjectID(ctx context.Context, projectID int64) ([]*models.TestSuite, error) {
 	if projectID <= 0 {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidProjectName
 	}
 	ts, err := s.repo.GetAllByProjectID(ctx, projectID)
 	if err != nil {
@@ -40,9 +43,9 @@ func (s *TestSuiteService) GetTestSuitesByProjectID(ctx context.Context, project
 	return ts, nil
 }
 
-func (s *TestSuiteService) GetTestSuiteByName(ctx context.Context, projectID int64, name string) (*domain.TestSuite, error) {
+func (s *TestSuiteService) GetTestSuiteByName(ctx context.Context, projectID int64, name string) (*models.TestSuite, error) {
 	if projectID <= 0 || name == "" {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidTestSuiteName
 	}
 	ts, err := s.repo.GetByName(ctx, projectID, name)
 	if err != nil {
@@ -54,16 +57,16 @@ func (s *TestSuiteService) GetTestSuiteByName(ctx context.Context, projectID int
 	return ts, nil
 }
 
-func (s *TestSuiteService) CreateTestSuite(ctx context.Context, projectID int64, name string, parentID *int64) (*domain.TestSuite, error) {
+func (s *TestSuiteService) CreateTestSuite(ctx context.Context, projectID int64, name string, parentID *int64) (*models.TestSuite, error) {
 	if projectID <= 0 || name == "" {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidTestSuiteName
 	}
 	// Check for duplicate
 	existing, err := s.repo.GetByName(ctx, projectID, name)
 	if err == nil && existing != nil {
 		return nil, domain.ErrDuplicateTestSuite
 	}
-	ts := &domain.TestSuite{
+	ts := &models.TestSuite{
 		ProjectID: projectID,
 		Name:      name,
 		ParentID:  parentID,
@@ -74,9 +77,9 @@ func (s *TestSuiteService) CreateTestSuite(ctx context.Context, projectID int64,
 	return ts, nil
 }
 
-func (s *TestSuiteService) UpdateTestSuite(ctx context.Context, id int64, name string) (*domain.TestSuite, error) {
+func (s *TestSuiteService) UpdateTestSuite(ctx context.Context, id int64, name string) (*models.TestSuite, error) {
 	if id <= 0 || name == "" {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidTestSuiteName
 	}
 	ts, err := s.repo.Update(ctx, id, name)
 	if err != nil {
@@ -87,7 +90,7 @@ func (s *TestSuiteService) UpdateTestSuite(ctx context.Context, id int64, name s
 
 func (s *TestSuiteService) DeleteTestSuite(ctx context.Context, id int64) error {
 	if id <= 0 {
-		return domain.ErrInvalidInput
+		return domain.ErrInvalidTestSuiteName
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete test suite: %w", err)

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -15,32 +15,32 @@ type MockSearchRepository struct {
 	mock.Mock
 }
 
-func (m *MockSearchRepository) Search(ctx context.Context, query string) ([]*domain.SearchResult, error) {
+func (m *MockSearchRepository) Search(ctx context.Context, query string) ([]*models.SearchResult, error) {
 	args := m.Called(ctx, query)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*domain.SearchResult), args.Error(1)
+	return args.Get(0).([]*models.SearchResult), args.Error(1)
 }
 
 func TestSearchService_Search(t *testing.T) {
 	tests := []struct {
 		name            string
 		query           string
-		mockResults     []*domain.SearchResult
+		mockResults     []*models.SearchResult
 		mockError       error
-		expectedResults []*domain.SearchResult
+		expectedResults []*models.SearchResult
 		expectedError   error
 	}{
 		{
 			name:  "successful search",
 			query: "test",
-			mockResults: []*domain.SearchResult{
+			mockResults: []*models.SearchResult{
 				{Type: "project", ID: 1, Name: "Test Project", URL: "/projects/1"},
 				{Type: "test_suite", ID: 2, Name: "Test Suite", URL: "/projects/1/suites/2"},
 			},
 			mockError: nil,
-			expectedResults: []*domain.SearchResult{
+			expectedResults: []*models.SearchResult{
 				{Type: "project", ID: 1, Name: "Test Project", URL: "/projects/1"},
 				{Type: "test_suite", ID: 2, Name: "Test Suite", URL: "/projects/1/suites/2"},
 			},
@@ -51,7 +51,7 @@ func TestSearchService_Search(t *testing.T) {
 			query:           "",
 			mockResults:     nil,
 			mockError:       nil,
-			expectedResults: []*domain.SearchResult{},
+			expectedResults: []*models.SearchResult{},
 			expectedError:   nil,
 		},
 		{

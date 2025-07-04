@@ -5,146 +5,112 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// UserConfigHandler handles HTTP requests for user configurations
 type UserConfigHandler struct {
-	service domain.UserConfigService
+	Service ports.UserConfigService
 }
 
-func NewUserConfigHandler(service domain.UserConfigService) *UserConfigHandler {
-	return &UserConfigHandler{service: service}
+// NewUserConfigHandler creates a new UserConfigHandler
+func NewUserConfigHandler(service ports.UserConfigService) *UserConfigHandler {
+	return &UserConfigHandler{Service: service}
 }
 
+// GetUserConfig handles GET /users/{userID}/config
 func (h *UserConfigHandler) GetUserConfig(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.PathValue("userID")
-	if userIDStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing user ID")
-		return
-	}
-
+	userIDStr := r.URL.Query().Get("user_id")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid user ID format")
+		http.Error(w, "invalid user_id", http.StatusBadRequest)
 		return
 	}
-
-	config, err := h.service.GetUserConfig(r.Context(), userID)
+	config, err := h.Service.GetUserConfig(r.Context(), userID)
 	if err != nil {
-		switch err {
-		case domain.ErrUserConfigNotFound:
-			respondWithError(w, http.StatusNotFound, "user config not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "internal server error")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, config)
+	if config == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// CreateUserConfig handles POST /users/{userID}/config
 func (h *UserConfigHandler) CreateUserConfig(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.PathValue("userID")
-	if userIDStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing user ID")
-		return
-	}
-
+	userIDStr := r.URL.Query().Get("user_id")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid user ID format")
+		http.Error(w, "invalid user_id", http.StatusBadRequest)
 		return
 	}
-
-	var request struct {
+	var req struct {
 		Layouts        string `json:"layouts"`
 		ActiveLayoutID string `json:"active_layout_id"`
 	}
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	config, err := h.service.CreateUserConfig(r.Context(), userID, request.Layouts, request.ActiveLayoutID)
+	config, err := h.Service.CreateUserConfig(r.Context(), userID, req.Layouts, req.ActiveLayoutID)
 	if err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to create user config")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusCreated, config)
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// UpdateUserConfig handles PUT /users/{userID}/config
 func (h *UserConfigHandler) UpdateUserConfig(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.PathValue("userID")
-	if userIDStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing user ID")
-		return
-	}
-
+	userIDStr := r.URL.Query().Get("user_id")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid user ID format")
+		http.Error(w, "invalid user_id", http.StatusBadRequest)
 		return
 	}
-
-	var request struct {
+	var req struct {
 		Layouts        string `json:"layouts"`
 		ActiveLayoutID string `json:"active_layout_id"`
 	}
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	config, err := h.service.UpdateUserConfig(r.Context(), userID, request.Layouts, request.ActiveLayoutID)
+	config, err := h.Service.UpdateUserConfig(r.Context(), userID, req.Layouts, req.ActiveLayoutID)
 	if err != nil {
-		switch err {
-		case domain.ErrUserConfigNotFound:
-			respondWithError(w, http.StatusNotFound, "user config not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to update user config")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, config)
+	if config == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(config); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// DeleteUserConfig handles DELETE /users/{userID}/config
 func (h *UserConfigHandler) DeleteUserConfig(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.PathValue("userID")
-	if userIDStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing user ID")
-		return
-	}
-
+	userIDStr := r.URL.Query().Get("user_id")
 	userID, err := strconv.Atoi(userIDStr)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid user ID format")
+		http.Error(w, "invalid user_id", http.StatusBadRequest)
 		return
 	}
-
-	if err := h.service.DeleteUserConfig(r.Context(), userID); err != nil {
-		switch err {
-		case domain.ErrUserConfigNotFound:
-			respondWithError(w, http.StatusNotFound, "user config not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to delete user config")
-		}
+	if err := h.Service.DeleteUserConfig(r.Context(), userID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, map[string]string{"message": "user config deleted successfully"})
+	w.WriteHeader(http.StatusNoContent)
 }

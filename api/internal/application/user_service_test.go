@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -15,33 +16,33 @@ type MockUserRepository struct {
 	mock.Mock
 }
 
-func (m *MockUserRepository) GetByID(ctx context.Context, id int) (*domain.User, error) {
+func (m *MockUserRepository) GetByID(ctx context.Context, id int) (*models.User, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.User), args.Error(1)
+	return args.Get(0).(*models.User), args.Error(1)
 }
 
-func (m *MockUserRepository) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
+func (m *MockUserRepository) GetByUsername(ctx context.Context, username string) (*models.User, error) {
 	args := m.Called(ctx, username)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.User), args.Error(1)
+	return args.Get(0).(*models.User), args.Error(1)
 }
 
-func (m *MockUserRepository) Create(ctx context.Context, user *domain.User) error {
+func (m *MockUserRepository) Create(ctx context.Context, user *models.User) error {
 	args := m.Called(ctx, user)
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) Update(ctx context.Context, id int, user *domain.User) (*domain.User, error) {
+func (m *MockUserRepository) Update(ctx context.Context, id int, user *models.User) (*models.User, error) {
 	args := m.Called(ctx, id, user)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.User), args.Error(1)
+	return args.Get(0).(*models.User), args.Error(1)
 }
 
 func (m *MockUserRepository) Delete(ctx context.Context, id int) error {
@@ -55,7 +56,7 @@ func TestUserService_GetUserByID(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		expectedUser := &domain.User{
+		expectedUser := &models.User{
 			ID:        1,
 			Username:  "testuser",
 			CreatedAt: time.Now(),
@@ -74,7 +75,7 @@ func TestUserService_GetUserByID(t *testing.T) {
 		result, err := service.GetUserByID(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidInput, err)
+		assert.Equal(t, domain.ErrInvalidUsername, err)
 		assert.Nil(t, result)
 	})
 
@@ -96,7 +97,7 @@ func TestUserService_GetUserByUsername(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		expectedUser := &domain.User{
+		expectedUser := &models.User{
 			ID:        1,
 			Username:  "testuser",
 			CreatedAt: time.Now(),
@@ -115,7 +116,7 @@ func TestUserService_GetUserByUsername(t *testing.T) {
 		result, err := service.GetUserByUsername(ctx, "")
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidInput, err)
+		assert.Equal(t, domain.ErrInvalidUsername, err)
 		assert.Nil(t, result)
 	})
 
@@ -140,7 +141,7 @@ func TestUserService_CreateUser(t *testing.T) {
 		username := "newuser"
 
 		mockRepo.On("GetByUsername", ctx, username).Return(nil, nil).Once()
-		mockRepo.On("Create", ctx, mock.AnythingOfType("*domain.User")).Return(nil).Once()
+		mockRepo.On("Create", ctx, mock.AnythingOfType("*models.User")).Return(nil).Once()
 
 		result, err := service.CreateUser(ctx, username)
 
@@ -153,13 +154,13 @@ func TestUserService_CreateUser(t *testing.T) {
 		result, err := service.CreateUser(ctx, "")
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidInput, err)
+		assert.Equal(t, domain.ErrInvalidUsername, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("duplicate user", func(t *testing.T) {
 		username := "existinguser"
-		existingUser := &domain.User{
+		existingUser := &models.User{
 			ID:        1,
 			Username:  username,
 			CreatedAt: time.Now(),
@@ -170,7 +171,7 @@ func TestUserService_CreateUser(t *testing.T) {
 		result, err := service.CreateUser(ctx, username)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrDuplicateUser, err)
+		assert.Equal(t, domain.ErrUserAlreadyExists, err)
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -184,12 +185,12 @@ func TestUserService_UpdateUser(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		userID := 1
 		newUsername := "updateduser"
-		existingUser := &domain.User{
+		existingUser := &models.User{
 			ID:        userID,
 			Username:  "olduser",
 			CreatedAt: time.Now(),
 		}
-		updatedUser := &domain.User{
+		updatedUser := &models.User{
 			ID:        userID,
 			Username:  newUsername,
 			CreatedAt: existingUser.CreatedAt,
@@ -197,7 +198,7 @@ func TestUserService_UpdateUser(t *testing.T) {
 
 		mockRepo.On("GetByID", ctx, userID).Return(existingUser, nil).Once()
 		mockRepo.On("GetByUsername", ctx, newUsername).Return(nil, nil).Once()
-		mockRepo.On("Update", ctx, userID, mock.AnythingOfType("*domain.User")).Return(updatedUser, nil).Once()
+		mockRepo.On("Update", ctx, userID, mock.AnythingOfType("*models.User")).Return(updatedUser, nil).Once()
 
 		result, err := service.UpdateUser(ctx, userID, newUsername)
 
@@ -210,7 +211,7 @@ func TestUserService_UpdateUser(t *testing.T) {
 		result, err := service.UpdateUser(ctx, 0, "username")
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidInput, err)
+		assert.Equal(t, domain.ErrInvalidUsername, err)
 		assert.Nil(t, result)
 	})
 
@@ -234,7 +235,7 @@ func TestUserService_DeleteUser(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		userID := 1
-		existingUser := &domain.User{
+		existingUser := &models.User{
 			ID:        userID,
 			Username:  "testuser",
 			CreatedAt: time.Now(),
@@ -253,7 +254,7 @@ func TestUserService_DeleteUser(t *testing.T) {
 		err := service.DeleteUser(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidInput, err)
+		assert.Equal(t, domain.ErrInvalidUsername, err)
 	})
 
 	t.Run("user not found", func(t *testing.T) {

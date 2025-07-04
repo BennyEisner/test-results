@@ -6,19 +6,22 @@ import (
 	"time"
 
 	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// UserConfigService implements the UserConfigService interface
 type UserConfigService struct {
-	repo domain.UserConfigRepository
+	repo ports.UserConfigRepository
 }
 
-func NewUserConfigService(repo domain.UserConfigRepository) domain.UserConfigService {
+func NewUserConfigService(repo ports.UserConfigRepository) ports.UserConfigService {
 	return &UserConfigService{repo: repo}
 }
 
-func (s *UserConfigService) GetUserConfig(ctx context.Context, userID int) (*domain.UserConfig, error) {
+func (s *UserConfigService) GetUserConfig(ctx context.Context, userID int) (*models.UserConfig, error) {
 	if userID <= 0 {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidUsername
 	}
 	config, err := s.repo.GetByUserID(ctx, userID)
 	if err != nil {
@@ -30,9 +33,9 @@ func (s *UserConfigService) GetUserConfig(ctx context.Context, userID int) (*dom
 	return config, nil
 }
 
-func (s *UserConfigService) CreateUserConfig(ctx context.Context, userID int, layouts, activeLayoutID string) (*domain.UserConfig, error) {
+func (s *UserConfigService) CreateUserConfig(ctx context.Context, userID int, layouts, activeLayoutID string) (*models.UserConfig, error) {
 	if userID <= 0 {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidUsername
 	}
 
 	// Check if config already exists
@@ -45,7 +48,7 @@ func (s *UserConfigService) CreateUserConfig(ctx context.Context, userID int, la
 	}
 
 	now := time.Now()
-	config := &domain.UserConfig{
+	config := &models.UserConfig{
 		UserID:         userID,
 		Layouts:        layouts,
 		ActiveLayoutID: activeLayoutID,
@@ -59,26 +62,29 @@ func (s *UserConfigService) CreateUserConfig(ctx context.Context, userID int, la
 	return config, nil
 }
 
-func (s *UserConfigService) UpdateUserConfig(ctx context.Context, userID int, layouts, activeLayoutID string) (*domain.UserConfig, error) {
+func (s *UserConfigService) UpdateUserConfig(ctx context.Context, userID int, layouts, activeLayoutID string) (*models.UserConfig, error) {
 	if userID <= 0 {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidUsername
 	}
 
 	// Check if config exists
 	existingConfig, err := s.repo.GetByUserID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get existing user config: %w", err)
+		return nil, fmt.Errorf("failed to check for existing user config: %w", err)
 	}
 	if existingConfig == nil {
 		return nil, domain.ErrUserConfigNotFound
 	}
 
-	updatedConfig, err := s.repo.Update(ctx, userID, &domain.UserConfig{
+	config := &models.UserConfig{
 		UserID:         userID,
 		Layouts:        layouts,
 		ActiveLayoutID: activeLayoutID,
+		CreatedAt:      existingConfig.CreatedAt,
 		UpdatedAt:      time.Now(),
-	})
+	}
+
+	updatedConfig, err := s.repo.Update(ctx, userID, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update user config: %w", err)
 	}
@@ -87,13 +93,13 @@ func (s *UserConfigService) UpdateUserConfig(ctx context.Context, userID int, la
 
 func (s *UserConfigService) DeleteUserConfig(ctx context.Context, userID int) error {
 	if userID <= 0 {
-		return domain.ErrInvalidInput
+		return domain.ErrInvalidUsername
 	}
 
 	// Check if config exists
 	existingConfig, err := s.repo.GetByUserID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get existing user config: %w", err)
+		return fmt.Errorf("failed to check for existing user config: %w", err)
 	}
 	if existingConfig == nil {
 		return domain.ErrUserConfigNotFound

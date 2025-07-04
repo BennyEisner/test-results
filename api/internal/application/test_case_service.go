@@ -5,116 +5,93 @@ import (
 	"fmt"
 
 	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// TestCaseService implements the TestCaseService interface
 type TestCaseService struct {
-	repo domain.TestCaseRepository
+	repo ports.TestCaseRepository
 }
 
-func NewTestCaseService(repo domain.TestCaseRepository) domain.TestCaseService {
+func NewTestCaseService(repo ports.TestCaseRepository) ports.TestCaseService {
 	return &TestCaseService{repo: repo}
 }
 
-func (s *TestCaseService) GetTestCaseByID(ctx context.Context, id int64) (*domain.TestCase, error) {
+func (s *TestCaseService) GetTestCaseByID(ctx context.Context, id int64) (*models.TestCase, error) {
 	if id <= 0 {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidTestCaseName
 	}
-	testCase, err := s.repo.GetByID(ctx, id)
+
+	tc, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get test case by ID %d: %w", id, err)
 	}
-	if testCase == nil {
+	if tc == nil {
 		return nil, domain.ErrTestCaseNotFound
 	}
-	return testCase, nil
+	return tc, nil
 }
 
-func (s *TestCaseService) GetTestCasesBySuiteID(ctx context.Context, suiteID int64) ([]*domain.TestCase, error) {
+func (s *TestCaseService) GetTestCasesBySuiteID(ctx context.Context, suiteID int64) ([]*models.TestCase, error) {
 	if suiteID <= 0 {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidTestSuiteName
 	}
-	testCases, err := s.repo.GetAllBySuiteID(ctx, suiteID)
+	tcs, err := s.repo.GetAllBySuiteID(ctx, suiteID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get test cases by suite ID %d: %w", suiteID, err)
 	}
-	return testCases, nil
+	return tcs, nil
 }
 
-func (s *TestCaseService) GetTestCaseByName(ctx context.Context, suiteID int64, name string) (*domain.TestCase, error) {
+func (s *TestCaseService) GetTestCaseByName(ctx context.Context, suiteID int64, name string) (*models.TestCase, error) {
 	if suiteID <= 0 || name == "" {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidTestCaseName
 	}
-	testCase, err := s.repo.GetByName(ctx, suiteID, name)
+
+	tc, err := s.repo.GetByName(ctx, suiteID, name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get test case by name %s in suite %d: %w", name, suiteID, err)
+		return nil, fmt.Errorf("failed to get test case by name: %w", err)
 	}
-	if testCase == nil {
+	if tc == nil {
 		return nil, domain.ErrTestCaseNotFound
 	}
-	return testCase, nil
+	return tc, nil
 }
 
-func (s *TestCaseService) CreateTestCase(ctx context.Context, suiteID int64, name, classname string) (*domain.TestCase, error) {
+func (s *TestCaseService) CreateTestCase(ctx context.Context, suiteID int64, name, classname string) (*models.TestCase, error) {
 	if suiteID <= 0 || name == "" || classname == "" {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidTestCaseName
 	}
 
-	// Check if test case already exists
-	existingTestCase, err := s.repo.GetByName(ctx, suiteID, name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check for existing test case: %w", err)
-	}
-	if existingTestCase != nil {
-		return nil, domain.ErrDuplicateTestCase
-	}
-
-	testCase := &domain.TestCase{
+	tc := &models.TestCase{
 		SuiteID:   suiteID,
 		Name:      name,
 		Classname: classname,
 	}
 
-	if err := s.repo.Create(ctx, testCase); err != nil {
+	if err := s.repo.Create(ctx, tc); err != nil {
 		return nil, fmt.Errorf("failed to create test case: %w", err)
 	}
-	return testCase, nil
+	return tc, nil
 }
 
-func (s *TestCaseService) UpdateTestCase(ctx context.Context, id int64, name, classname string) (*domain.TestCase, error) {
+func (s *TestCaseService) UpdateTestCase(ctx context.Context, id int64, name, classname string) (*models.TestCase, error) {
 	if id <= 0 || name == "" || classname == "" {
-		return nil, domain.ErrInvalidInput
+		return nil, domain.ErrInvalidTestCaseName
 	}
 
-	// Check if test case exists
-	existingTestCase, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get existing test case: %w", err)
-	}
-	if existingTestCase == nil {
-		return nil, domain.ErrTestCaseNotFound
-	}
-
-	updatedTestCase, err := s.repo.Update(ctx, id, name, classname)
+	tc, err := s.repo.Update(ctx, id, name, classname)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update test case: %w", err)
 	}
-	return updatedTestCase, nil
+	return tc, nil
 }
 
 func (s *TestCaseService) DeleteTestCase(ctx context.Context, id int64) error {
 	if id <= 0 {
-		return domain.ErrInvalidInput
+		return domain.ErrInvalidTestCaseName
 	}
-
-	// Check if test case exists
-	existingTestCase, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		return fmt.Errorf("failed to get existing test case: %w", err)
-	}
-	if existingTestCase == nil {
-		return domain.ErrTestCaseNotFound
-	}
-
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete test case: %w", err)
 	}

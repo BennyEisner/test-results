@@ -5,155 +5,124 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// FailureHandler handles HTTP requests for failures
 type FailureHandler struct {
-	service domain.FailureService
+	Service ports.FailureService
 }
 
-func NewFailureHandler(service domain.FailureService) *FailureHandler {
-	return &FailureHandler{service: service}
+// NewFailureHandler creates a new FailureHandler
+func NewFailureHandler(service ports.FailureService) *FailureHandler {
+	return &FailureHandler{Service: service}
 }
 
+// GetFailureByID handles GET /failures/{id}
 func (h *FailureHandler) GetFailureByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	if idStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing failure ID")
-		return
-	}
-
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid failure ID format")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-
-	failure, err := h.service.GetFailureByID(r.Context(), id)
+	failure, err := h.Service.GetFailureByID(r.Context(), id)
 	if err != nil {
-		switch err {
-		case domain.ErrFailureNotFound:
-			respondWithError(w, http.StatusNotFound, "failure not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "internal server error")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, failure)
+	if failure == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(failure); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// GetFailureByExecutionID handles GET /executions/{executionID}/failure
 func (h *FailureHandler) GetFailureByExecutionID(w http.ResponseWriter, r *http.Request) {
-	executionIDStr := r.PathValue("executionID")
-	if executionIDStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing execution ID")
-		return
-	}
-
+	executionIDStr := r.URL.Query().Get("execution_id")
 	executionID, err := strconv.ParseInt(executionIDStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid execution ID format")
+		http.Error(w, "invalid execution_id", http.StatusBadRequest)
 		return
 	}
-
-	failure, err := h.service.GetFailureByExecutionID(r.Context(), executionID)
+	failure, err := h.Service.GetFailureByExecutionID(r.Context(), executionID)
 	if err != nil {
-		switch err {
-		case domain.ErrFailureNotFound:
-			respondWithError(w, http.StatusNotFound, "failure not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "internal server error")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, failure)
+	if failure == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(failure); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// CreateFailure handles POST /failures
 func (h *FailureHandler) CreateFailure(w http.ResponseWriter, r *http.Request) {
-	var failure domain.Failure
+	var failure models.Failure
 	if err := json.NewDecoder(r.Body).Decode(&failure); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	createdFailure, err := h.service.CreateFailure(r.Context(), &failure)
+	createdFailure, err := h.Service.CreateFailure(r.Context(), &failure)
 	if err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to create failure")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusCreated, createdFailure)
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(createdFailure); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// UpdateFailure handles PUT /failures/{id}
 func (h *FailureHandler) UpdateFailure(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	if idStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing failure ID")
-		return
-	}
-
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid failure ID format")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-
-	var failure domain.Failure
+	var failure models.Failure
 	if err := json.NewDecoder(r.Body).Decode(&failure); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	updatedFailure, err := h.service.UpdateFailure(r.Context(), id, &failure)
+	updatedFailure, err := h.Service.UpdateFailure(r.Context(), id, &failure)
 	if err != nil {
-		switch err {
-		case domain.ErrFailureNotFound:
-			respondWithError(w, http.StatusNotFound, "failure not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to update failure")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, updatedFailure)
+	if updatedFailure == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(updatedFailure); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// DeleteFailure handles DELETE /failures/{id}
 func (h *FailureHandler) DeleteFailure(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	if idStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing failure ID")
-		return
-	}
-
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid failure ID format")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-
-	if err := h.service.DeleteFailure(r.Context(), id); err != nil {
-		switch err {
-		case domain.ErrFailureNotFound:
-			respondWithError(w, http.StatusNotFound, "failure not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to delete failure")
-		}
+	if err := h.Service.DeleteFailure(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, map[string]string{"message": "failure deleted successfully"})
+	w.WriteHeader(http.StatusNoContent)
 }

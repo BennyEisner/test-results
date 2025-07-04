@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -14,33 +15,33 @@ type MockFailureRepository struct {
 	mock.Mock
 }
 
-func (m *MockFailureRepository) GetByID(ctx context.Context, id int64) (*domain.Failure, error) {
+func (m *MockFailureRepository) GetByID(ctx context.Context, id int64) (*models.Failure, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.Failure), args.Error(1)
+	return args.Get(0).(*models.Failure), args.Error(1)
 }
 
-func (m *MockFailureRepository) GetByExecutionID(ctx context.Context, executionID int64) (*domain.Failure, error) {
+func (m *MockFailureRepository) GetByExecutionID(ctx context.Context, executionID int64) (*models.Failure, error) {
 	args := m.Called(ctx, executionID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.Failure), args.Error(1)
+	return args.Get(0).(*models.Failure), args.Error(1)
 }
 
-func (m *MockFailureRepository) Create(ctx context.Context, failure *domain.Failure) error {
+func (m *MockFailureRepository) Create(ctx context.Context, failure *models.Failure) error {
 	args := m.Called(ctx, failure)
 	return args.Error(0)
 }
 
-func (m *MockFailureRepository) Update(ctx context.Context, id int64, failure *domain.Failure) (*domain.Failure, error) {
+func (m *MockFailureRepository) Update(ctx context.Context, id int64, failure *models.Failure) (*models.Failure, error) {
 	args := m.Called(ctx, id, failure)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.Failure), args.Error(1)
+	return args.Get(0).(*models.Failure), args.Error(1)
 }
 
 func (m *MockFailureRepository) Delete(ctx context.Context, id int64) error {
@@ -54,7 +55,7 @@ func TestFailureService_GetFailureByID(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		expectedFailure := &domain.Failure{
+		expectedFailure := &models.Failure{
 			ID:                       1,
 			BuildTestCaseExecutionID: 123,
 			Message:                  stringPtr("Test failure"),
@@ -75,7 +76,7 @@ func TestFailureService_GetFailureByID(t *testing.T) {
 		result, err := service.GetFailureByID(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidInput, err)
+		assert.Equal(t, "invalid failure ID", err.Error())
 		assert.Nil(t, result)
 	})
 
@@ -97,7 +98,7 @@ func TestFailureService_CreateFailure(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		failure := &domain.Failure{
+		failure := &models.Failure{
 			BuildTestCaseExecutionID: 123,
 			Message:                  stringPtr("Test failure"),
 			Type:                     stringPtr("AssertionError"),
@@ -117,19 +118,19 @@ func TestFailureService_CreateFailure(t *testing.T) {
 		result, err := service.CreateFailure(ctx, nil)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidInput, err)
+		assert.Equal(t, "failure cannot be nil", err.Error())
 		assert.Nil(t, result)
 	})
 
 	t.Run("invalid input - invalid execution ID", func(t *testing.T) {
-		failure := &domain.Failure{
+		failure := &models.Failure{
 			BuildTestCaseExecutionID: 0,
 		}
 
 		result, err := service.CreateFailure(ctx, failure)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidInput, err)
+		assert.Equal(t, "execution ID is required", err.Error())
 		assert.Nil(t, result)
 	})
 }
@@ -152,7 +153,7 @@ func TestFailureService_DeleteFailure(t *testing.T) {
 		err := service.DeleteFailure(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidInput, err)
+		assert.Equal(t, "invalid failure ID", err.Error())
 	})
 }
 

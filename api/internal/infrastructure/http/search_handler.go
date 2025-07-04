@@ -1,31 +1,38 @@
 package http
 
 import (
+	"encoding/json"
 	"net/http"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// SearchHandler handles HTTP requests for search operations
 type SearchHandler struct {
-	service domain.SearchService
+	Service ports.SearchService
 }
 
-func NewSearchHandler(service domain.SearchService) *SearchHandler {
-	return &SearchHandler{service: service}
+// NewSearchHandler creates a new SearchHandler
+func NewSearchHandler(service ports.SearchService) *SearchHandler {
+	return &SearchHandler{Service: service}
 }
 
-func (h *SearchHandler) HandleSearch(w http.ResponseWriter, r *http.Request) {
+// Search handles GET /search
+func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
-
-	results, err := h.service.Search(r.Context(), query)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "failed to perform search")
+	if query == "" {
+		http.Error(w, "missing query parameter", http.StatusBadRequest)
 		return
 	}
 
-	if results == nil {
-		results = []*domain.SearchResult{}
+	results, err := h.Service.Search(r.Context(), query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	respondWithJSON(w, http.StatusOK, results)
+	if err := json.NewEncoder(w).Encode(results); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }

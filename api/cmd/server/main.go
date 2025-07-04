@@ -11,7 +11,7 @@ import (
 	_ "strconv"
 	_ "time"
 
-	"github.com/BennyEisner/test-results/internal/routes"
+	"github.com/BennyEisner/test-results/internal/infrastructure"
 	_ "github.com/lib/pq"
 	_ "go.uber.org/automaxprocs"
 )
@@ -73,7 +73,7 @@ func connectDB(config *Config) (*sql.DB, error) {
 // createServer creates and configures the HTTP server
 func createServer(db *sql.DB) http.Handler {
 	// Use the clean hexagonal router - all domains migrated to hexagonal architecture
-	return routes.NewRouter(db)
+	return infrastructure.NewRouter(db)
 }
 
 // runServer starts the HTTP server

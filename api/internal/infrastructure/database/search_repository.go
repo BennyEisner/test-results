@@ -5,18 +5,19 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
 type SQLSearchRepository struct {
 	db *sql.DB
 }
 
-func NewSQLSearchRepository(db *sql.DB) domain.SearchRepository {
+func NewSQLSearchRepository(db *sql.DB) ports.SearchRepository {
 	return &SQLSearchRepository{db: db}
 }
 
-func (r *SQLSearchRepository) Search(ctx context.Context, query string) ([]*domain.SearchResult, error) {
+func (r *SQLSearchRepository) Search(ctx context.Context, query string) ([]*models.SearchResult, error) {
 	searchQuery := `
 		SELECT 'project' as type, p.id, p.name, '/projects/' || p.id as url
 		FROM projects p
@@ -38,9 +39,9 @@ func (r *SQLSearchRepository) Search(ctx context.Context, query string) ([]*doma
 	}
 	defer rows.Close()
 
-	var results []*domain.SearchResult
+	var results []*models.SearchResult
 	for rows.Next() {
-		var result domain.SearchResult
+		var result models.SearchResult
 		if err := rows.Scan(&result.Type, &result.ID, &result.Name, &result.URL); err != nil {
 			return nil, err
 		}

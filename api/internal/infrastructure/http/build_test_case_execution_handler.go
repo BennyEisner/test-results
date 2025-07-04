@@ -5,124 +5,126 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// BuildTestCaseExecutionHandler handles HTTP requests for build test case executions
 type BuildTestCaseExecutionHandler struct {
-	svc domain.BuildTestCaseExecutionService
+	Service ports.BuildTestCaseExecutionService
 }
 
-func NewBuildTestCaseExecutionHandler(svc domain.BuildTestCaseExecutionService) *BuildTestCaseExecutionHandler {
-	return &BuildTestCaseExecutionHandler{svc: svc}
+// NewBuildTestCaseExecutionHandler creates a new BuildTestCaseExecutionHandler
+func NewBuildTestCaseExecutionHandler(service ports.BuildTestCaseExecutionService) *BuildTestCaseExecutionHandler {
+	return &BuildTestCaseExecutionHandler{Service: service}
 }
 
+// GetExecutionByID handles GET /executions/{id}
 func (h *BuildTestCaseExecutionHandler) GetExecutionByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid execution ID")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	execution, err := h.svc.GetExecutionByID(ctx, id)
+	execution, err := h.Service.GetExecutionByID(r.Context(), id)
 	if err != nil {
-		switch err {
-		case domain.ErrExecutionNotFound:
-			respondWithError(w, http.StatusNotFound, "execution not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "internal error")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, execution)
+	if execution == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(execution); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// GetExecutionsByBuildID handles GET /builds/{buildID}/executions
 func (h *BuildTestCaseExecutionHandler) GetExecutionsByBuildID(w http.ResponseWriter, r *http.Request) {
-	buildIDStr := r.PathValue("id")
+	buildIDStr := r.URL.Query().Get("build_id")
 	buildID, err := strconv.ParseInt(buildIDStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid build ID")
+		http.Error(w, "invalid build_id", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	executions, err := h.svc.GetExecutionsByBuildID(ctx, buildID)
+	executions, err := h.Service.GetExecutionsByBuildID(r.Context(), buildID)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "failed to get executions")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, executions)
+	if err := json.NewEncoder(w).Encode(executions); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// CreateExecution handles POST /builds/{buildID}/executions
 func (h *BuildTestCaseExecutionHandler) CreateExecution(w http.ResponseWriter, r *http.Request) {
-	buildIDStr := r.PathValue("id")
+	buildIDStr := r.URL.Query().Get("build_id")
 	buildID, err := strconv.ParseInt(buildIDStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid build ID")
+		http.Error(w, "invalid build_id", http.StatusBadRequest)
 		return
 	}
-	var input domain.BuildExecutionInput
+	var input models.BuildExecutionInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	execution, err := h.svc.CreateExecution(ctx, buildID, &input)
+	execution, err := h.Service.CreateExecution(r.Context(), buildID, &input)
 	if err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to create execution")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusCreated, execution)
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(execution); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// UpdateExecution handles PUT /executions/{id}
 func (h *BuildTestCaseExecutionHandler) UpdateExecution(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid execution ID")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	var execution domain.BuildTestCaseExecution
+	var execution models.BuildTestCaseExecution
 	if err := json.NewDecoder(r.Body).Decode(&execution); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	updatedExecution, err := h.svc.UpdateExecution(ctx, id, &execution)
+	updatedExecution, err := h.Service.UpdateExecution(r.Context(), id, &execution)
 	if err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to update execution")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, updatedExecution)
+	if updatedExecution == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(updatedExecution); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// DeleteExecution handles DELETE /executions/{id}
 func (h *BuildTestCaseExecutionHandler) DeleteExecution(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid execution ID")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-	ctx := r.Context()
-	if err := h.svc.DeleteExecution(ctx, id); err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to delete execution")
-		}
+	if err := h.Service.DeleteExecution(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	respondWithJSON(w, http.StatusOK, map[string]string{"message": "execution deleted successfully"})
+	w.WriteHeader(http.StatusNoContent)
 }

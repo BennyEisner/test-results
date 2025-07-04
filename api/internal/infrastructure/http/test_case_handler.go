@@ -5,210 +5,126 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/ports"
 )
 
+// TestCaseHandler handles HTTP requests for test cases
 type TestCaseHandler struct {
-	service domain.TestCaseService
+	Service ports.TestCaseService
 }
 
-func NewTestCaseHandler(service domain.TestCaseService) *TestCaseHandler {
-	return &TestCaseHandler{service: service}
+// NewTestCaseHandler creates a new TestCaseHandler
+func NewTestCaseHandler(service ports.TestCaseService) *TestCaseHandler {
+	return &TestCaseHandler{Service: service}
 }
 
+// GetTestCaseByID handles GET /test-cases/{id}
 func (h *TestCaseHandler) GetTestCaseByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	if idStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing test case ID")
-		return
-	}
-
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid test case ID format")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-
-	testCase, err := h.service.GetTestCaseByID(r.Context(), id)
+	testCase, err := h.Service.GetTestCaseByID(r.Context(), id)
 	if err != nil {
-		switch err {
-		case domain.ErrTestCaseNotFound:
-			respondWithError(w, http.StatusNotFound, "test case not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "internal server error")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, testCase)
+	if testCase == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(testCase); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// GetTestCasesBySuiteID handles GET /test-suites/{suiteID}/test-cases
 func (h *TestCaseHandler) GetTestCasesBySuiteID(w http.ResponseWriter, r *http.Request) {
-	suiteIDStr := r.PathValue("suiteID")
-	if suiteIDStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing suite ID")
-		return
-	}
-
+	suiteIDStr := r.URL.Query().Get("suite_id")
 	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid suite ID format")
+		http.Error(w, "invalid suite_id", http.StatusBadRequest)
 		return
 	}
-
-	testCases, err := h.service.GetTestCasesBySuiteID(r.Context(), suiteID)
+	testCases, err := h.Service.GetTestCasesBySuiteID(r.Context(), suiteID)
 	if err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "internal server error")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, testCases)
+	if err := json.NewEncoder(w).Encode(testCases); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
-func (h *TestCaseHandler) GetTestCaseByName(w http.ResponseWriter, r *http.Request) {
-	suiteIDStr := r.PathValue("suiteID")
-	if suiteIDStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing suite ID")
-		return
-	}
-
-	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid suite ID format")
-		return
-	}
-
-	name := r.URL.Query().Get("name")
-	if name == "" {
-		respondWithError(w, http.StatusBadRequest, "missing name parameter")
-		return
-	}
-
-	testCase, err := h.service.GetTestCaseByName(r.Context(), suiteID, name)
-	if err != nil {
-		switch err {
-		case domain.ErrTestCaseNotFound:
-			respondWithError(w, http.StatusNotFound, "test case not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "internal server error")
-		}
-		return
-	}
-
-	respondWithJSON(w, http.StatusOK, testCase)
-}
-
+// CreateTestCase handles POST /test-cases
 func (h *TestCaseHandler) CreateTestCase(w http.ResponseWriter, r *http.Request) {
-	var request struct {
+	var req struct {
+		SuiteID   int64  `json:"suite_id"`
 		Name      string `json:"name"`
 		Classname string `json:"classname"`
 	}
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	suiteIDStr := r.PathValue("suiteID")
-	if suiteIDStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing suite ID")
-		return
-	}
-
-	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+	testCase, err := h.Service.CreateTestCase(r.Context(), req.SuiteID, req.Name, req.Classname)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid suite ID format")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	testCase, err := h.service.CreateTestCase(r.Context(), suiteID, request.Name, request.Classname)
-	if err != nil {
-		switch err {
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "name and classname are required")
-		case domain.ErrDuplicateTestCase:
-			respondWithError(w, http.StatusConflict, "test case with this name already exists in this suite")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to create test case")
-		}
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(testCase); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusCreated, testCase)
 }
 
+// UpdateTestCase handles PUT /test-cases/{id}
 func (h *TestCaseHandler) UpdateTestCase(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	if idStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing test case ID")
-		return
-	}
-
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid test case ID format")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-
-	var request struct {
+	var req struct {
 		Name      string `json:"name"`
 		Classname string `json:"classname"`
 	}
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid request body")
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	testCase, err := h.service.UpdateTestCase(r.Context(), id, request.Name, request.Classname)
+	testCase, err := h.Service.UpdateTestCase(r.Context(), id, req.Name, req.Classname)
 	if err != nil {
-		switch err {
-		case domain.ErrTestCaseNotFound:
-			respondWithError(w, http.StatusNotFound, "test case not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "name and classname are required")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to update test case")
-		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, testCase)
+	if testCase == nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := json.NewEncoder(w).Encode(testCase); err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
+// DeleteTestCase handles DELETE /test-cases/{id}
 func (h *TestCaseHandler) DeleteTestCase(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	if idStr == "" {
-		respondWithError(w, http.StatusBadRequest, "missing test case ID")
-		return
-	}
-
+	idStr := r.URL.Query().Get("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid test case ID format")
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
-
-	if err := h.service.DeleteTestCase(r.Context(), id); err != nil {
-		switch err {
-		case domain.ErrTestCaseNotFound:
-			respondWithError(w, http.StatusNotFound, "test case not found")
-		case domain.ErrInvalidInput:
-			respondWithError(w, http.StatusBadRequest, "invalid input")
-		default:
-			respondWithError(w, http.StatusInternalServerError, "failed to delete test case")
-		}
+	if err := h.Service.DeleteTestCase(r.Context(), id); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	respondWithJSON(w, http.StatusOK, map[string]string{"message": "test case deleted successfully"})
+	w.WriteHeader(http.StatusNoContent)
 }

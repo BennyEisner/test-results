@@ -5,51 +5,53 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/BennyEisner/test-results/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/BennyEisner/test-results/internal/domain"
+	"github.com/BennyEisner/test-results/internal/domain/models"
 )
 
-// MockProjectRepository is a mock implementation of domain.ProjectRepository
+// Mock repository
 type MockProjectRepository struct {
 	mock.Mock
 }
 
-func (m *MockProjectRepository) GetByID(ctx context.Context, id int64) (*domain.Project, error) {
+func (m *MockProjectRepository) GetByID(ctx context.Context, id int64) (*models.Project, error) {
 	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.Project), args.Error(1)
+	return args.Get(0).(*models.Project), args.Error(1)
 }
 
-func (m *MockProjectRepository) GetAll(ctx context.Context) ([]*domain.Project, error) {
+func (m *MockProjectRepository) GetAll(ctx context.Context) ([]*models.Project, error) {
 	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]*domain.Project), args.Error(1)
+	return args.Get(0).([]*models.Project), args.Error(1)
 }
 
-func (m *MockProjectRepository) GetByName(ctx context.Context, name string) (*domain.Project, error) {
+func (m *MockProjectRepository) GetByName(ctx context.Context, name string) (*models.Project, error) {
 	args := m.Called(ctx, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.Project), args.Error(1)
+	return args.Get(0).(*models.Project), args.Error(1)
 }
 
-func (m *MockProjectRepository) Create(ctx context.Context, p *domain.Project) error {
+func (m *MockProjectRepository) Create(ctx context.Context, p *models.Project) error {
 	args := m.Called(ctx, p)
 	return args.Error(0)
 }
 
-func (m *MockProjectRepository) Update(ctx context.Context, id int64, name string) (*domain.Project, error) {
+func (m *MockProjectRepository) Update(ctx context.Context, id int64, name string) (*models.Project, error) {
 	args := m.Called(ctx, id, name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*domain.Project), args.Error(1)
+	return args.Get(0).(*models.Project), args.Error(1)
 }
 
 func (m *MockProjectRepository) Delete(ctx context.Context, id int64) error {
@@ -74,7 +76,7 @@ func TestProjectService_GetProjectByID(t *testing.T) {
 			name: "success",
 			id:   1,
 			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByID", mock.Anything, int64(1)).Return(&domain.Project{ID: 1, Name: "Test Project"}, nil)
+				repo.On("GetByID", mock.Anything, int64(1)).Return(&models.Project{ID: 1, Name: "Test Project"}, nil)
 			},
 			expectedError: nil,
 			expectedID:    1,
@@ -85,7 +87,7 @@ func TestProjectService_GetProjectByID(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: domain.ErrInvalidInput,
+			expectedError: domain.ErrInvalidProjectName,
 			expectedID:    0,
 		},
 		{
@@ -141,7 +143,7 @@ func TestProjectService_GetAllProjects(t *testing.T) {
 		{
 			name: "success",
 			setupMock: func(repo *MockProjectRepository) {
-				projects := []*domain.Project{
+				projects := []*models.Project{
 					{ID: 1, Name: "Project 1"},
 					{ID: 2, Name: "Project 2"},
 				}
@@ -153,7 +155,7 @@ func TestProjectService_GetAllProjects(t *testing.T) {
 		{
 			name: "empty list",
 			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetAll", mock.Anything).Return([]*domain.Project{}, nil)
+				repo.On("GetAll", mock.Anything).Return([]*models.Project{}, nil)
 			},
 			expectedError: nil,
 			expectedCount: 0,
@@ -204,10 +206,10 @@ func TestProjectService_CreateProject(t *testing.T) {
 			projectName: "New Project",
 			setupMock: func(repo *MockProjectRepository) {
 				repo.On("GetByName", mock.Anything, "New Project").Return(nil, nil)
-				repo.On("Create", mock.Anything, mock.MatchedBy(func(p *domain.Project) bool {
+				repo.On("Create", mock.Anything, mock.MatchedBy(func(p *models.Project) bool {
 					return p.Name == "New Project"
 				})).Run(func(args mock.Arguments) {
-					p := args.Get(1).(*domain.Project)
+					p := args.Get(1).(*models.Project)
 					p.ID = 1
 				}).Return(nil)
 			},
@@ -220,16 +222,16 @@ func TestProjectService_CreateProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: domain.ErrInvalidInput,
+			expectedError: domain.ErrInvalidProjectName,
 			expectedID:    0,
 		},
 		{
 			name:        "duplicate project",
 			projectName: "Existing Project",
 			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByName", mock.Anything, "Existing Project").Return(&domain.Project{ID: 1, Name: "Existing Project"}, nil)
+				repo.On("GetByName", mock.Anything, "Existing Project").Return(&models.Project{ID: 1, Name: "Existing Project"}, nil)
 			},
-			expectedError: domain.ErrDuplicateProject,
+			expectedError: domain.ErrProjectAlreadyExists,
 			expectedID:    0,
 		},
 		{
@@ -282,9 +284,9 @@ func TestProjectService_UpdateProject(t *testing.T) {
 			id:      1,
 			newName: "Updated Project",
 			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByID", mock.Anything, int64(1)).Return(&domain.Project{ID: 1, Name: "Old Name"}, nil)
+				repo.On("GetByID", mock.Anything, int64(1)).Return(&models.Project{ID: 1, Name: "Old Name"}, nil)
 				repo.On("GetByName", mock.Anything, "Updated Project").Return(nil, nil)
-				repo.On("Update", mock.Anything, int64(1), "Updated Project").Return(&domain.Project{ID: 1, Name: "Updated Project"}, nil)
+				repo.On("Update", mock.Anything, int64(1), "Updated Project").Return(&models.Project{ID: 1, Name: "Updated Project"}, nil)
 			},
 			expectedError: nil,
 			expectedID:    1,
@@ -296,7 +298,7 @@ func TestProjectService_UpdateProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: domain.ErrInvalidInput,
+			expectedError: domain.ErrInvalidProjectName,
 			expectedID:    0,
 		},
 		{
@@ -306,7 +308,7 @@ func TestProjectService_UpdateProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: domain.ErrInvalidInput,
+			expectedError: domain.ErrInvalidProjectName,
 			expectedID:    0,
 		},
 		{
@@ -324,10 +326,10 @@ func TestProjectService_UpdateProject(t *testing.T) {
 			id:      1,
 			newName: "Existing Project",
 			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByID", mock.Anything, int64(1)).Return(&domain.Project{ID: 1, Name: "Old Name"}, nil)
-				repo.On("GetByName", mock.Anything, "Existing Project").Return(&domain.Project{ID: 2, Name: "Existing Project"}, nil)
+				repo.On("GetByID", mock.Anything, int64(1)).Return(&models.Project{ID: 1, Name: "Old Name"}, nil)
+				repo.On("GetByName", mock.Anything, "Existing Project").Return(&models.Project{ID: 2, Name: "Existing Project"}, nil)
 			},
-			expectedError: domain.ErrDuplicateProject,
+			expectedError: domain.ErrProjectAlreadyExists,
 			expectedID:    0,
 		},
 	}
@@ -367,7 +369,7 @@ func TestProjectService_DeleteProject(t *testing.T) {
 			name: "success",
 			id:   1,
 			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByID", mock.Anything, int64(1)).Return(&domain.Project{ID: 1, Name: "Test Project"}, nil)
+				repo.On("GetByID", mock.Anything, int64(1)).Return(&models.Project{ID: 1, Name: "Test Project"}, nil)
 				repo.On("Delete", mock.Anything, int64(1)).Return(nil)
 			},
 			expectedError: nil,
@@ -378,7 +380,7 @@ func TestProjectService_DeleteProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: domain.ErrInvalidInput,
+			expectedError: domain.ErrInvalidProjectName,
 		},
 		{
 			name: "project not found",
@@ -392,7 +394,7 @@ func TestProjectService_DeleteProject(t *testing.T) {
 			name: "database error on delete",
 			id:   1,
 			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByID", mock.Anything, int64(1)).Return(&domain.Project{ID: 1, Name: "Test Project"}, nil)
+				repo.On("GetByID", mock.Anything, int64(1)).Return(&models.Project{ID: 1, Name: "Test Project"}, nil)
 				repo.On("Delete", mock.Anything, int64(1)).Return(errors.New("database error"))
 			},
 			expectedError: errors.New("failed to delete project: database error"),
@@ -433,7 +435,7 @@ func TestProjectService_GetProjectByName(t *testing.T) {
 			name:        "success",
 			projectName: "Test Project",
 			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByName", mock.Anything, "Test Project").Return(&domain.Project{ID: 1, Name: "Test Project"}, nil)
+				repo.On("GetByName", mock.Anything, "Test Project").Return(&models.Project{ID: 1, Name: "Test Project"}, nil)
 			},
 			expectedError: nil,
 			expectedID:    1,
@@ -444,7 +446,7 @@ func TestProjectService_GetProjectByName(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: domain.ErrInvalidInput,
+			expectedError: domain.ErrInvalidProjectName,
 			expectedID:    0,
 		},
 		{
