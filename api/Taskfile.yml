@@ -27,17 +27,11 @@ tasks:
       - go mod download
 
   mocks:
-    desc: Generate mocks for all interfaces
+    desc: Generate mocks for hexagonal architecture domain interfaces
     deps: [setup, deps]
     cmds:
-      - mockgen -source=internal/models/project_repository.go -destination=internal/models/mocks/project_repository_mock.go
-      - mockgen -source=internal/service/project_service.go -destination=internal/service/mocks/project_service_mock.go
-      - mockgen -source=internal/service/build_service.go -destination=internal/service/mocks/build_service_mock.go
-      - mockgen -source=internal/service/test_suites_service.go -destination=internal/service/mocks/test_suites_service_mock.go
-      - mockgen -source=internal/service/test_cases_service.go -destination=internal/service/mocks/test_cases_service_mock.go
-      - mockgen -source=internal/service/build_executions_service.go -destination=internal/service/mocks/build_executions_service_mock.go
-      - mockgen -source=internal/service/failures_service.go -destination=internal/service/mocks/failures_service_mock.go
-      - mockgen -source=internal/service/junit_import_service.go -destination=internal/service/mocks/junit_import_service_mock.go
+      # Generate all mocks in a single file to avoid package conflicts
+      - mockgen -source=internal/domain/ports.go -destination=internal/domain/mocks.go -package=domain
 
   lint:
     desc: Run golangci-lint

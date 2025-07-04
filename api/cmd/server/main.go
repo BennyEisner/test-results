@@ -72,6 +72,7 @@ func connectDB(config *Config) (*sql.DB, error) {
 
 // createServer creates and configures the HTTP server
 func createServer(db *sql.DB) http.Handler {
+	// Use the clean hexagonal router - all domains migrated to hexagonal architecture
 	return routes.NewRouter(db)
 }
 

@@ -7,42 +7,25 @@ import (
 	"os"
 	"time"
 
-	dbrepo "github.com/BennyEisner/test-results/internal/db"
 	"github.com/BennyEisner/test-results/internal/handler"
+	"github.com/BennyEisner/test-results/internal/infrastructure"
 	"github.com/BennyEisner/test-results/internal/middleware"
-	"github.com/BennyEisner/test-results/internal/service"
 )
 
+// NewRouter creates a router that uses only hexagonal architecture implementations
 func NewRouter(sqlDB *sql.DB) http.Handler {
 	mux := http.NewServeMux()
 
-	projectRepo := dbrepo.NewSQLProjectRepository(sqlDB)
-	var projectService service.ProjectServiceInterface = service.NewProjectService(projectRepo)
-	projectHandler := handler.NewProjectHandler(projectService)
+	// Create hexagonal container
+	container := infrastructure.NewContainer(sqlDB)
 
-	buildService := service.NewBuildService(sqlDB)
-	buildHandler := handler.NewBuildHandler(buildService)
-
-	buildExecutionService := service.NewBuildExecutionService(sqlDB)
-	buildExecutionHandler := handler.NewBuildExecutionHandler(buildExecutionService)
-
-	testSuiteService := service.NewTestSuiteService(sqlDB)
-	testSuiteHandler := handler.NewTestSuiteHandler(testSuiteService)
-
-	testCaseService := service.NewTestCaseService(sqlDB)
-	testCaseHandler := handler.NewTestCaseHandler(testCaseService)
-
-	failuresService := service.NewFailuresService(sqlDB)
-	failuresHandler := handler.NewFailuresHandler(failuresService)
-
-	junitImportService := service.NewJUnitImportService(sqlDB, buildService, testSuiteService, testCaseService, buildExecutionService)
-	junitImportHandler := handler.NewJUnitImportHandler(junitImportService)
-
-	searchService := service.NewSearchService(sqlDB)
-	searchHandler := handler.NewSearchHandler(searchService)
-
-	userConfigService := service.NewUserConfigService(sqlDB)
-	userConfigHandler := handler.NewUserConfigHandler(userConfigService)
+	// Create hexagonal handlers
+	hexagonalProjectHandler := handler.NewHexagonalProjectHandler(container.GetProjectService())
+	hexagonalBuildHandler := handler.NewHexagonalBuildHandler(container.GetBuildService())
+	hexagonalTestSuiteHandler := handler.NewHexagonalTestSuiteHandler(container.GetTestSuiteService())
+	hexagonalTestCaseHandler := handler.NewHexagonalTestCaseHandler(container.GetTestCaseService())
+	hexagonalBuildExecutionHandler := handler.NewHexagonalBuildExecutionHandler(container.GetBuildTestCaseExecutionService())
+	hexagonalFailuresHandler := handler.NewHexagonalFailuresHandler(container.GetFailureService())
 
 	// Health and monitoring endpoints
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -66,49 +49,95 @@ func NewRouter(sqlDB *sql.DB) http.Handler {
 		fmt.Fprintf(w, "Hello from %s at %s\n", os.Getenv("HOSTNAME"), time.Now().Format(time.RFC3339))
 	})
 
-	// Project-related endpoints
-	mux.HandleFunc("GET /api/db-test", projectHandler.HandleDBTest)
-	mux.HandleFunc("GET /api/projects", projectHandler.GetProjects)
-	mux.HandleFunc("POST /api/projects", projectHandler.CreateProject)
-	mux.HandleFunc("GET /api/projects/{id}", projectHandler.GetProjectByID)
-	mux.HandleFunc("PATCH /api/projects/{id}", projectHandler.UpdateProject)
-	mux.HandleFunc("DELETE /api/projects/{id}", projectHandler.DeleteProject)
+	// Project-related endpoints - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("GET /api/projects", hexagonalProjectHandler.GetAllProjectsHexagonal)
+	mux.HandleFunc("POST /api/projects", hexagonalProjectHandler.CreateProjectHexagonal)
+	mux.HandleFunc("GET /api/projects/{id}", hexagonalProjectHandler.GetProjectByIDHexagonal)
+	mux.HandleFunc("PATCH /api/projects/{id}", hexagonalProjectHandler.UpdateProjectHexagonal)
+	mux.HandleFunc("DELETE /api/projects/{id}", hexagonalProjectHandler.DeleteProjectHexagonal)
 
-	// Build-related endpoints
-	mux.HandleFunc("GET /api/builds", buildHandler.GetAllBuilds)
-	mux.HandleFunc("POST /api/builds", buildHandler.CreateBuild)
-	mux.HandleFunc("GET /api/builds/recent", buildHandler.GetRecentBuilds)
-	mux.HandleFunc("GET /api/projects/{id}/builds/recent", buildHandler.GetRecentBuilds)
-	mux.HandleFunc("GET /api/builds/{id}", buildHandler.GetBuildByID)
-	mux.HandleFunc("PATCH /api/builds/{id}", buildHandler.UpdateBuild)
-	mux.HandleFunc("DELETE /api/builds/{id}", buildHandler.DeleteBuild)
-	mux.HandleFunc("GET /api/builds/duration-trends", buildHandler.GetBuildDurationTrends)
-	mux.HandleFunc("GET /api/builds/{id}/executions", buildExecutionHandler.GetBuildExecutions)
-	mux.HandleFunc("GET /api/builds/{id}/failures", failuresHandler.GetBuildFailures)
+	// Build-related endpoints - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("GET /api/builds", hexagonalBuildHandler.GetAllBuilds)
+	mux.HandleFunc("POST /api/builds", hexagonalBuildHandler.CreateBuild)
+	mux.HandleFunc("GET /api/builds/{id}", hexagonalBuildHandler.GetBuildByID)
+	mux.HandleFunc("PATCH /api/builds/{id}", hexagonalBuildHandler.UpdateBuild)
+	mux.HandleFunc("DELETE /api/builds/{id}", hexagonalBuildHandler.DeleteBuild)
 
-	// Test Suite related endpoints
-	mux.HandleFunc("GET /api/suites/{id}", testSuiteHandler.GetTestSuiteByID)
-	mux.HandleFunc("GET /api/suites/{id}/cases", testCaseHandler.GetSuiteTestCases)
-	mux.HandleFunc("POST /api/suites/{id}/cases", testCaseHandler.CreateTestCaseForSuite)
+	// Test Suite related endpoints - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("GET /api/suites/{id}", hexagonalTestSuiteHandler.GetTestSuiteByID)
+	mux.HandleFunc("GET /api/suites/{id}/cases", hexagonalTestCaseHandler.GetSuiteTestCases)
+	mux.HandleFunc("POST /api/suites/{id}/cases", hexagonalTestCaseHandler.CreateTestCaseForSuite)
 
-	// Test Case related endpoints
-	mux.HandleFunc("GET /api/cases/{id}", testCaseHandler.GetTestCaseByID)
-	mux.HandleFunc("GET /api/test-cases/most-failed", testCaseHandler.GetMostFailedTests)
+	// Test Case related endpoints - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("GET /api/cases/{id}", hexagonalTestCaseHandler.GetTestCaseByID)
+	mux.HandleFunc("GET /api/test-cases/most-failed", hexagonalTestCaseHandler.GetMostFailedTests)
 
-	// Nested project/suite routes
-	mux.HandleFunc("GET /api/projects/{id}/suites", testSuiteHandler.GetTestSuitesByProjectID)
-	mux.HandleFunc("POST /api/projects/{id}/suites", testSuiteHandler.CreateTestSuiteForProject)
-	mux.HandleFunc("GET /api/projects/{projectId}/suites/{suiteId}", testSuiteHandler.GetProjectTestSuiteByID)
-	mux.HandleFunc("GET /api/projects/{projectId}/suites/{suiteId}/builds", buildHandler.GetBuildsByTestSuiteID)
-	mux.HandleFunc("POST /api/projects/{projectId}/suites/{suiteId}/builds", buildHandler.CreateBuildForTestSuite)
-	mux.HandleFunc("POST /api/projects/{projectId}/suites/{suiteId}/junit_imports", junitImportHandler.HandleJUnitImport)
+	// Build Execution endpoints - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("GET /api/builds/{id}/executions", hexagonalBuildExecutionHandler.GetBuildExecutions)
 
-	// Search function route
-	mux.HandleFunc("GET /api/search", searchHandler.HandleSearch)
+	// Failure endpoints - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("GET /api/builds/{id}/failures", hexagonalFailuresHandler.GetBuildFailures)
 
-	// User Config related endpoints
-	mux.HandleFunc("GET /api/users/{userId}/configs", userConfigHandler.GetUserConfig)
-	mux.HandleFunc("POST /api/users/{userId}/configs", userConfigHandler.SaveUserConfig)
+	// Nested project/suite routes - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("GET /api/projects/{id}/suites", hexagonalTestSuiteHandler.GetTestSuitesByProjectID)
+	mux.HandleFunc("POST /api/projects/{id}/suites", hexagonalTestSuiteHandler.CreateTestSuiteForProject)
+	mux.HandleFunc("GET /api/projects/{projectId}/suites/{suiteId}", hexagonalTestSuiteHandler.GetProjectTestSuiteByID)
+	mux.HandleFunc("GET /api/projects/{projectId}/suites/{suiteId}/builds", hexagonalBuildHandler.GetBuildsByTestSuiteID)
+	mux.HandleFunc("POST /api/projects/{projectId}/suites/{suiteId}/builds", hexagonalBuildHandler.CreateBuild)
+
+	// Search function route - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("GET /api/search", container.SearchHandler.HandleSearch)
+
+	// User Config related endpoints - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("GET /api/users/{userID}/configs", container.UserConfigHandler.GetUserConfig)
+	mux.HandleFunc("POST /api/users/{userID}/configs", container.UserConfigHandler.CreateUserConfig)
+	mux.HandleFunc("PUT /api/users/{userID}/configs", container.UserConfigHandler.UpdateUserConfig)
+	mux.HandleFunc("DELETE /api/users/{userID}/configs", container.UserConfigHandler.DeleteUserConfig)
+
+	// JUnit Import endpoints - HEXAGONAL IMPLEMENTATION
+	mux.HandleFunc("POST /api/projects/{projectId}/suites/{suiteId}/junit_imports", container.JUnitImportHandler.HandleJUnitImport)
+
+	// =============================================================================
+	// ADDITIONAL ROUTES TO MATCH INFRASTRUCTURE ROUTER
+	// =============================================================================
+
+	// User endpoints - INFRASTRUCTURE IMPLEMENTATION
+	mux.HandleFunc("GET /api/users/{id}", container.UserHandler.GetUserByID)
+	mux.HandleFunc("GET /api/users", container.UserHandler.GetUserByUsername)
+	mux.HandleFunc("POST /api/users", container.UserHandler.CreateUser)
+	mux.HandleFunc("PATCH /api/users/{id}", container.UserHandler.UpdateUser)
+	mux.HandleFunc("DELETE /api/users/{id}", container.UserHandler.DeleteUser)
+
+	// Test Suite CRUD endpoints - INFRASTRUCTURE IMPLEMENTATION
+	mux.HandleFunc("GET /api/projects/{id}/test-suites", container.TestSuiteHandler.GetTestSuitesByProjectID)
+	mux.HandleFunc("POST /api/projects/{id}/test-suites", container.TestSuiteHandler.CreateTestSuite)
+	mux.HandleFunc("GET /api/test-suites/{id}", container.TestSuiteHandler.GetTestSuiteByID)
+	mux.HandleFunc("PATCH /api/test-suites/{id}", container.TestSuiteHandler.UpdateTestSuite)
+	mux.HandleFunc("DELETE /api/test-suites/{id}", container.TestSuiteHandler.DeleteTestSuite)
+
+	// Test Case CRUD endpoints - INFRASTRUCTURE IMPLEMENTATION
+	mux.HandleFunc("GET /api/test-suites/{suiteID}/test-cases", container.TestCaseHandler.GetTestCasesBySuiteID)
+	mux.HandleFunc("POST /api/test-suites/{suiteID}/test-cases", container.TestCaseHandler.CreateTestCase)
+	mux.HandleFunc("GET /api/test-cases/{id}", container.TestCaseHandler.GetTestCaseByID)
+	mux.HandleFunc("PATCH /api/test-cases/{id}", container.TestCaseHandler.UpdateTestCase)
+	mux.HandleFunc("DELETE /api/test-cases/{id}", container.TestCaseHandler.DeleteTestCase)
+
+	// Build routes by project and test suite - INFRASTRUCTURE IMPLEMENTATION
+	mux.HandleFunc("GET /api/projects/{id}/builds", container.BuildHandler.GetBuildsByProjectID)
+	mux.HandleFunc("GET /api/test-suites/{id}/builds", container.BuildHandler.GetBuildsByTestSuiteID)
+
+	// Build Execution CRUD endpoints - INFRASTRUCTURE IMPLEMENTATION
+	mux.HandleFunc("POST /api/executions", container.BuildTestCaseExecutionHandler.CreateExecution)
+	mux.HandleFunc("GET /api/executions/{id}", container.BuildTestCaseExecutionHandler.GetExecutionByID)
+	mux.HandleFunc("PATCH /api/executions/{id}", container.BuildTestCaseExecutionHandler.UpdateExecution)
+	mux.HandleFunc("DELETE /api/executions/{id}", container.BuildTestCaseExecutionHandler.DeleteExecution)
+
+	// Failure CRUD endpoints - INFRASTRUCTURE IMPLEMENTATION
+	mux.HandleFunc("GET /api/failures/{id}", container.FailureHandler.GetFailureByID)
+	mux.HandleFunc("GET /api/failures/execution/{executionID}", container.FailureHandler.GetFailureByExecutionID)
+	mux.HandleFunc("POST /api/failures", container.FailureHandler.CreateFailure)
+	mux.HandleFunc("PATCH /api/failures/{id}", container.FailureHandler.UpdateFailure)
+	mux.HandleFunc("DELETE /api/failures/{id}", container.FailureHandler.DeleteFailure)
 
 	// Apply middleware
 	var finalMux http.Handler = mux
