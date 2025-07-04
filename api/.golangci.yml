@@ -1,0 +1,25 @@
+run:
+  tests: true
+  timeout: 5m
+  modules-download-mode: readonly
+  go: '1.23'
+  build-tags: []
+
+linters:
+  disable-all: true
+  enable:
+    - gofmt
+    - govet
+    - errcheck
+    - staticcheck
+    - gosimple
+    - unused
+    - ineffassign
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+  exclude:
+    - "cmd/server/main_test.go" 

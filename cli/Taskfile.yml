@@ -13,6 +13,7 @@ tasks:
 
   build:
     desc: Build the CLI binary
+    deps: [deps]
     cmds:
       - mkdir -p {{.OUTPUT_DIR}}
       - go build -o {{.OUTPUT_DIR}}/{{.BIN_NAME}} {{.MAIN_PKG}}

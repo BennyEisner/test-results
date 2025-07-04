@@ -9,11 +9,12 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "test-results",
-	Short: "A CLI tool to replay and compare CDN results (Akamai vs Fastly)",
-	Long: `Test Results CLI replays requests and compares the outputs 
-between Akamai and Fastly, collecting statistics and summarizing differences.`,
+	Short: "A CLI tool to post test results to the test-results API",
+	Long: `Test Results CLI searches for and posts tests results to 
+a RESTful API to be consumed by a custom dashboard for quality of life
+improvements for QA and stakeholders.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Use `test-results --help` to see available commands.")
+		fmt.Println("Use `results --help` to see available commands.")
 	},
 }
 
