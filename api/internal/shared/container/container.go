@@ -103,9 +103,11 @@ func NewRouter(db *sql.DB) http.Handler {
 	failureHandler := failureHTTP.NewFailureHandler(failureService)
 	userHandler := userHTTP.NewUserHandler(userService)
 
-	// Register routes
-	registerRoutes(mux, projectHandler, buildHandler,
+	// --- API subrouter ---
+	apiMux := http.NewServeMux()
+	registerRoutes(apiMux, projectHandler, buildHandler,
 		buildExecHandler, failureHandler, userHandler)
+	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
 
 	// Apply middleware
 	logger := slog.Default()

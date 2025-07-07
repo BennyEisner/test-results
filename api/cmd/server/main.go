@@ -99,7 +99,9 @@ func createServer(db *sql.DB) http.Handler {
 // runServer starts the HTTP server
 func runServer(addr string, handler http.Handler) error {
 	log.Printf("Starting server on %s", addr)
-	return http.ListenAndServe(addr, handler)
+	err := http.ListenAndServe(addr, handler)
+	log.Printf("ListenAndServe returned: %v", err)
+	return err
 }
 
 // run initializes and runs the application

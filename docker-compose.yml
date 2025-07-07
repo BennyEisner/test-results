@@ -14,6 +14,11 @@ services:
       - ./db/add_user_and_config_tables.sql:/docker-entrypoint-initdb.d/2_add_user_and_config_tables.sql
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
   api:
     build:
       context: ./api
@@ -34,7 +39,8 @@ services:
       retries: 5
       start_period: 3s
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - app-network
   frontend:
@@ -45,8 +51,10 @@ services:
     ports:
       - "8088:80"
     depends_on:
-      - db
-      - api
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     networks:
       - app-network
 volumes:

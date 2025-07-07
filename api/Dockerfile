@@ -17,10 +17,12 @@ COPY . .
 RUN go build -o /app/bin/app ./cmd/server
 
 # Second stage: use a minimal base image
-FROM scratch
+FROM alpine:3.20
+
+# Install curl for healthcheck
+RUN apk add --no-cache curl
 
 # Copy the built Go binary from the builder stage
 COPY --from=builder /app/bin/app /app/bin/app
 
-# Set the entrypoint to the Go binary
 ENTRYPOINT ["/app/bin/app"]
