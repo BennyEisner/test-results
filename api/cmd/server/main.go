@@ -11,10 +11,30 @@ import (
 	_ "strconv"
 	_ "time"
 
-	"github.com/BennyEisner/test-results/internal/infrastructure"
+	"github.com/BennyEisner/test-results/internal/shared/container"
 	_ "github.com/lib/pq"
 	_ "go.uber.org/automaxprocs"
 )
+
+// @title           Test Results API
+// @version         1.0
+// @description     A hexagonal architecture API for managing test results, builds, and projects.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host      localhost:8080
+// @BasePath  /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 // Config holds the application configuration
 type Config struct {
@@ -72,8 +92,8 @@ func connectDB(config *Config) (*sql.DB, error) {
 
 // createServer creates and configures the HTTP server
 func createServer(db *sql.DB) http.Handler {
-	// Use the clean hexagonal router - all domains migrated to hexagonal architecture
-	return infrastructure.NewRouter(db)
+	// Use the new hexagonal architecture router
+	return container.NewRouter(db)
 }
 
 // runServer starts the HTTP server
