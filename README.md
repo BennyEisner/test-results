@@ -192,3 +192,37 @@ When running the stack locally with Docker Compose, use the following URLs to ac
   - [http://localhost:8080/readyz](http://localhost:8080/readyz) (readiness)
   - [http://localhost:8080/livez](http://localhost:8080/livez) (liveness)
   - [http://localhost:8080/healthz](http://localhost:8080/healthz) (comprehensive health)
+
+## Using the CLI to Post Results to the API
+
+The CLI can be used to submit test results to the backend API. Make sure the API is running and accessible (see URLs above).
+
+### Example: Post JUnit Results
+
+From the project root, run:
+
+```sh
+cd cli
+./cli post --file <path-to-junit-xml> --project <project-name> --suite <suite-name> --api-url http://localhost:8080/api
+```
+
+- `--file` (required): Path to the JUnit XML file to upload.
+- `--project` (required): Name of the project to associate the results with.
+- `--suite` (required): Name of the test suite.
+- `--api-url` (optional): The base URL of the API (default: `http://localhost:8080/api`).
+
+### Example: Using Dockerized CLI
+
+If you want to run the CLI in a container:
+
+```sh
+docker run --rm -v $(pwd)/results:/results cli-image-name post --file /results/junit.xml --project MyProject --suite MySuite --api-url http://host.docker.internal:8080/api
+```
+
+### Notes
+- Ensure the API is running and accessible at the specified `--api-url`.
+- The CLI may require configuration (see `cli/README.md` for more details).
+- For more CLI commands and options, run:
+  ```sh
+  ./cli --help
+  ```
