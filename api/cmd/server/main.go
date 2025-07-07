@@ -11,6 +11,7 @@ import (
 	_ "strconv"
 	_ "time"
 
+	_ "github.com/BennyEisner/test-results/docs"
 	"github.com/BennyEisner/test-results/internal/shared/container"
 	_ "github.com/lib/pq"
 	_ "go.uber.org/automaxprocs"
