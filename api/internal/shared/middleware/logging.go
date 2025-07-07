@@ -10,6 +10,12 @@ import (
 func LoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip logging for healthcheck endpoints
+			if r.URL.Path == "/readyz" || r.URL.Path == "/livez" || r.URL.Path == "/healthz" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			start := time.Now()
 
 			// Wrap the response writer to capture status code
