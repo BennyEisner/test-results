@@ -75,7 +75,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	})
 
 	// --- API Documentation ---
-	mux.HandleFunc("/swagger/*", httpSwagger.Handler(
+	mux.HandleFunc("/swagger/", httpSwagger.Handler(
 		httpSwagger.URL("http://localhost:8080/swagger/doc.json"),
 		httpSwagger.DeepLinking(true),
 		httpSwagger.DocExpansion("none"),
