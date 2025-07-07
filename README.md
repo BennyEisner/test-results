@@ -172,3 +172,23 @@ fullstack-test-tracker/
 ## Optional
 
 We can generate a GitHub repo scaffold if needed to jumpstart development.
+
+## Local Development URLs
+
+When running the stack locally with Docker Compose, use the following URLs to access the services:
+
+- **Frontend (UI):** [http://localhost:8088](http://localhost:8088)
+  - This serves the web UI via Nginx.
+
+- **Backend API:** [http://localhost:8080](http://localhost:8080)
+  - The API root. Endpoints are available under `/api`, e.g.:
+    - [http://localhost:8080/api/projects](http://localhost:8080/api/projects)
+    - [http://localhost:8080/api/builds](http://localhost:8080/api/builds)
+
+- **Swagger API Documentation:** [http://localhost:8080/swagger/](http://localhost:8080/swagger/)
+  - Interactive OpenAPI docs for the backend API.
+
+- **Health Checks:**
+  - [http://localhost:8080/readyz](http://localhost:8080/readyz) (readiness)
+  - [http://localhost:8080/livez](http://localhost:8080/livez) (liveness)
+  - [http://localhost:8080/healthz](http://localhost:8080/healthz) (comprehensive health)
