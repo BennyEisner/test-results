@@ -3,6 +3,8 @@ package application
 import (
 	"context"
 	"fmt"
+
+	userconfigmodels "github.com/BennyEisner/test-results/internal/user_config/domain/models"
 )
 
 // UserConfigService implements the UserConfigService interface
@@ -37,4 +39,12 @@ func (s *UserConfigService) UpdateUserConfig(ctx context.Context, id int64, valu
 func (s *UserConfigService) DeleteUserConfig(ctx context.Context, id int64) error {
 	// Temporarily disabled
 	return fmt.Errorf("user config service temporarily disabled")
+}
+func (s *UserConfigService) CreateUserConfig(ctx context.Context, userID int64, layouts, activeLayoutID string) (*userconfigmodels.UserConfig, error) {
+	// Dummy implementation for now
+	return &userconfigmodels.UserConfig{
+		UserID:         userID,
+		Layouts:        layouts,
+		ActiveLayoutID: activeLayoutID,
+	}, nil
 }

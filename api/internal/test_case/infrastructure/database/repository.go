@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/BennyEisner/test-results/internal/domain/models"
-	"github.com/BennyEisner/test-results/internal/domain/ports"
+	"github.com/BennyEisner/test-results/internal/test_case/domain/models"
+	"github.com/BennyEisner/test-results/internal/test_case/domain/ports"
 )
 
 // SQLTestCaseRepository implements the TestCaseRepository interface

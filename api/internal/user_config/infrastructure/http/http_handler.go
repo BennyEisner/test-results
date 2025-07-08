@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/BennyEisner/test-results/internal/domain/ports"
+	"github.com/BennyEisner/test-results/internal/user_config/domain/ports"
 )
 
 // UserConfigHandler handles HTTP requests for user configurations
@@ -21,12 +21,17 @@ func NewUserConfigHandler(service ports.UserConfigService) *UserConfigHandler {
 // GetUserConfig handles GET /users/{userID}/config
 func (h *UserConfigHandler) GetUserConfig(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("user_id")
-	userID, err := strconv.Atoi(userIDStr)
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
 		http.Error(w, "invalid user_id", http.StatusBadRequest)
 		return
 	}
-	config, err := h.Service.GetUserConfig(r.Context(), userID)
+	key := r.URL.Query().Get("key")
+	if key == "" {
+		http.Error(w, "missing key parameter", http.StatusBadRequest)
+		return
+	}
+	config, err := h.Service.GetUserConfig(r.Context(), userID, key)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -44,7 +49,7 @@ func (h *UserConfigHandler) GetUserConfig(w http.ResponseWriter, r *http.Request
 // CreateUserConfig handles POST /users/{userID}/config
 func (h *UserConfigHandler) CreateUserConfig(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("user_id")
-	userID, err := strconv.Atoi(userIDStr)
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
 		http.Error(w, "invalid user_id", http.StatusBadRequest)
 		return
@@ -72,7 +77,7 @@ func (h *UserConfigHandler) CreateUserConfig(w http.ResponseWriter, r *http.Requ
 // UpdateUserConfig handles PUT /users/{userID}/config
 func (h *UserConfigHandler) UpdateUserConfig(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("user_id")
-	userID, err := strconv.Atoi(userIDStr)
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
 		http.Error(w, "invalid user_id", http.StatusBadRequest)
 		return
@@ -85,7 +90,7 @@ func (h *UserConfigHandler) UpdateUserConfig(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
-	config, err := h.Service.UpdateUserConfig(r.Context(), userID, req.Layouts, req.ActiveLayoutID)
+	config, err := h.Service.UpdateUserConfig(r.Context(), userID, req.Layouts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -103,7 +108,7 @@ func (h *UserConfigHandler) UpdateUserConfig(w http.ResponseWriter, r *http.Requ
 // DeleteUserConfig handles DELETE /users/{userID}/config
 func (h *UserConfigHandler) DeleteUserConfig(w http.ResponseWriter, r *http.Request) {
 	userIDStr := r.URL.Query().Get("user_id")
-	userID, err := strconv.Atoi(userIDStr)
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
 	if err != nil {
 		http.Error(w, "invalid user_id", http.StatusBadRequest)
 		return

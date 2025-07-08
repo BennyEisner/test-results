@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/BennyEisner/test-results/internal/domain/models"
-	"github.com/BennyEisner/test-results/internal/domain/ports"
+	"github.com/BennyEisner/test-results/internal/search/domain/models"
+	"github.com/BennyEisner/test-results/internal/search/domain/ports"
 )
 
 type SQLSearchRepository struct {

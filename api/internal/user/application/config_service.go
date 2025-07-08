@@ -5,20 +5,20 @@ import (
 	"fmt"
 
 	"github.com/BennyEisner/test-results/internal/user/domain/errors"
-	"github.com/BennyEisner/test-results/internal/user/domain/models"
-	"github.com/BennyEisner/test-results/internal/user/domain/ports"
+	userconfigmodels "github.com/BennyEisner/test-results/internal/user_config/domain/models"
+	userconfigports "github.com/BennyEisner/test-results/internal/user_config/domain/ports"
 )
 
 // UserConfigService implements the UserConfigService interface
 type UserConfigService struct {
-	repo ports.UserConfigRepository
+	repo userconfigports.UserConfigRepository
 }
 
-func NewUserConfigService(repo ports.UserConfigRepository) ports.UserConfigService {
+func NewUserConfigService(repo userconfigports.UserConfigRepository) userconfigports.UserConfigService {
 	return &UserConfigService{repo: repo}
 }
 
-func (s *UserConfigService) GetUserConfigs(ctx context.Context, userID int64) ([]*models.UserConfig, error) {
+func (s *UserConfigService) GetUserConfigs(ctx context.Context, userID int64) ([]*userconfigmodels.UserConfig, error) {
 	if userID <= 0 {
 		return nil, fmt.Errorf("invalid user ID")
 	}
@@ -30,7 +30,7 @@ func (s *UserConfigService) GetUserConfigs(ctx context.Context, userID int64) ([
 	return configs, nil
 }
 
-func (s *UserConfigService) GetUserConfig(ctx context.Context, userID int64, key string) (*models.UserConfig, error) {
+func (s *UserConfigService) GetUserConfig(ctx context.Context, userID int64, key string) (*userconfigmodels.UserConfig, error) {
 	if userID <= 0 {
 		return nil, fmt.Errorf("invalid user ID")
 	}
@@ -48,7 +48,7 @@ func (s *UserConfigService) GetUserConfig(ctx context.Context, userID int64, key
 	return config, nil
 }
 
-func (s *UserConfigService) SetUserConfig(ctx context.Context, userID int64, key, value string) (*models.UserConfig, error) {
+func (s *UserConfigService) SetUserConfig(ctx context.Context, userID int64, key, value string) (*userconfigmodels.UserConfig, error) {
 	if userID <= 0 {
 		return nil, fmt.Errorf("invalid user ID")
 	}
@@ -69,7 +69,7 @@ func (s *UserConfigService) SetUserConfig(ctx context.Context, userID int64, key
 	}
 
 	// Create new config
-	config := &models.UserConfig{
+	config := &userconfigmodels.UserConfig{
 		UserID: userID,
 		Key:    key,
 		Value:  value,
@@ -81,12 +81,12 @@ func (s *UserConfigService) SetUserConfig(ctx context.Context, userID int64, key
 	return config, nil
 }
 
-func (s *UserConfigService) UpdateUserConfig(ctx context.Context, id int64, value string) (*models.UserConfig, error) {
+func (s *UserConfigService) UpdateUserConfig(ctx context.Context, id int64, value string) (*userconfigmodels.UserConfig, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("invalid config ID")
 	}
 
-	config := &models.UserConfig{
+	config := &userconfigmodels.UserConfig{
 		Value: value,
 	}
 
@@ -106,4 +106,16 @@ func (s *UserConfigService) DeleteUserConfig(ctx context.Context, id int64) erro
 		return fmt.Errorf("failed to delete user config: %w", err)
 	}
 	return nil
+}
+
+func (s *UserConfigService) CreateUserConfig(ctx context.Context, userID int64, layouts, activeLayoutID string) (*userconfigmodels.UserConfig, error) {
+	config := &userconfigmodels.UserConfig{
+		UserID:         userID,
+		Layouts:        layouts,
+		ActiveLayoutID: activeLayoutID,
+	}
+	if err := s.repo.Create(ctx, config); err != nil {
+		return nil, fmt.Errorf("failed to create user config: %w", err)
+	}
+	return config, nil
 }

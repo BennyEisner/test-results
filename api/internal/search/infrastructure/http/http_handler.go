@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/BennyEisner/test-results/internal/domain/ports"
+	"github.com/BennyEisner/test-results/internal/search/domain/ports"
 )
 
 // SearchHandler handles HTTP requests for search operations

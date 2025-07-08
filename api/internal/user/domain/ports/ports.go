@@ -16,15 +16,6 @@ type UserRepository interface {
 	Delete(ctx context.Context, id int64) error
 }
 
-// UserConfigRepository defines the interface for user config data access
-type UserConfigRepository interface {
-	GetByUserID(ctx context.Context, userID int64) ([]*models.UserConfig, error)
-	GetByUserIDAndKey(ctx context.Context, userID int64, key string) (*models.UserConfig, error)
-	Create(ctx context.Context, config *models.UserConfig) error
-	Update(ctx context.Context, id int64, config *models.UserConfig) (*models.UserConfig, error)
-	Delete(ctx context.Context, id int64) error
-}
-
 // UserService defines the interface for user business logic
 type UserService interface {
 	GetUser(ctx context.Context, id int64) (*models.User, error)
@@ -33,13 +24,4 @@ type UserService interface {
 	CreateUser(ctx context.Context, username, email string) (*models.User, error)
 	UpdateUser(ctx context.Context, id int64, username, email string) (*models.User, error)
 	DeleteUser(ctx context.Context, id int64) error
-}
-
-// UserConfigService defines the interface for user config business logic
-type UserConfigService interface {
-	GetUserConfigs(ctx context.Context, userID int64) ([]*models.UserConfig, error)
-	GetUserConfig(ctx context.Context, userID int64, key string) (*models.UserConfig, error)
-	SetUserConfig(ctx context.Context, userID int64, key, value string) (*models.UserConfig, error)
-	UpdateUserConfig(ctx context.Context, id int64, value string) (*models.UserConfig, error)
-	DeleteUserConfig(ctx context.Context, id int64) error
 }

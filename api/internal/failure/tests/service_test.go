@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/BennyEisner/test-results/internal/domain"
-	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/failure/domain/models"
+	"github.com/BennyEisner/test-results/internal/failure/domain/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -86,7 +86,7 @@ func TestFailureService_GetFailureByID(t *testing.T) {
 		result, err := service.GetFailureByID(ctx, 999)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrFailureNotFound, err)
+		assert.Equal(t, ports.ErrFailureNotFound, err)
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})

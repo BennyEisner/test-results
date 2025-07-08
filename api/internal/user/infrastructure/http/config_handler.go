@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/BennyEisner/test-results/internal/user/domain/ports"
+	userconfigports "github.com/BennyEisner/test-results/internal/user_config/domain/ports"
 )
 
 // UserConfigHandler handles HTTP requests for user configs
 type UserConfigHandler struct {
-	Service ports.UserConfigService
+	Service userconfigports.UserConfigService
 }
 
 // NewUserConfigHandler creates a new UserConfigHandler
-func NewUserConfigHandler(service ports.UserConfigService) *UserConfigHandler {
+func NewUserConfigHandler(service userconfigports.UserConfigService) *UserConfigHandler {
 	return &UserConfigHandler{Service: service}
 }
 

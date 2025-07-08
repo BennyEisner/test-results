@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/BennyEisner/test-results/internal/domain"
-	"github.com/BennyEisner/test-results/internal/domain/models"
+	"github.com/BennyEisner/test-results/internal/user/domain/models"
+	"github.com/BennyEisner/test-results/internal/user/domain/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -75,7 +75,7 @@ func TestUserService_GetUserByID(t *testing.T) {
 		result, err := service.GetUserByID(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidUsername, err)
+		assert.Equal(t, ports.ErrInvalidUsername, err)
 		assert.Nil(t, result)
 	})
 
@@ -85,7 +85,7 @@ func TestUserService_GetUserByID(t *testing.T) {
 		result, err := service.GetUserByID(ctx, 999)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrUserNotFound, err)
+		assert.Equal(t, ports.ErrUserNotFound, err)
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -116,7 +116,7 @@ func TestUserService_GetUserByUsername(t *testing.T) {
 		result, err := service.GetUserByUsername(ctx, "")
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidUsername, err)
+		assert.Equal(t, ports.ErrInvalidUsername, err)
 		assert.Nil(t, result)
 	})
 
@@ -126,7 +126,7 @@ func TestUserService_GetUserByUsername(t *testing.T) {
 		result, err := service.GetUserByUsername(ctx, "nonexistent")
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrUserNotFound, err)
+		assert.Equal(t, ports.ErrUserNotFound, err)
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -154,7 +154,7 @@ func TestUserService_CreateUser(t *testing.T) {
 		result, err := service.CreateUser(ctx, "")
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidUsername, err)
+		assert.Equal(t, ports.ErrInvalidUsername, err)
 		assert.Nil(t, result)
 	})
 
@@ -171,7 +171,7 @@ func TestUserService_CreateUser(t *testing.T) {
 		result, err := service.CreateUser(ctx, username)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrUserAlreadyExists, err)
+		assert.Equal(t, ports.ErrUserAlreadyExists, err)
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -211,7 +211,7 @@ func TestUserService_UpdateUser(t *testing.T) {
 		result, err := service.UpdateUser(ctx, 0, "username")
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidUsername, err)
+		assert.Equal(t, ports.ErrInvalidUsername, err)
 		assert.Nil(t, result)
 	})
 
@@ -222,7 +222,7 @@ func TestUserService_UpdateUser(t *testing.T) {
 		result, err := service.UpdateUser(ctx, userID, "username")
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrUserNotFound, err)
+		assert.Equal(t, ports.ErrUserNotFound, err)
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -254,7 +254,7 @@ func TestUserService_DeleteUser(t *testing.T) {
 		err := service.DeleteUser(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrInvalidUsername, err)
+		assert.Equal(t, ports.ErrInvalidUsername, err)
 	})
 
 	t.Run("user not found", func(t *testing.T) {
@@ -264,7 +264,7 @@ func TestUserService_DeleteUser(t *testing.T) {
 		err := service.DeleteUser(ctx, userID)
 
 		assert.Error(t, err)
-		assert.Equal(t, domain.ErrUserNotFound, err)
+		assert.Equal(t, ports.ErrUserNotFound, err)
 		mockRepo.AssertExpectations(t)
 	})
 }
