@@ -940,7 +940,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.JUnitTestSuites"
+                            "type": "object"
                         }
                     }
                 ],
@@ -948,7 +948,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.Build"
+                            "type": "object"
                         }
                     },
                     "400": {
@@ -1341,7 +1341,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.TestCase"
+                                "type": "object"
                             }
                         }
                     },
@@ -1555,7 +1555,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.TestSuite"
+                                "type": "object"
                             }
                         }
                     },
@@ -1672,7 +1672,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.TestSuite"
+                            "type": "object"
                         }
                     },
                     "400": {
@@ -2214,131 +2214,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "models.Build": {
-            "type": "object",
-            "properties": {
-                "build_number": {
-                    "type": "string"
-                },
-                "ci_provider": {
-                    "type": "string"
-                },
-                "ci_url": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "duration": {
-                    "type": "number"
-                },
-                "ended_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "project_id": {
-                    "type": "integer"
-                },
-                "started_at": {
-                    "type": "string"
-                },
-                "test_case_count": {
-                    "type": "integer"
-                },
-                "test_suite_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "models.JUnitError": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.JUnitFailure": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.JUnitSkipped": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.JUnitTestCase": {
-            "type": "object",
-            "properties": {
-                "classname": {
-                    "type": "string"
-                },
-                "error": {
-                    "$ref": "#/definitions/models.JUnitError"
-                },
-                "failure": {
-                    "$ref": "#/definitions/models.JUnitFailure"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "skipped": {
-                    "$ref": "#/definitions/models.JUnitSkipped"
-                },
-                "time": {
-                    "type": "number"
-                }
-            }
-        },
-        "models.JUnitTestSuite": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "testCases": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.JUnitTestCase"
-                    }
-                }
-            }
-        },
-        "models.JUnitTestSuites": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "testSuites": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.JUnitTestSuite"
-                    }
-                }
-            }
-        },
         "models.SearchResult": {
             "type": "object",
             "properties": {
@@ -2408,7 +2283,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8080",
-	BasePath:         "/",
+	BasePath:         "/api",
 	Schemes:          []string{},
 	Title:            "Test Results API",
 	Description:      "A hexagonal architecture API for managing test results, builds, and projects.",
