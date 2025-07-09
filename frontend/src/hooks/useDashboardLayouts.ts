@@ -6,8 +6,8 @@ import {
   ComponentProps,
 } from "../types/dashboard";
 import { COMPONENT_DEFINITIONS } from "../components/dashboard/ComponentRegistry";
-import { fetchRecentBuilds } from "../services/api";
 import { dashboardApi } from "../services/dashboardApi";
+import { fetchBuilds } from '../services/api';
 
 const STORAGE_KEY = "dashboard-layouts";
 
@@ -21,7 +21,7 @@ const defaultLayout: DashboardLayout = {
     {
       id: "builds-1",
       type: "builds-table",
-      props: { title: "Recent Builds", fetchFunction: fetchRecentBuilds },
+      props: { title: "Recent Builds", fetchFunction: () => fetchBuilds(1) },
       visible: true,
     },
     {

@@ -18,6 +18,9 @@ import (
 	projectDB "github.com/BennyEisner/test-results/internal/project/infrastructure/database"
 	projectHTTP "github.com/BennyEisner/test-results/internal/project/infrastructure/http"
 	"github.com/BennyEisner/test-results/internal/shared/middleware"
+	testSuiteApp "github.com/BennyEisner/test-results/internal/test_suite/application"
+	testSuiteDB "github.com/BennyEisner/test-results/internal/test_suite/infrastructure/database"
+	testSuiteHTTP "github.com/BennyEisner/test-results/internal/test_suite/infrastructure/http"
 	userApp "github.com/BennyEisner/test-results/internal/user/application"
 	userDB "github.com/BennyEisner/test-results/internal/user/infrastructure/database"
 	userHTTP "github.com/BennyEisner/test-results/internal/user/infrastructure/http"
@@ -88,6 +91,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	buildExecRepo := buildExecDB.NewSQLBuildTestCaseExecutionRepository(db)
 	failureRepo := failureDB.NewSQLFailureRepository(db)
 	userRepo := userDB.NewSQLUserRepository(db)
+	testSuiteRepo := testSuiteDB.NewSQLTestSuiteRepository(db)
 
 	// Wire up services
 	projectService := projectApp.NewProjectService(projectRepo)
@@ -95,6 +99,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	buildExecService := buildExecApp.NewBuildTestCaseExecutionService(buildExecRepo)
 	failureService := failureApp.NewFailureService(failureRepo)
 	userService := userApp.NewUserService(userRepo)
+	testSuiteService := testSuiteApp.NewTestSuiteService(testSuiteRepo)
 
 	// Wire up HTTP handlers
 	projectHandler := projectHTTP.NewProjectHandler(projectService)
@@ -102,11 +107,12 @@ func NewRouter(db *sql.DB) http.Handler {
 	buildExecHandler := buildExecHTTP.NewBuildTestCaseExecutionHandler(buildExecService)
 	failureHandler := failureHTTP.NewFailureHandler(failureService)
 	userHandler := userHTTP.NewUserHandler(userService)
+	testSuiteHandler := testSuiteHTTP.NewTestSuiteHandler(testSuiteService)
 
 	// --- API subrouter ---
 	apiMux := http.NewServeMux()
 	registerRoutes(apiMux, projectHandler, buildHandler,
-		buildExecHandler, failureHandler, userHandler)
+		buildExecHandler, failureHandler, userHandler, testSuiteHandler)
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
 
 	// Apply middleware
@@ -120,7 +126,8 @@ func registerRoutes(mux *http.ServeMux,
 	buildHandler *buildHTTP.BuildHandler,
 	buildExecHandler *buildExecHTTP.BuildTestCaseExecutionHandler,
 	failureHandler *failureHTTP.FailureHandler,
-	userHandler *userHTTP.UserHandler) {
+	userHandler *userHTTP.UserHandler,
+	testSuiteHandler *testSuiteHTTP.TestSuiteHandler) {
 
 	// Project routes
 	mux.HandleFunc("GET /projects", projectHandler.GetAllProjects)
@@ -157,4 +164,7 @@ func registerRoutes(mux *http.ServeMux,
 	mux.HandleFunc("POST /users", userHandler.CreateUser)
 	mux.HandleFunc("PUT /users/{id}", userHandler.UpdateUser)
 	mux.HandleFunc("DELETE /users/{id}", userHandler.DeleteUser)
+
+	// Test suite routes
+	mux.HandleFunc("GET /test-suites", testSuiteHandler.GetTestSuitesByProjectID)
 }

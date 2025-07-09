@@ -4,7 +4,7 @@ import ExecutionsSummary from '../execution/ExecutionsSummary';
 import BuildDoughnutChart from '../build/BuildDoughnutChart';
 import BuildDurationTrendChart from '../build/BuildDurationTrendChart';
 import MostFailedTestsTable from '../test/MostFailedTestsTable';
-import { fetchRecentBuilds } from '../../services/api';
+import { fetchBuilds } from '../../services/api';
 
 interface ComponentRegistryProps {
     type: ComponentType;
@@ -21,9 +21,10 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
     if (type === 'builds-table') {
         const fetchProjectId = props.projectId && props.projectId !== 'all' ? props.projectId : projectId;
         if (fetchProjectId) {
-            componentProps.fetchFunction = () => fetchRecentBuilds(fetchProjectId);
+            componentProps.fetchFunction = () => fetchBuilds(fetchProjectId);
         } else {
-            componentProps.fetchFunction = () => fetchRecentBuilds();
+            // Fallback: show a placeholder or use a default projectId (e.g., 1)
+            componentProps.fetchFunction = () => Promise.resolve([]); // or fetchBuilds(1)
         }
     }
 

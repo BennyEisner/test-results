@@ -1,8 +1,8 @@
 import { Row, Col, Card, Alert } from 'react-bootstrap';
 import AppNavbar from '../common/AppNavbar';
 import BuildsTable from '../build/BuildsTable';
-import { fetchRecentBuilds } from '../../services/api';
 import './HomePage.css';
+import { fetchBuilds } from '../../services/api';
 
 const HomePage = () => {
     return (
@@ -23,7 +23,7 @@ const HomePage = () => {
                         <Card.Header as="h5">Recent Builds</Card.Header>
                         <Card.Body>
                             <div className="builds-table-container">
-                                <BuildsTable fetchFunction={fetchRecentBuilds} title="" />
+                                <BuildsTable fetchFunction={() => fetchBuilds(1)} title="" />
                             </div>
                         </Card.Body>
                     </Card>
