@@ -70,10 +70,12 @@ Point the CLI to sample JUnit/ReadyAPI result files and post them to the API.
 
 ## Contribution Guide
 
-* Use feature branches
+* Use feature branches (see [Feature Branch Workflow](docs/feature-branch.md))
 * Format code with `gofmt`, Prettier, etc.
 * Write tests for new code
 * Use pre-commit hooks if available
+
+For more detailed contribution guidelines, see [Contributing Guide](docs/contributing.md).
 
 ---
 
@@ -168,6 +170,16 @@ fullstack-test-tracker/
 * Containerized dev environments with Docker
 
 ---
+
+## Documentation
+
+Additional documentation is available in the `docs/` directory:
+
+* [Architectural Design Records (ADR)](docs/ADR.md) - Design decisions and architectural considerations
+* [API Documentation](docs/api.md) - Detailed API reference and usage
+* [Database Documentation](docs/db.md) - Database schema and migration information
+* [Contributing Guide](docs/contributing.md) - How to contribute to the project
+* [Feature Branch Workflow](docs/feature-branch.md) - Git workflow for feature development
 
 ## Optional
 
