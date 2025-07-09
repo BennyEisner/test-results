@@ -18,67 +18,63 @@ func NewTestSuiteHandler(service ports.TestSuiteService) *TestSuiteHandler {
 	return &TestSuiteHandler{Service: service}
 }
 
-// GetTestSuiteByID handles GET /test-suites/{id}
-// @Summary Get test suite by ID
-// @Description Retrieve a test suite by its unique identifier
+// GetTestSuites handles GET /test-suites
+// @Summary Get test suites by ID or project ID
+// @Description Retrieve test suites by either id or project_id
 // @Tags test-suites
 // @Accept json
 // @Produce json
-// @Param id query int true "Test Suite ID"
-// @Success 200 {object} object
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /test-suites [get]
-func (h *TestSuiteHandler) GetTestSuiteByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	suite, err := h.Service.GetTestSuite(r.Context(), id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if suite == nil {
-		http.NotFound(w, r)
-		return
-	}
-	if err := json.NewEncoder(w).Encode(suite); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
-}
-
-// GetTestSuitesByProjectID handles GET /projects/{projectID}/test-suites
-// @Summary Get test suites by project ID
-// @Description Retrieve all test suites for a specific project
-// @Tags test-suites
-// @Accept json
-// @Produce json
-// @Param project_id query int true "Project ID"
+// @Param id query int false "Test Suite ID"
+// @Param project_id query int false "Project ID"
 // @Success 200 {array} object
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /test-suites [get]
-func (h *TestSuiteHandler) GetTestSuitesByProjectID(w http.ResponseWriter, r *http.Request) {
+func (h *TestSuiteHandler) GetTestSuites(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
 	projectIDStr := r.URL.Query().Get("project_id")
-	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid project_id", http.StatusBadRequest)
+
+	if idStr != "" {
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		suite, err := h.Service.GetTestSuite(r.Context(), id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if suite == nil {
+			http.NotFound(w, r)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(suite); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+			return
+		}
 		return
 	}
-	suites, err := h.Service.GetTestSuitesByProject(r.Context(), projectID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	if projectIDStr != "" {
+		projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid project_id", http.StatusBadRequest)
+			return
+		}
+		suites, err := h.Service.GetTestSuitesByProject(r.Context(), projectID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(suites); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+			return
+		}
 		return
 	}
-	if err := json.NewEncoder(w).Encode(suites); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
+
+	http.Error(w, "missing id or project_id", http.StatusBadRequest)
 }
 
 // CreateTestSuite handles POST /test-suites

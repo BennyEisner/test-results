@@ -18,67 +18,63 @@ func NewTestCaseHandler(service ports.TestCaseService) *TestCaseHandler {
 	return &TestCaseHandler{Service: service}
 }
 
-// GetTestCaseByID handles GET /test-cases/{id}
-// @Summary Get test case by ID
-// @Description Retrieve a test case by its unique identifier
+// GetTestCases handles GET /test-cases
+// @Summary Get test cases by ID or suite ID
+// @Description Retrieve test cases by either id or suite_id
 // @Tags test-cases
 // @Accept json
 // @Produce json
-// @Param id query int true "Test Case ID"
-// @Success 200 {object} object
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /test-cases [get]
-func (h *TestCaseHandler) GetTestCaseByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
-		return
-	}
-	testCase, err := h.Service.GetTestCase(r.Context(), id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if testCase == nil {
-		http.NotFound(w, r)
-		return
-	}
-	if err := json.NewEncoder(w).Encode(testCase); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
-}
-
-// GetTestCasesBySuiteID handles GET /test-suites/{suiteID}/test-cases
-// @Summary Get test cases by suite ID
-// @Description Retrieve all test cases for a specific test suite
-// @Tags test-cases
-// @Accept json
-// @Produce json
-// @Param suite_id query int true "Test Suite ID"
+// @Param id query int false "Test Case ID"
+// @Param suite_id query int false "Test Suite ID"
 // @Success 200 {array} object
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /test-cases [get]
-func (h *TestCaseHandler) GetTestCasesBySuiteID(w http.ResponseWriter, r *http.Request) {
+func (h *TestCaseHandler) GetTestCases(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
 	suiteIDStr := r.URL.Query().Get("suite_id")
-	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid suite_id", http.StatusBadRequest)
+
+	if idStr != "" {
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid id", http.StatusBadRequest)
+			return
+		}
+		testCase, err := h.Service.GetTestCase(r.Context(), id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if testCase == nil {
+			http.NotFound(w, r)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(testCase); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+			return
+		}
 		return
 	}
-	testCases, err := h.Service.GetTestCasesBySuite(r.Context(), suiteID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	if suiteIDStr != "" {
+		suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid suite_id", http.StatusBadRequest)
+			return
+		}
+		testCases, err := h.Service.GetTestCasesBySuite(r.Context(), suiteID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := json.NewEncoder(w).Encode(testCases); err != nil {
+			http.Error(w, "failed to encode response", http.StatusInternalServerError)
+			return
+		}
 		return
 	}
-	if err := json.NewEncoder(w).Encode(testCases); err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
+
+	http.Error(w, "missing id or suite_id", http.StatusBadRequest)
 }
 
 // CreateTestCase handles POST /test-cases

@@ -1,4 +1,4 @@
-package database
+package infrastructure
 
 import (
 	"context"
@@ -20,58 +20,38 @@ func NewSQLUserConfigRepository(db *sql.DB) userconfigports.UserConfigRepository
 }
 
 // GetByUserID retrieves a user config by user ID
-func (r *SQLUserConfigRepository) GetByUserID(ctx context.Context, userID int64) ([]*userconfigmodels.UserConfig, error) {
-	query := `SELECT id, user_id, key, value, layouts, active_layout_id, created_at, updated_at FROM user_configs WHERE user_id = $1`
-	rows, err := r.db.QueryContext(ctx, query, userID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user configs: %w", err)
-	}
-	defer rows.Close()
-	var configs []*userconfigmodels.UserConfig
-	for rows.Next() {
-		var config userconfigmodels.UserConfig
-		err := rows.Scan(&config.ID, &config.UserID, &config.Key, &config.Value, &config.Layouts, &config.ActiveLayoutID, &config.CreatedAt, &config.UpdatedAt)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan user config: %w", err)
-		}
-		configs = append(configs, &config)
-	}
-	return configs, nil
-}
-
-func (r *SQLUserConfigRepository) GetByUserIDAndKey(ctx context.Context, userID int64, key string) (*userconfigmodels.UserConfig, error) {
-	query := `SELECT id, user_id, key, value, layouts, active_layout_id, created_at, updated_at FROM user_configs WHERE user_id = $1 AND key = $2`
+func (r *SQLUserConfigRepository) GetByUserID(ctx context.Context, userID int64) (*userconfigmodels.UserConfig, error) {
+	query := `SELECT id, user_id, layouts, active_layout_id, created_at, updated_at FROM user_configs WHERE user_id = $1`
 	var config userconfigmodels.UserConfig
-	err := r.db.QueryRowContext(ctx, query, userID, key).Scan(&config.ID, &config.UserID, &config.Key, &config.Value, &config.Layouts, &config.ActiveLayoutID, &config.CreatedAt, &config.UpdatedAt)
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&config.ID, &config.UserID, &config.Layouts, &config.ActiveLayoutID, &config.CreatedAt, &config.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil
+			return nil, nil // No config found is not an error
 		}
 		return nil, fmt.Errorf("failed to get user config: %w", err)
 	}
 	return &config, nil
 }
 
-func (r *SQLUserConfigRepository) Create(ctx context.Context, config *userconfigmodels.UserConfig) error {
-	query := `INSERT INTO user_configs (user_id, key, value, layouts, active_layout_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
-	err := r.db.QueryRowContext(ctx, query, config.UserID, config.Key, config.Value, config.Layouts, config.ActiveLayoutID, config.CreatedAt, config.UpdatedAt).Scan(&config.ID)
-	if err != nil {
-		return fmt.Errorf("failed to create user config: %w", err)
-	}
-	return nil
+func (r *SQLUserConfigRepository) GetByUserIDAndKey(ctx context.Context, userID int64, key string) (*userconfigmodels.UserConfig, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
-func (r *SQLUserConfigRepository) Update(ctx context.Context, id int64, config *userconfigmodels.UserConfig) (*userconfigmodels.UserConfig, error) {
-	query := `UPDATE user_configs SET key = $1, value = $2, layouts = $3, active_layout_id = $4, updated_at = $5 WHERE id = $6 RETURNING id, user_id, key, value, layouts, active_layout_id, created_at, updated_at`
-	var updatedConfig userconfigmodels.UserConfig
-	err := r.db.QueryRowContext(ctx, query, config.Key, config.Value, config.Layouts, config.ActiveLayoutID, config.UpdatedAt, id).Scan(&updatedConfig.ID, &updatedConfig.UserID, &updatedConfig.Key, &updatedConfig.Value, &updatedConfig.Layouts, &updatedConfig.ActiveLayoutID, &updatedConfig.CreatedAt, &updatedConfig.UpdatedAt)
+func (r *SQLUserConfigRepository) Save(ctx context.Context, config *userconfigmodels.UserConfig) error {
+	query := `
+        INSERT INTO user_configs (user_id, layouts, active_layout_id, created_at, updated_at)
+        VALUES ($1, $2, $3, NOW(), NOW())
+        ON CONFLICT (user_id) DO UPDATE SET
+            layouts = EXCLUDED.layouts,
+            active_layout_id = EXCLUDED.active_layout_id,
+            updated_at = NOW()
+        RETURNING id, created_at, updated_at
+    `
+	err := r.db.QueryRowContext(ctx, query, config.UserID, config.Layouts, config.ActiveLayoutID).Scan(&config.ID, &config.CreatedAt, &config.UpdatedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to update user config: %w", err)
+		return fmt.Errorf("failed to save user config: %w", err)
 	}
-	return &updatedConfig, nil
+	return nil
 }
 
 func (r *SQLUserConfigRepository) Delete(ctx context.Context, id int64) error {

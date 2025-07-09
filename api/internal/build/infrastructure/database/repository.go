@@ -23,19 +23,20 @@ func NewSQLBuildRepository(db *sql.DB) ports.BuildRepository {
 // GetByID retrieves a build by its ID
 func (r *SQLBuildRepository) GetByID(ctx context.Context, id int64) (*models.Build, error) {
 	query := `
-		SELECT id, test_suite_id, project_id, build_number, ci_provider, ci_url, 
-		       created_at, started_at, ended_at, duration, test_case_count 
-		FROM builds WHERE id = $1
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, 
+		       b.created_at, b.duration, b.test_case_count 
+		FROM builds b
+		JOIN test_suites ts ON b.test_suite_id = ts.id
+		WHERE b.id = $1
 	`
 
 	var build models.Build
 	var ciURL sql.NullString
-	var startedAt, endedAt sql.NullTime
 	var duration sql.NullFloat64
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&build.ID, &build.TestSuiteID, &build.ProjectID, &build.BuildNumber,
-		&build.CIProvider, &ciURL, &build.CreatedAt, &startedAt, &endedAt,
+		&build.CIProvider, &ciURL, &build.CreatedAt,
 		&duration, &build.TestCaseCount,
 	)
 	if err != nil {
@@ -48,12 +49,6 @@ func (r *SQLBuildRepository) GetByID(ctx context.Context, id int64) (*models.Bui
 	if ciURL.Valid {
 		build.CIURL = &ciURL.String
 	}
-	if startedAt.Valid {
-		build.StartedAt = &startedAt.Time
-	}
-	if endedAt.Valid {
-		build.EndedAt = &endedAt.Time
-	}
 	if duration.Valid {
 		build.Duration = &duration.Float64
 	}
@@ -64,9 +59,12 @@ func (r *SQLBuildRepository) GetByID(ctx context.Context, id int64) (*models.Bui
 // GetAllByProjectID retrieves all builds for a project
 func (r *SQLBuildRepository) GetAllByProjectID(ctx context.Context, projectID int64) ([]*models.Build, error) {
 	query := `
-		SELECT id, test_suite_id, project_id, build_number, ci_provider, ci_url, 
-		       created_at, started_at, ended_at, duration, test_case_count 
-		FROM builds WHERE project_id = $1 ORDER BY created_at DESC
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, 
+		b.ci_url, b.created_at, b.test_case_count, b.duration
+		FROM builds b
+		JOIN test_suites ts ON b.test_suite_id = ts.id
+		WHERE ts.project_id = $1
+		ORDER BY b.created_at DESC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, projectID)
@@ -79,13 +77,12 @@ func (r *SQLBuildRepository) GetAllByProjectID(ctx context.Context, projectID in
 	for rows.Next() {
 		var build models.Build
 		var ciURL sql.NullString
-		var startedAt, endedAt sql.NullTime
 		var duration sql.NullFloat64
 
 		err := rows.Scan(
 			&build.ID, &build.TestSuiteID, &build.ProjectID, &build.BuildNumber,
-			&build.CIProvider, &ciURL, &build.CreatedAt, &startedAt, &endedAt,
-			&duration, &build.TestCaseCount,
+			&build.CIProvider, &ciURL, &build.CreatedAt,
+			&build.TestCaseCount, &duration,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan build: %w", err)
@@ -93,12 +90,6 @@ func (r *SQLBuildRepository) GetAllByProjectID(ctx context.Context, projectID in
 
 		if ciURL.Valid {
 			build.CIURL = &ciURL.String
-		}
-		if startedAt.Valid {
-			build.StartedAt = &startedAt.Time
-		}
-		if endedAt.Valid {
-			build.EndedAt = &endedAt.Time
 		}
 		if duration.Valid {
 			build.Duration = &duration.Float64
@@ -117,9 +108,11 @@ func (r *SQLBuildRepository) GetAllByProjectID(ctx context.Context, projectID in
 // GetAllByTestSuiteID retrieves all builds for a test suite
 func (r *SQLBuildRepository) GetAllByTestSuiteID(ctx context.Context, suiteID int64) ([]*models.Build, error) {
 	query := `
-		SELECT id, test_suite_id, project_id, build_number, ci_provider, ci_url, 
-		       created_at, started_at, ended_at, duration, test_case_count 
-		FROM builds WHERE test_suite_id = $1 ORDER BY created_at DESC
+		SELECT b.id, b.test_suite_id, ts.project_id, b.build_number, b.ci_provider, b.ci_url, 
+		       b.created_at, b.duration, b.test_case_count 
+		FROM builds b
+		JOIN test_suites ts ON b.test_suite_id = ts.id
+		WHERE b.test_suite_id = $1 ORDER BY b.created_at DESC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, suiteID)
@@ -132,12 +125,11 @@ func (r *SQLBuildRepository) GetAllByTestSuiteID(ctx context.Context, suiteID in
 	for rows.Next() {
 		var build models.Build
 		var ciURL sql.NullString
-		var startedAt, endedAt sql.NullTime
 		var duration sql.NullFloat64
 
 		err := rows.Scan(
 			&build.ID, &build.TestSuiteID, &build.ProjectID, &build.BuildNumber,
-			&build.CIProvider, &ciURL, &build.CreatedAt, &startedAt, &endedAt,
+			&build.CIProvider, &ciURL, &build.CreatedAt,
 			&duration, &build.TestCaseCount,
 		)
 		if err != nil {
@@ -146,12 +138,6 @@ func (r *SQLBuildRepository) GetAllByTestSuiteID(ctx context.Context, suiteID in
 
 		if ciURL.Valid {
 			build.CIURL = &ciURL.String
-		}
-		if startedAt.Valid {
-			build.StartedAt = &startedAt.Time
-		}
-		if endedAt.Valid {
-			build.EndedAt = &endedAt.Time
 		}
 		if duration.Valid {
 			build.Duration = &duration.Float64
@@ -170,9 +156,9 @@ func (r *SQLBuildRepository) GetAllByTestSuiteID(ctx context.Context, suiteID in
 // Create creates a new build
 func (r *SQLBuildRepository) Create(ctx context.Context, build *models.Build) error {
 	query := `
-		INSERT INTO builds (test_suite_id, project_id, build_number, ci_provider, ci_url, 
-		                   created_at, started_at, ended_at, duration, test_case_count)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id
+		INSERT INTO builds (test_suite_id, build_number, ci_provider, ci_url, 
+		                   created_at, test_case_count)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
 	`
 
 	now := time.Now()
@@ -181,9 +167,9 @@ func (r *SQLBuildRepository) Create(ctx context.Context, build *models.Build) er
 	}
 
 	err := r.db.QueryRowContext(ctx, query,
-		build.TestSuiteID, build.ProjectID, build.BuildNumber, build.CIProvider,
-		build.CIURL, build.CreatedAt, build.StartedAt, build.EndedAt,
-		build.Duration, build.TestCaseCount,
+		build.TestSuiteID, build.BuildNumber, build.CIProvider,
+		build.CIURL, build.CreatedAt,
+		build.TestCaseCount,
 	).Scan(&build.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create build: %w", err)
@@ -195,48 +181,20 @@ func (r *SQLBuildRepository) Create(ctx context.Context, build *models.Build) er
 // Update updates an existing build
 func (r *SQLBuildRepository) Update(ctx context.Context, id int64, build *models.Build) (*models.Build, error) {
 	query := `
-		UPDATE builds SET test_suite_id = $1, project_id = $2, build_number = $3, 
-		                 ci_provider = $4, ci_url = $5, started_at = $6, ended_at = $7, 
-		                 duration = $8, test_case_count = $9
-		WHERE id = $10 RETURNING id, test_suite_id, project_id, build_number, ci_provider, 
-		                        ci_url, created_at, started_at, ended_at, duration, test_case_count
+		UPDATE builds SET test_suite_id = $1, build_number = $2, 
+		                 ci_provider = $3, ci_url = $4, test_case_count = $5
+		WHERE id = $6
 	`
 
-	var updatedBuild models.Build
-	var ciURL sql.NullString
-	var startedAt, endedAt sql.NullTime
-	var duration sql.NullFloat64
-
-	err := r.db.QueryRowContext(ctx, query,
-		build.TestSuiteID, build.ProjectID, build.BuildNumber, build.CIProvider,
-		build.CIURL, build.StartedAt, build.EndedAt, build.Duration,
-		build.TestCaseCount, id,
-	).Scan(
-		&updatedBuild.ID, &updatedBuild.TestSuiteID, &updatedBuild.ProjectID,
-		&updatedBuild.BuildNumber, &updatedBuild.CIProvider, &ciURL,
-		&updatedBuild.CreatedAt, &startedAt, &endedAt, &duration, &updatedBuild.TestCaseCount,
+	_, err := r.db.ExecContext(ctx, query,
+		build.TestSuiteID, build.BuildNumber, build.CIProvider,
+		build.CIURL, build.TestCaseCount, id,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("failed to update build: %w", err)
 	}
 
-	if ciURL.Valid {
-		updatedBuild.CIURL = &ciURL.String
-	}
-	if startedAt.Valid {
-		updatedBuild.StartedAt = &startedAt.Time
-	}
-	if endedAt.Valid {
-		updatedBuild.EndedAt = &endedAt.Time
-	}
-	if duration.Valid {
-		updatedBuild.Duration = &duration.Float64
-	}
-
-	return &updatedBuild, nil
+	return r.GetByID(ctx, id)
 }
 
 // Delete deletes a build by its ID
