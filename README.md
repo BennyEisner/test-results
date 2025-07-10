@@ -70,10 +70,12 @@ Point the CLI to sample JUnit/ReadyAPI result files and post them to the API.
 
 ## Contribution Guide
 
-* Use feature branches
+* Use feature branches (see [Feature Branch Workflow](docs/feature-branch.md))
 * Format code with `gofmt`, Prettier, etc.
 * Write tests for new code
 * Use pre-commit hooks if available
+
+For more detailed contribution guidelines, see [Contributing Guide](docs/contributing.md).
 
 ---
 
@@ -169,6 +171,70 @@ fullstack-test-tracker/
 
 ---
 
+## Documentation
+
+Additional documentation is available in the `docs/` directory:
+
+* [Architectural Design Records (ADR)](docs/ADR.md) - Design decisions and architectural considerations
+* [API Documentation](docs/api.md) - Detailed API reference and usage
+* [Database Documentation](docs/db.md) - Database schema and migration information
+* [Contributing Guide](docs/contributing.md) - How to contribute to the project
+* [Feature Branch Workflow](docs/feature-branch.md) - Git workflow for feature development
+
 ## Optional
 
 We can generate a GitHub repo scaffold if needed to jumpstart development.
+
+## Local Development URLs
+
+When running the stack locally with Docker Compose, use the following URLs to access the services:
+
+- **Frontend (UI):** [http://localhost:8088](http://localhost:8088)
+  - This serves the web UI via Nginx.
+
+- **Backend API:** [http://localhost:8080](http://localhost:8080)
+  - The API root. Endpoints are available under `/api`, e.g.:
+    - [http://localhost:8080/api/projects](http://localhost:8080/api/projects)
+    - [http://localhost:8080/api/builds](http://localhost:8080/api/builds)
+
+- **Swagger API Documentation:** [http://localhost:8080/swagger/](http://localhost:8080/swagger/)
+  - Interactive OpenAPI docs for the backend API.
+
+- **Health Checks:**
+  - [http://localhost:8080/readyz](http://localhost:8080/readyz) (readiness)
+  - [http://localhost:8080/livez](http://localhost:8080/livez) (liveness)
+  - [http://localhost:8080/healthz](http://localhost:8080/healthz) (comprehensive health)
+
+## Using the CLI to Post Results to the API
+
+The CLI can be used to submit test results to the backend API. Make sure the API is running and accessible (see URLs above).
+
+### Example: Post JUnit Results
+
+From the project root, run:
+
+```sh
+cd cli
+./cli post --file <path-to-junit-xml> --project <project-name> --suite <suite-name> --api-url http://localhost:8080/api
+```
+
+- `--file` (required): Path to the JUnit XML file to upload.
+- `--project` (required): Name of the project to associate the results with.
+- `--suite` (required): Name of the test suite.
+- `--api-url` (optional): The base URL of the API (default: `http://localhost:8080/api`).
+
+### Example: Using Dockerized CLI
+
+If you want to run the CLI in a container:
+
+```sh
+docker run --rm -v $(pwd)/results:/results cli-image-name post --file /results/junit.xml --project MyProject --suite MySuite --api-url http://host.docker.internal:8080/api
+```
+
+### Notes
+- Ensure the API is running and accessible at the specified `--api-url`.
+- The CLI may require configuration (see `cli/README.md` for more details).
+- For more CLI commands and options, run:
+  ```sh
+  ./cli --help
+  ```

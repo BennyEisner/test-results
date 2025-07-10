@@ -6,8 +6,8 @@ import {
   ComponentProps,
 } from "../types/dashboard";
 import { COMPONENT_DEFINITIONS } from "../components/dashboard/ComponentRegistry";
-import { fetchRecentBuilds } from "../services/api";
 import { dashboardApi } from "../services/dashboardApi";
+import { fetchBuilds } from '../services/api';
 
 const STORAGE_KEY = "dashboard-layouts";
 
@@ -21,7 +21,7 @@ const defaultLayout: DashboardLayout = {
     {
       id: "builds-1",
       type: "builds-table",
-      props: { title: "Recent Builds", fetchFunction: fetchRecentBuilds },
+      props: { title: "Recent Builds", fetchFunction: () => fetchBuilds(1) },
       visible: true,
     },
     {
@@ -67,43 +67,64 @@ export const useDashboardLayouts = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Load layouts from API or localStorage
   useEffect(() => {
     const loadLayouts = async () => {
       setIsLoading(true);
       setError(null);
+      console.log("Attempting to load layouts...");
       try {
         // Try API first
+        console.log("Fetching layouts from API...");
         const data = await dashboardApi.getLayouts();
-        if (data && data.layouts && data.layouts.length > 0) {
-          setLayouts(data.layouts);
-          setActiveLayoutId(data.activeId || data.layouts[0].id);
+        console.log("API response received:", data);
+
+        if (data && data.layouts) {
+          let finalLayouts: DashboardLayout[];
+          let finalActiveId: string;
+          
+          if (data.layouts.length > 0) {
+            console.log("Layouts found on server, applying them.");
+            finalLayouts = data.layouts;
+            finalActiveId = data.activeId || data.layouts[0].id;
+          } else {
+            console.log("No layouts found on server, applying default layout.");
+            finalLayouts = [defaultLayout];
+            finalActiveId = "default";
+          }
+          
+          console.log("Setting final layouts:", finalLayouts);
+          setLayouts(finalLayouts);
+          setActiveLayoutId(finalActiveId);
 
           // Update localStorage with server data
+          console.log("Updating localStorage with server data:", { layouts: finalLayouts, activeLayoutId: finalActiveId });
           localStorage.setItem(
             STORAGE_KEY,
             JSON.stringify({
-              layouts: data.layouts,
-              activeLayoutId: data.activeId || data.layouts[0].id,
+              layouts: finalLayouts,
+              activeLayoutId: finalActiveId,
             }),
           );
 
           setIsLoading(false);
+          setIsInitialized(true);
+          console.log("Initialization complete - API data loaded");
           return;
         }
       } catch (e) {
-        console.warn(
-          "Failed to load layouts from API, using localStorage fallback",
-          e,
-        );
+        console.error("Failed to load layouts from API, using localStorage fallback", e);
         setError("Could not connect to the server. Displaying cached data.");
         // Continue to localStorage fallback
       }
 
       // Fallback to localStorage
+      console.log("Falling back to localStorage.");
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
+        console.log("Found stored layouts in localStorage:", stored);
         try {
           const parsed = JSON.parse(stored);
           if (
@@ -111,25 +132,28 @@ export const useDashboardLayouts = () => {
             parsed.layouts.length > 0 &&
             parsed.layouts[0].version >= LAYOUT_VERSION
           ) {
+            console.log("Applying layouts from localStorage.");
             setLayouts(parsed.layouts);
             setActiveLayoutId(parsed.activeLayoutId || parsed.layouts[0].id);
           } else {
-            // If localStorage is empty or outdated, use default
+            console.log("localStorage data is outdated or empty, using default layout.");
             setLayouts([defaultLayout]);
             setActiveLayoutId("default");
           }
         } catch (e) {
-          console.error("Failed to parse layouts from localStorage", e);
+          console.error("Failed to parse layouts from localStorage, using default.", e);
           localStorage.removeItem(STORAGE_KEY);
           setLayouts([defaultLayout]);
           setActiveLayoutId("default");
         }
       } else {
-        // If no localStorage, use default
+        console.log("No layouts in localStorage, using default.");
         setLayouts([defaultLayout]);
         setActiveLayoutId("default");
       }
       setIsLoading(false);
+      setIsInitialized(true);
+      console.log("Initialization complete - fallback data loaded");
     };
 
     loadLayouts();
@@ -139,43 +163,106 @@ export const useDashboardLayouts = () => {
     newLayouts: DashboardLayout[],
     newActiveId: string,
   ) => {
-    // Update state immediately
+    if (!isInitialized) {
+      console.warn("Attempted to save layouts before initialization is complete. Aborting.");
+      return;
+    }
+    const previousLayouts = layouts;
+    const previousActiveId = activeLayoutId;
+
+    console.log("Attempting to save layouts:", { newLayouts, newActiveId });
+    // Optimistically update the state
     setLayouts(newLayouts);
     setActiveLayoutId(newActiveId);
-
-    // Always save to localStorage
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ layouts: newLayouts, activeLayoutId: newActiveId }),
-    );
-
-    // Try API
     setIsSaving(true);
     setError(null);
+
     try {
-      await dashboardApi.saveLayouts(newLayouts, newActiveId);
+      console.log("Sending layouts to API...");
+      const savedData = await dashboardApi.saveLayouts(newLayouts, newActiveId);
+      console.log("API save response received:", savedData);
+      if (savedData && savedData.layouts) {
+        // Update state with the response from the server
+        console.log("Updating state and localStorage with server response.");
+        setLayouts(savedData.layouts);
+        setActiveLayoutId(savedData.activeId || savedData.layouts[0].id);
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            layouts: savedData.layouts,
+            activeLayoutId: savedData.activeId || savedData.layouts[0].id,
+          }),
+        );
+      }
     } catch (e) {
-      console.error("Failed to save layouts to API", e);
-      setError("Changes saved locally but couldn't sync with server.");
+      console.error("Failed to save layouts to API, rolling back.", e);
+      setError("Failed to save changes to the server. Your changes have been reverted.");
+      
+      // Rollback to the previous state
+      console.log("Rolling back state and localStorage.");
+      setLayouts(previousLayouts);
+      setActiveLayoutId(previousActiveId);
+      
+      // Also rollback localStorage to ensure consistency
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          layouts: previousLayouts,
+          activeLayoutId: previousActiveId,
+        }),
+      );
     } finally {
       setIsSaving(false);
     }
   };
 
-  const changeActiveLayoutId = (layoutId: string) => {
-    saveLayouts(layouts, layoutId);
+  const changeActiveLayoutId = async (layoutId: string) => {
+    if (!isInitialized) {
+      console.warn("Attempted to change active layout before initialization is complete. Aborting.");
+      return;
+    }
+    
+    const previousActiveId = activeLayoutId;
+    setActiveLayoutId(layoutId);
+
+    try {
+      await dashboardApi.saveActiveLayoutId(layoutId);
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          layouts: layouts,
+          activeLayoutId: layoutId,
+        }),
+      );
+    } catch (e) {
+      console.error("Failed to save active layout ID, rolling back.", e);
+      setError("Failed to save active layout. Your change has been reverted.");
+      setActiveLayoutId(previousActiveId);
+    }
   };
 
   const updateLayout = (updatedLayout: DashboardLayout) => {
+    if (!isInitialized) {
+      console.warn("Attempted to update layout before initialization is complete. Aborting.");
+      return;
+    }
     const newLayouts = layouts.map((l) =>
       l.id === updatedLayout.id ? updatedLayout : l,
     );
     saveLayouts(newLayouts, activeLayoutId);
   };
   const updateGridLayout = (gridLayout: GridLayoutItem[]) => {
+    if (!isInitialized) {
+      console.warn("Attempted to update grid layout before initialization is complete. Aborting.");
+      return;
+    }
     const activeLayout = layouts.find((l) => l.id === activeLayoutId);
     if (activeLayout) {
-      updateLayout({ ...activeLayout, gridLayout });
+      const updatedLayout = { ...activeLayout, gridLayout };
+      const newLayouts = layouts.map((l) =>
+        l.id === updatedLayout.id ? updatedLayout : l,
+      );
+      saveLayouts(newLayouts, activeLayoutId);
     }
   };
 
@@ -184,7 +271,10 @@ export const useDashboardLayouts = () => {
     props?: ComponentProps,
     isStatic?: boolean,
   ) => {
-
+    if (!isInitialized) {
+      console.warn("Attempted to add component before initialization is complete. Aborting.");
+      return;
+    }
 
     const activeLayout = layouts.find((l) => l.id === activeLayoutId);
     if (!activeLayout) return;
@@ -221,6 +311,10 @@ export const useDashboardLayouts = () => {
   };
 
   const removeComponent = (componentId: string) => {
+    if (!isInitialized) {
+      console.warn("Attempted to remove component before initialization is complete. Aborting.");
+      return;
+    }
     const activeLayout = layouts.find((l) => l.id === activeLayoutId);
     if (!activeLayout) return;
 
