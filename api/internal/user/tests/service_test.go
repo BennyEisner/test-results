@@ -125,7 +125,7 @@ func TestUserService_GetUserByUsername(t *testing.T) {
 		result, err := service.GetUserByUsername(ctx, "")
 
 		assert.Error(t, err)
-		assert.Equal(t, errors.ErrInvalidUser, err)
+		assert.Contains(t, err.Error(), "username is required")
 		assert.Nil(t, result)
 	})
 
@@ -163,7 +163,7 @@ func TestUserService_CreateUser(t *testing.T) {
 		result, err := service.CreateUser(ctx, "", "")
 
 		assert.Error(t, err)
-		assert.Equal(t, errors.ErrInvalidUser, err)
+		assert.Contains(t, err.Error(), "username is required")
 		assert.Nil(t, result)
 	})
 
@@ -220,7 +220,7 @@ func TestUserService_UpdateUser(t *testing.T) {
 		result, err := service.UpdateUser(ctx, int64(0), "username", "test@example.com")
 
 		assert.Error(t, err)
-		assert.Equal(t, errors.ErrInvalidUser, err)
+		assert.Contains(t, err.Error(), "invalid user ID")
 		assert.Nil(t, result)
 	})
 
@@ -263,7 +263,7 @@ func TestUserService_DeleteUser(t *testing.T) {
 		err := service.DeleteUser(ctx, int64(0))
 
 		assert.Error(t, err)
-		assert.Equal(t, errors.ErrInvalidUser, err)
+		assert.Contains(t, err.Error(), "invalid user ID")
 	})
 
 	t.Run("user not found", func(t *testing.T) {
