@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/BennyEisner/test-results/internal/search/domain/models"
+	httphandler "github.com/BennyEisner/test-results/internal/search/infrastructure/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -70,7 +71,7 @@ func TestSearchHandler_Search(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := new(MockSearchService)
-			handler := NewSearchHandler(mockService)
+			handler := httphandler.NewSearchHandler(mockService)
 
 			// Create request
 			req := httptest.NewRequest("GET", "/api/search?q="+tt.query, nil)
@@ -109,7 +110,7 @@ func TestSearchHandler_Search(t *testing.T) {
 
 func TestSearchHandler_Search_NoQuery(t *testing.T) {
 	mockService := new(MockSearchService)
-	handler := NewSearchHandler(mockService)
+	handler := httphandler.NewSearchHandler(mockService)
 
 	// Create request without query parameter
 	req := httptest.NewRequest("GET", "/api/search", nil)

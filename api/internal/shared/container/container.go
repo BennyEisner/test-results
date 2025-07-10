@@ -46,7 +46,9 @@ func NewRouter(db *sql.DB) http.Handler {
 	// @Router /livez [get]
 	mux.HandleFunc("/livez", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte("ok")); err != nil {
+			slog.Error("failed to write response", "error", err)
+		}
 	})
 
 	// @Summary Readiness probe
@@ -59,11 +61,15 @@ func NewRouter(db *sql.DB) http.Handler {
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
 		if err := db.PingContext(r.Context()); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("db not ready"))
+			if _, err := w.Write([]byte("db not ready")); err != nil {
+				slog.Error("failed to write response", "error", err)
+			}
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte("ok")); err != nil {
+			slog.Error("failed to write response", "error", err)
+		}
 	})
 
 	// @Summary Health check
@@ -76,11 +82,15 @@ func NewRouter(db *sql.DB) http.Handler {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if err := db.PingContext(r.Context()); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("db not healthy"))
+			if _, err := w.Write([]byte("db not healthy")); err != nil {
+				slog.Error("failed to write response", "error", err)
+			}
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		if _, err := w.Write([]byte("ok")); err != nil {
+			slog.Error("failed to write response", "error", err)
+		}
 	})
 
 	// --- API Documentation ---

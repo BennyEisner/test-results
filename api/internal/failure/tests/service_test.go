@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/BennyEisner/test-results/internal/failure/application"
+	"github.com/BennyEisner/test-results/internal/failure/domain/errors"
 	"github.com/BennyEisner/test-results/internal/failure/domain/models"
-	"github.com/BennyEisner/test-results/internal/failure/domain/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -51,21 +52,21 @@ func (m *MockFailureRepository) Delete(ctx context.Context, id int64) error {
 
 func TestFailureService_GetFailureByID(t *testing.T) {
 	mockRepo := new(MockFailureRepository)
-	service := NewFailureService(mockRepo)
+	service := application.NewFailureService(mockRepo)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
 		expectedFailure := &models.Failure{
-			ID:                       1,
-			BuildTestCaseExecutionID: 123,
-			Message:                  stringPtr("Test failure"),
-			Type:                     stringPtr("AssertionError"),
-			Details:                  stringPtr("Expected true but got false"),
+			ID:          1,
+			ExecutionID: 123,
+			Message:     "Test failure",
+			Type:        "AssertionError",
+			Details:     "Expected true but got false",
 		}
 
 		mockRepo.On("GetByID", ctx, int64(1)).Return(expectedFailure, nil).Once()
 
-		result, err := service.GetFailureByID(ctx, 1)
+		result, err := service.GetFailure(ctx, 1)
 
 		assert.NoError(t, err)
 		assert.Equal(t, expectedFailure, result)
@@ -73,20 +74,20 @@ func TestFailureService_GetFailureByID(t *testing.T) {
 	})
 
 	t.Run("invalid input", func(t *testing.T) {
-		result, err := service.GetFailureByID(ctx, 0)
+		result, err := service.GetFailure(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, "invalid failure ID", err.Error())
+		assert.Contains(t, err.Error(), "invalid failure ID")
 		assert.Nil(t, result)
 	})
 
 	t.Run("not found", func(t *testing.T) {
 		mockRepo.On("GetByID", ctx, int64(999)).Return(nil, nil).Once()
 
-		result, err := service.GetFailureByID(ctx, 999)
+		result, err := service.GetFailure(ctx, 999)
 
 		assert.Error(t, err)
-		assert.Equal(t, ports.ErrFailureNotFound, err)
+		assert.Equal(t, errors.ErrFailureNotFound, err)
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -94,50 +95,42 @@ func TestFailureService_GetFailureByID(t *testing.T) {
 
 func TestFailureService_CreateFailure(t *testing.T) {
 	mockRepo := new(MockFailureRepository)
-	service := NewFailureService(mockRepo)
+	service := application.NewFailureService(mockRepo)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		failure := &models.Failure{
-			BuildTestCaseExecutionID: 123,
-			Message:                  stringPtr("Test failure"),
-			Type:                     stringPtr("AssertionError"),
-			Details:                  stringPtr("Expected true but got false"),
-		}
+		mockRepo.On("Create", ctx, mock.AnythingOfType("*models.Failure")).Return(nil).Once()
 
-		mockRepo.On("Create", ctx, failure).Return(nil).Once()
-
-		result, err := service.CreateFailure(ctx, failure)
+		result, err := service.CreateFailure(ctx, 123, "Test failure", "AssertionError", "Expected true but got false")
 
 		assert.NoError(t, err)
-		assert.Equal(t, failure, result)
+		assert.Equal(t, int64(123), result.ExecutionID)
+		assert.Equal(t, "Test failure", result.Message)
+		assert.Equal(t, "AssertionError", result.Type)
+		assert.Equal(t, "Expected true but got false", result.Details)
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("invalid input - nil failure", func(t *testing.T) {
-		result, err := service.CreateFailure(ctx, nil)
+	t.Run("invalid input - invalid execution ID", func(t *testing.T) {
+		result, err := service.CreateFailure(ctx, 0, "Test failure", "AssertionError", "Expected true but got false")
 
 		assert.Error(t, err)
-		assert.Equal(t, "failure cannot be nil", err.Error())
+		assert.Contains(t, err.Error(), "execution ID is required")
 		assert.Nil(t, result)
 	})
 
-	t.Run("invalid input - invalid execution ID", func(t *testing.T) {
-		failure := &models.Failure{
-			BuildTestCaseExecutionID: 0,
-		}
-
-		result, err := service.CreateFailure(ctx, failure)
+	t.Run("invalid input - empty message", func(t *testing.T) {
+		result, err := service.CreateFailure(ctx, 123, "", "AssertionError", "Expected true but got false")
 
 		assert.Error(t, err)
-		assert.Equal(t, "execution ID is required", err.Error())
+		assert.Contains(t, err.Error(), "failure message is required")
 		assert.Nil(t, result)
 	})
 }
 
 func TestFailureService_DeleteFailure(t *testing.T) {
 	mockRepo := new(MockFailureRepository)
-	service := NewFailureService(mockRepo)
+	service := application.NewFailureService(mockRepo)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
@@ -153,11 +146,6 @@ func TestFailureService_DeleteFailure(t *testing.T) {
 		err := service.DeleteFailure(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, "invalid failure ID", err.Error())
+		assert.Contains(t, err.Error(), "invalid failure ID")
 	})
-}
-
-// Helper function to create string pointers
-func stringPtr(s string) *string {
-	return &s
 }

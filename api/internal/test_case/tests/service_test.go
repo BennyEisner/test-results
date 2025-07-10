@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/BennyEisner/test-results/internal/project/domain"
+	"github.com/BennyEisner/test-results/internal/test_case/application"
 	"github.com/BennyEisner/test-results/internal/test_case/domain/models"
-	"github.com/BennyEisner/test-results/internal/test_case/domain/ports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -59,7 +60,7 @@ func (m *MockTestCaseRepository) Delete(ctx context.Context, id int64) error {
 
 func TestTestCaseService_GetTestCaseByID(t *testing.T) {
 	mockRepo := new(MockTestCaseRepository)
-	service := NewTestCaseService(mockRepo)
+	service := application.NewTestCaseService(mockRepo)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
@@ -72,7 +73,7 @@ func TestTestCaseService_GetTestCaseByID(t *testing.T) {
 
 		mockRepo.On("GetByID", ctx, int64(1)).Return(expectedTestCase, nil).Once()
 
-		result, err := service.GetTestCaseByID(ctx, 1)
+		result, err := service.GetTestCase(ctx, 1)
 
 		assert.NoError(t, err)
 		assert.Equal(t, expectedTestCase, result)
@@ -80,20 +81,20 @@ func TestTestCaseService_GetTestCaseByID(t *testing.T) {
 	})
 
 	t.Run("invalid input", func(t *testing.T) {
-		result, err := service.GetTestCaseByID(ctx, 0)
+		result, err := service.GetTestCase(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, ports.ErrInvalidTestCaseName, err)
+		assert.Equal(t, domain.ErrInvalidTestCaseName, err)
 		assert.Nil(t, result)
 	})
 
 	t.Run("not found", func(t *testing.T) {
 		mockRepo.On("GetByID", ctx, int64(999)).Return(nil, nil).Once()
 
-		result, err := service.GetTestCaseByID(ctx, 999)
+		result, err := service.GetTestCase(ctx, 999)
 
 		assert.Error(t, err)
-		assert.Equal(t, ports.ErrTestCaseNotFound, err)
+		assert.Equal(t, domain.ErrTestCaseNotFound, err)
 		assert.Nil(t, result)
 		mockRepo.AssertExpectations(t)
 	})
@@ -101,7 +102,7 @@ func TestTestCaseService_GetTestCaseByID(t *testing.T) {
 
 func TestTestCaseService_GetTestCasesBySuiteID(t *testing.T) {
 	mockRepo := new(MockTestCaseRepository)
-	service := NewTestCaseService(mockRepo)
+	service := application.NewTestCaseService(mockRepo)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
@@ -122,7 +123,7 @@ func TestTestCaseService_GetTestCasesBySuiteID(t *testing.T) {
 
 		mockRepo.On("GetAllBySuiteID", ctx, int64(123)).Return(expectedTestCases, nil).Once()
 
-		result, err := service.GetTestCasesBySuiteID(ctx, 123)
+		result, err := service.GetTestCasesBySuite(ctx, 123)
 
 		assert.NoError(t, err)
 		assert.Equal(t, expectedTestCases, result)
@@ -130,17 +131,17 @@ func TestTestCaseService_GetTestCasesBySuiteID(t *testing.T) {
 	})
 
 	t.Run("invalid input", func(t *testing.T) {
-		result, err := service.GetTestCasesBySuiteID(ctx, 0)
+		result, err := service.GetTestCasesBySuite(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, ports.ErrInvalidTestSuiteName, err)
+		assert.Equal(t, domain.ErrInvalidTestSuiteName, err)
 		assert.Nil(t, result)
 	})
 }
 
 func TestTestCaseService_CreateTestCase(t *testing.T) {
 	mockRepo := new(MockTestCaseRepository)
-	service := NewTestCaseService(mockRepo)
+	service := application.NewTestCaseService(mockRepo)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
@@ -163,7 +164,7 @@ func TestTestCaseService_CreateTestCase(t *testing.T) {
 		result, err := service.CreateTestCase(ctx, 123, "", "classname")
 
 		assert.Error(t, err)
-		assert.Equal(t, ports.ErrInvalidTestCaseName, err)
+		assert.Equal(t, domain.ErrInvalidTestCaseName, err)
 		assert.Nil(t, result)
 	})
 
@@ -171,7 +172,7 @@ func TestTestCaseService_CreateTestCase(t *testing.T) {
 		result, err := service.CreateTestCase(ctx, 123, "name", "")
 
 		assert.Error(t, err)
-		assert.Equal(t, ports.ErrInvalidTestCaseName, err)
+		assert.Equal(t, domain.ErrInvalidTestCaseName, err)
 		assert.Nil(t, result)
 	})
 
@@ -179,7 +180,7 @@ func TestTestCaseService_CreateTestCase(t *testing.T) {
 
 func TestTestCaseService_UpdateTestCase(t *testing.T) {
 	mockRepo := new(MockTestCaseRepository)
-	service := NewTestCaseService(mockRepo)
+	service := application.NewTestCaseService(mockRepo)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
@@ -206,7 +207,7 @@ func TestTestCaseService_UpdateTestCase(t *testing.T) {
 		result, err := service.UpdateTestCase(ctx, 0, "name", "classname")
 
 		assert.Error(t, err)
-		assert.Equal(t, ports.ErrInvalidTestCaseName, err)
+		assert.Equal(t, domain.ErrInvalidTestCaseName, err)
 		assert.Nil(t, result)
 	})
 
@@ -214,7 +215,7 @@ func TestTestCaseService_UpdateTestCase(t *testing.T) {
 
 func TestTestCaseService_DeleteTestCase(t *testing.T) {
 	mockRepo := new(MockTestCaseRepository)
-	service := NewTestCaseService(mockRepo)
+	service := application.NewTestCaseService(mockRepo)
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
@@ -232,7 +233,7 @@ func TestTestCaseService_DeleteTestCase(t *testing.T) {
 		err := service.DeleteTestCase(ctx, 0)
 
 		assert.Error(t, err)
-		assert.Equal(t, ports.ErrInvalidTestCaseName, err)
+		assert.Equal(t, domain.ErrInvalidTestCaseName, err)
 	})
 
 }

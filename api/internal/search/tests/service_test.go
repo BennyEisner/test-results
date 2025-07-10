@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/BennyEisner/test-results/internal/search/application"
 	"github.com/BennyEisner/test-results/internal/search/domain/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -67,7 +68,7 @@ func TestSearchService_Search(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockRepo := new(MockSearchRepository)
-			service := NewSearchService(mockRepo)
+			service := application.NewSearchService(mockRepo)
 
 			if tt.query != "" {
 				mockRepo.On("Search", mock.Anything, tt.query).Return(tt.mockResults, tt.mockError)

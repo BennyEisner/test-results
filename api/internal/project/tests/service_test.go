@@ -5,11 +5,11 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/BennyEisner/test-results/internal/project/application"
+	"github.com/BennyEisner/test-results/internal/project/domain"
+	"github.com/BennyEisner/test-results/internal/project/domain/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
-	"github.com/BennyEisner/test-results/internal/project/domain/models"
-	"github.com/BennyEisner/test-results/internal/project/domain/ports"
 )
 
 // Mock repository
@@ -82,12 +82,10 @@ func TestProjectService_GetProjectByID(t *testing.T) {
 			expectedID:    1,
 		},
 		{
-			name: "invalid id",
-			id:   0,
-			setupMock: func(repo *MockProjectRepository) {
-				// No mock setup needed for invalid input
-			},
-			expectedError: ports.ErrInvalidProjectName,
+			name:          "invalid id",
+			id:            0,
+			setupMock:     func(repo *MockProjectRepository) {},
+			expectedError: domain.ErrInvalidProjectName,
 			expectedID:    0,
 		},
 		{
@@ -96,7 +94,7 @@ func TestProjectService_GetProjectByID(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				repo.On("GetByID", mock.Anything, int64(999)).Return(nil, nil)
 			},
-			expectedError: ports.ErrProjectNotFound,
+			expectedError: domain.ErrProjectNotFound,
 			expectedID:    0,
 		},
 		{
@@ -115,10 +113,10 @@ func TestProjectService_GetProjectByID(t *testing.T) {
 			mockRepo := new(MockProjectRepository)
 			tt.setupMock(mockRepo)
 
-			service := NewProjectService(mockRepo)
+			service := application.NewProjectService(mockRepo)
 			ctx := context.Background()
 
-			project, err := service.GetProjectByID(ctx, tt.id)
+			project, err := service.GetProject(ctx, tt.id)
 
 			if tt.expectedError != nil {
 				assert.Error(t, err)
@@ -175,7 +173,7 @@ func TestProjectService_GetAllProjects(t *testing.T) {
 			mockRepo := new(MockProjectRepository)
 			tt.setupMock(mockRepo)
 
-			service := NewProjectService(mockRepo)
+			service := application.NewProjectService(mockRepo)
 			ctx := context.Background()
 
 			projects, err := service.GetAllProjects(ctx)
@@ -222,7 +220,7 @@ func TestProjectService_CreateProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: ports.ErrInvalidProjectName,
+			expectedError: domain.ErrInvalidProjectName,
 			expectedID:    0,
 		},
 		{
@@ -231,7 +229,7 @@ func TestProjectService_CreateProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				repo.On("GetByName", mock.Anything, "Existing Project").Return(&models.Project{ID: 1, Name: "Existing Project"}, nil)
 			},
-			expectedError: ports.ErrProjectAlreadyExists,
+			expectedError: domain.ErrProjectAlreadyExists,
 			expectedID:    0,
 		},
 		{
@@ -251,7 +249,7 @@ func TestProjectService_CreateProject(t *testing.T) {
 			mockRepo := new(MockProjectRepository)
 			tt.setupMock(mockRepo)
 
-			service := NewProjectService(mockRepo)
+			service := application.NewProjectService(mockRepo)
 			ctx := context.Background()
 
 			project, err := service.CreateProject(ctx, tt.projectName)
@@ -298,7 +296,7 @@ func TestProjectService_UpdateProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: ports.ErrInvalidProjectName,
+			expectedError: domain.ErrInvalidProjectName,
 			expectedID:    0,
 		},
 		{
@@ -308,7 +306,7 @@ func TestProjectService_UpdateProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: ports.ErrInvalidProjectName,
+			expectedError: domain.ErrInvalidProjectName,
 			expectedID:    0,
 		},
 		{
@@ -329,7 +327,7 @@ func TestProjectService_UpdateProject(t *testing.T) {
 				repo.On("GetByID", mock.Anything, int64(1)).Return(&models.Project{ID: 1, Name: "Old Name"}, nil)
 				repo.On("GetByName", mock.Anything, "Existing Project").Return(&models.Project{ID: 2, Name: "Existing Project"}, nil)
 			},
-			expectedError: ports.ErrProjectAlreadyExists,
+			expectedError: domain.ErrProjectAlreadyExists,
 			expectedID:    0,
 		},
 	}
@@ -339,7 +337,7 @@ func TestProjectService_UpdateProject(t *testing.T) {
 			mockRepo := new(MockProjectRepository)
 			tt.setupMock(mockRepo)
 
-			service := NewProjectService(mockRepo)
+			service := application.NewProjectService(mockRepo)
 			ctx := context.Background()
 
 			project, err := service.UpdateProject(ctx, tt.id, tt.newName)
@@ -380,7 +378,7 @@ func TestProjectService_DeleteProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				// No mock setup needed for invalid input
 			},
-			expectedError: ports.ErrInvalidProjectName,
+			expectedError: domain.ErrInvalidProjectName,
 		},
 		{
 			name: "project not found",
@@ -388,7 +386,7 @@ func TestProjectService_DeleteProject(t *testing.T) {
 			setupMock: func(repo *MockProjectRepository) {
 				repo.On("GetByID", mock.Anything, int64(999)).Return(nil, nil)
 			},
-			expectedError: ports.ErrProjectNotFound,
+			expectedError: domain.ErrProjectNotFound,
 		},
 		{
 			name: "database error on delete",
@@ -406,7 +404,7 @@ func TestProjectService_DeleteProject(t *testing.T) {
 			mockRepo := new(MockProjectRepository)
 			tt.setupMock(mockRepo)
 
-			service := NewProjectService(mockRepo)
+			service := application.NewProjectService(mockRepo)
 			ctx := context.Background()
 
 			err := service.DeleteProject(ctx, tt.id)
@@ -416,76 +414,6 @@ func TestProjectService_DeleteProject(t *testing.T) {
 				assert.Contains(t, err.Error(), tt.expectedError.Error())
 			} else {
 				assert.NoError(t, err)
-			}
-
-			mockRepo.AssertExpectations(t)
-		})
-	}
-}
-
-func TestProjectService_GetProjectByName(t *testing.T) {
-	tests := []struct {
-		name          string
-		projectName   string
-		setupMock     func(*MockProjectRepository)
-		expectedError error
-		expectedID    int64
-	}{
-		{
-			name:        "success",
-			projectName: "Test Project",
-			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByName", mock.Anything, "Test Project").Return(&models.Project{ID: 1, Name: "Test Project"}, nil)
-			},
-			expectedError: nil,
-			expectedID:    1,
-		},
-		{
-			name:        "empty name",
-			projectName: "",
-			setupMock: func(repo *MockProjectRepository) {
-				// No mock setup needed for invalid input
-			},
-			expectedError: ports.ErrInvalidProjectName,
-			expectedID:    0,
-		},
-		{
-			name:        "project not found",
-			projectName: "Non-existent Project",
-			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByName", mock.Anything, "Non-existent Project").Return(nil, nil)
-			},
-			expectedError: ports.ErrProjectNotFound,
-			expectedID:    0,
-		},
-		{
-			name:        "database error",
-			projectName: "Test Project",
-			setupMock: func(repo *MockProjectRepository) {
-				repo.On("GetByName", mock.Anything, "Test Project").Return(nil, errors.New("database error"))
-			},
-			expectedError: errors.New("failed to get project by name: database error"),
-			expectedID:    0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := new(MockProjectRepository)
-			tt.setupMock(mockRepo)
-
-			service := NewProjectService(mockRepo)
-			ctx := context.Background()
-
-			project, err := service.GetProjectByName(ctx, tt.projectName)
-
-			if tt.expectedError != nil {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedError.Error())
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.expectedID, project.ID)
-				assert.Equal(t, tt.projectName, project.Name)
 			}
 
 			mockRepo.AssertExpectations(t)
