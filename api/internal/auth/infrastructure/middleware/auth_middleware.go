@@ -29,7 +29,7 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		// Add auth context to request context
-		ctx := context.WithValue(r.Context(), "auth_context", authContext)
+		ctx := context.WithValue(r.Context(), authContextKey, authContext)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -40,7 +40,7 @@ func (m *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
 		authContext, err := m.authenticateRequest(r)
 		if err == nil {
 			// Add auth context to request context if authentication succeeded
-			ctx := context.WithValue(r.Context(), "auth_context", authContext)
+			ctx := context.WithValue(r.Context(), authContextKey, authContext)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		} else {
 			// Continue without authentication
@@ -110,7 +110,7 @@ func (m *AuthMiddleware) authenticateSession(r *http.Request) (*models.AuthConte
 
 // GetAuthContext extracts the authentication context from the request context
 func GetAuthContext(r *http.Request) (*models.AuthContext, bool) {
-	authCtx := r.Context().Value("auth_context")
+	authCtx := r.Context().Value(authContextKey)
 	if authCtx == nil {
 		return nil, false
 	}
@@ -135,7 +135,12 @@ func (m *AuthMiddleware) RequireAPIKey(next http.Handler) http.Handler {
 		}
 
 		// Add auth context to request context
-		ctx := context.WithValue(r.Context(), "auth_context", authContext)
+		ctx := context.WithValue(r.Context(), authContextKey, authContext)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+// contextKey is a private type for context keys in this package
+type contextKey string
+
+const authContextKey contextKey = "auth_context"

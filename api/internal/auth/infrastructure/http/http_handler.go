@@ -130,16 +130,13 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// No session cookie, already logged out
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"message": "logged out"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "logged out"})
 		return
 	}
 
 	// Delete session
-	err = h.authService.DeleteSession(r.Context(), cookie.Value)
-	if err != nil {
-		// Log error but don't fail the request
-		// The session might already be expired
-	}
+	_ = h.authService.DeleteSession(r.Context(), cookie.Value)
+	// Ignore session deletion errors - session might already be expired
 
 	// Clear session cookie
 	http.SetCookie(w, &http.Cookie{
@@ -152,7 +149,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "logged out"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "logged out"})
 }
 
 // GetCurrentUser returns the current authenticated user
@@ -183,7 +180,7 @@ func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	_ = json.NewEncoder(w).Encode(user)
 }
 
 // CreateAPIKey creates a new API key for the authenticated user
@@ -233,7 +230,7 @@ func (h *AuthHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // ListAPIKeys lists all API keys for the authenticated user
@@ -264,7 +261,7 @@ func (h *AuthHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(apiKeys)
+	_ = json.NewEncoder(w).Encode(apiKeys)
 }
 
 // DeleteAPIKey deletes an API key
@@ -310,7 +307,7 @@ func (h *AuthHandler) DeleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "API key deleted"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "API key deleted"})
 }
 
 // Request/Response types

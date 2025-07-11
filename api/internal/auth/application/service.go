@@ -60,7 +60,7 @@ func (s *AuthService) CompleteOAuth2Auth(ctx context.Context, provider string, c
 	// For now, we'll implement a simplified version that works with our HTTP handlers
 	// The actual OAuth2 completion will be handled in the HTTP layer where we have access to the request
 	// This method will be called after the OAuth2 flow is completed in the HTTP handler
-	
+
 	// Return an error indicating this should be handled at the HTTP layer
 	return nil, fmt.Errorf("OAuth2 completion should be handled at HTTP layer with full request context")
 }
@@ -99,7 +99,7 @@ func (s *AuthService) ValidateSession(ctx context.Context, sessionID string) (*m
 	// Check if session is expired
 	if time.Now().After(session.ExpiresAt) {
 		// Clean up expired session
-		s.authRepo.DeleteSession(ctx, sessionID)
+		_ = s.authRepo.DeleteSession(ctx, sessionID)
 		return nil, errors.ErrSessionExpired
 	}
 
@@ -160,7 +160,7 @@ func (s *AuthService) ValidateAPIKey(ctx context.Context, apiKey string) (*model
 	}
 
 	// Update last used timestamp
-	s.authRepo.UpdateAPIKeyLastUsed(ctx, apiKeyModel.ID)
+	_ = s.authRepo.UpdateAPIKeyLastUsed(ctx, apiKeyModel.ID)
 
 	return &models.AuthContext{
 		UserID:   apiKeyModel.UserID,
@@ -249,5 +249,3 @@ func hashAPIKey(apiKey string) string {
 	hash := sha256.Sum256([]byte(apiKey))
 	return base64.URLEncoding.EncodeToString(hash[:])
 }
-
-

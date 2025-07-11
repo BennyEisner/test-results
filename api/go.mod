@@ -3,6 +3,7 @@ module github.com/BennyEisner/test-results
 go 1.23
 
 require (
+	github.com/gorilla/sessions v1.1.1
 	github.com/lib/pq v1.10.9
 	github.com/markbates/goth v1.79.0
 	github.com/stretchr/testify v1.10.0
@@ -22,7 +23,6 @@ require (
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/mux v1.6.2 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
-	github.com/gorilla/sessions v1.1.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

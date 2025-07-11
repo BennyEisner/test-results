@@ -281,13 +281,13 @@ func registerAuthRoutes(mux *http.ServeMux, authHandler *authHTTP.AuthHandler, a
 	// OAuth2 authentication routes
 	mux.HandleFunc("GET /{provider}", authHandler.BeginOAuth2Auth)
 	mux.HandleFunc("GET /{provider}/callback", authHandler.OAuth2Callback)
-	
+
 	// Session management routes
 	mux.HandleFunc("POST /logout", authHandler.Logout)
-	
+
 	// User management routes (protected)
 	mux.Handle("GET /me", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.GetCurrentUser)))
-	
+
 	// API key management routes (protected)
 	mux.Handle("GET /api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.ListAPIKeys)))
 	mux.Handle("POST /api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.CreateAPIKey)))
