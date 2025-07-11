@@ -7,30 +7,67 @@ import BuildDetail from './components/build/BuildDetail.tsx';
 import HomePage from './components/page/HomePage';
 import DashboardPage from './components/page/DashboardPage';
 import PageLayout from './components/common/PageLayout';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import UserProfile from './components/auth/UserProfile';
 import './styles/shared.css';
 import './styles/tables.css';
 
 function App() {
     return (
-        <Router>
-            <div className="app-container">
-                <Routes>
-                    <Route path="/" element={<PageLayout><HomePage /></PageLayout>} />
-                    <Route path="/dashboard" element={<DashboardPage />} />
-                    <Route path="/projects" element={<PageLayout><ProjectsTable /></PageLayout>} />
-                    <Route path="/projects/:projectId" element={<PageLayout><ProjectDetail /></PageLayout>} />
-                    <Route path="/projects/:projectId/suites/:suiteId" element={<PageLayout><SuiteDetail /></PageLayout>} />
-                    <Route
-                        path="/projects/:projectId/suites/:suiteId/builds"
-                        element={<PageLayout><BuildsTableWrapper /></PageLayout>}
-                    />
-                    <Route
-                        path="/projects/:projectId/suites/:suiteId/builds/:buildId"
-                        element={<PageLayout><BuildDetail /></PageLayout>}
-                    />
-                </Routes>
-            </div>
-        </Router>
+        <AuthProvider>
+            <Router>
+                <div className="app-container">
+                    <Routes>
+                        {/* Public routes */}
+                        <Route path="/" element={<PageLayout><HomePage /></PageLayout>} />
+                        
+                        {/* Protected routes */}
+                        <Route path="/dashboard" element={
+                            <ProtectedRoute>
+                                <DashboardPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/projects" element={
+                            <ProtectedRoute>
+                                <PageLayout><ProjectsTable /></PageLayout>
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/projects/:projectId" element={
+                            <ProtectedRoute>
+                                <PageLayout><ProjectDetail /></PageLayout>
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/projects/:projectId/suites/:suiteId" element={
+                            <ProtectedRoute>
+                                <PageLayout><SuiteDetail /></PageLayout>
+                            </ProtectedRoute>
+                        } />
+                        <Route
+                            path="/projects/:projectId/suites/:suiteId/builds"
+                            element={
+                                <ProtectedRoute>
+                                    <PageLayout><BuildsTableWrapper /></PageLayout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="/projects/:projectId/suites/:suiteId/builds/:buildId"
+                            element={
+                                <ProtectedRoute>
+                                    <PageLayout><BuildDetail /></PageLayout>
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route path="/profile" element={
+                            <ProtectedRoute>
+                                <PageLayout><UserProfile /></PageLayout>
+                            </ProtectedRoute>
+                        } />
+                    </Routes>
+                </div>
+            </Router>
+        </AuthProvider>
     );
 }
 
@@ -45,7 +82,5 @@ const BuildsTableWrapper = () => {
 
     return <BuildsTable projectId={projectId} suiteId={suiteId} />;
 };
-
-
 
 export default App;

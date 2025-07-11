@@ -12,6 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/1_schema.sql
       - ./db/add_user_and_config_tables.sql:/docker-entrypoint-initdb.d/2_add_user_and_config_tables.sql
+      - ./db/add_auth_tables.sql:/docker-entrypoint-initdb.d/3_add_auth_tables.sql
     networks:
       - app-network
     healthcheck:

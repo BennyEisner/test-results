@@ -4,7 +4,18 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
+	"os"
 
+	"github.com/gorilla/sessions"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
+	"github.com/markbates/goth/providers/github"
+	"github.com/markbates/goth/providers/okta"
+
+	authApp "github.com/BennyEisner/test-results/internal/auth/application"
+	authDB "github.com/BennyEisner/test-results/internal/auth/infrastructure/database"
+	authHTTP "github.com/BennyEisner/test-results/internal/auth/infrastructure/http"
+	authMiddleware "github.com/BennyEisner/test-results/internal/auth/infrastructure/middleware"
 	buildApp "github.com/BennyEisner/test-results/internal/build/application"
 	buildDB "github.com/BennyEisner/test-results/internal/build/infrastructure/database"
 	buildHTTP "github.com/BennyEisner/test-results/internal/build/infrastructure/http"
@@ -36,6 +47,9 @@ import (
 // NewRouter creates and configures the HTTP router with all handlers
 func NewRouter(db *sql.DB) http.Handler {
 	mux := http.NewServeMux()
+
+	// --- Setup Goth providers ---
+	setupGothProviders()
 
 	// --- Standard Kubernetes health endpoints ---
 	// @Summary Liveness probe
@@ -102,6 +116,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	))
 
 	// Wire up repositories
+	authRepo := authDB.NewSQLAuthRepository(db)
 	projectRepo := projectDB.NewSQLProjectRepository(db)
 	buildRepo := buildDB.NewSQLBuildRepository(db)
 	buildExecRepo := buildExecDB.NewSQLBuildTestCaseExecutionRepository(db)
@@ -112,6 +127,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	userConfigRepo := userConfigDB.NewSQLUserConfigRepository(db)
 
 	// Wire up services
+	authService := authApp.NewAuthService(authRepo)
 	projectService := projectApp.NewProjectService(projectRepo)
 	buildService := buildApp.NewBuildService(buildRepo)
 	buildExecService := buildExecApp.NewBuildTestCaseExecutionService(buildExecRepo)
@@ -122,6 +138,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	userConfigService := userConfigApp.NewUserConfigService(userConfigRepo)
 
 	// Wire up HTTP handlers
+	authHandler := authHTTP.NewAuthHandler(authService)
 	projectHandler := projectHTTP.NewProjectHandler(projectService)
 	buildHandler := buildHTTP.NewBuildHandler(buildService)
 	buildExecHandler := buildExecHTTP.NewBuildTestCaseExecutionHandler(buildExecService)
@@ -131,15 +148,68 @@ func NewRouter(db *sql.DB) http.Handler {
 	testCaseHandler := testCaseHTTP.NewTestCaseHandler(testCaseService)
 	userConfigHandler := userConfigHTTP.NewUserConfigHandler(userConfigService)
 
+	// Wire up middleware
+	authMiddleware := authMiddleware.NewAuthMiddleware(authService)
+
 	// --- API subrouter ---
 	apiMux := http.NewServeMux()
 	registerRoutes(apiMux, projectHandler, buildHandler,
 		buildExecHandler, failureHandler, userHandler, testSuiteHandler, testCaseHandler, userConfigHandler)
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
 
+	// --- Auth routes (not under /api prefix) ---
+	authMux := http.NewServeMux()
+	registerAuthRoutes(authMux, authHandler, authMiddleware)
+	mux.Handle("/auth/", http.StripPrefix("/auth", authMux))
+
 	// Apply middleware
 	logger := slog.Default()
 	return middleware.Cors(middleware.LoggingMiddleware(logger)(mux))
+}
+
+// setupGothProviders configures OAuth2 providers for authentication
+func setupGothProviders() {
+	// Configure session store for Goth
+	key := os.Getenv("SESSION_SECRET")
+	if key == "" {
+		key = "dev-secret-key-change-in-production"
+	}
+
+	maxAge := 86400 * 30 // 30 days
+	isProd := os.Getenv("ENVIRONMENT") == "production"
+
+	store := sessions.NewCookieStore([]byte(key))
+	store.MaxAge(maxAge)
+	store.Options.Path = "/"
+	store.Options.HttpOnly = true
+	store.Options.Secure = isProd
+
+	gothic.Store = store
+
+	// Register OAuth2 providers
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+
+	// Development provider (GitHub)
+	if githubClientID := os.Getenv("GITHUB_CLIENT_ID"); githubClientID != "" {
+		githubClientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
+		goth.UseProviders(
+			github.New(githubClientID, githubClientSecret, baseURL+"/auth/github/callback"),
+		)
+	}
+
+	// Production provider (Okta)
+	if oktaClientID := os.Getenv("OKTA_CLIENT_ID"); oktaClientID != "" {
+		oktaClientSecret := os.Getenv("OKTA_CLIENT_SECRET")
+		oktaDomain := os.Getenv("OKTA_DOMAIN")
+		if oktaDomain != "" {
+			goth.UseProviders(
+				okta.New(oktaClientID, oktaClientSecret, baseURL+"/auth/okta/callback", oktaDomain),
+			)
+		}
+	}
 }
 
 // registerRoutes registers all HTTP routes
@@ -204,4 +274,22 @@ func registerRoutes(mux *http.ServeMux,
 	// User config routes
 	mux.HandleFunc("GET /users/{userID}/configs", userConfigHandler.GetUserConfigs)
 	mux.HandleFunc("POST /users/{userID}/configs", userConfigHandler.SaveUserConfig)
+}
+
+// registerAuthRoutes registers authentication HTTP routes
+func registerAuthRoutes(mux *http.ServeMux, authHandler *authHTTP.AuthHandler, authMiddleware *authMiddleware.AuthMiddleware) {
+	// OAuth2 authentication routes
+	mux.HandleFunc("GET /{provider}", authHandler.BeginOAuth2Auth)
+	mux.HandleFunc("GET /{provider}/callback", authHandler.OAuth2Callback)
+	
+	// Session management routes
+	mux.HandleFunc("POST /logout", authHandler.Logout)
+	
+	// User management routes (protected)
+	mux.Handle("GET /me", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.GetCurrentUser)))
+	
+	// API key management routes (protected)
+	mux.Handle("GET /api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.ListAPIKeys)))
+	mux.Handle("POST /api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.CreateAPIKey)))
+	mux.Handle("DELETE /api-keys/{id}", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.DeleteAPIKey)))
 }
