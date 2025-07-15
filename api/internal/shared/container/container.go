@@ -45,7 +45,7 @@ import (
 )
 
 // NewRouter creates and configures the HTTP router with all handlers
-func NewRouter(db *sql.DB) http.Handler {
+func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	mux := http.NewServeMux()
 
 	// --- Setup Goth providers ---
@@ -138,7 +138,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	userConfigService := userConfigApp.NewUserConfigService(userConfigRepo)
 
 	// Wire up HTTP handlers
-	authHandler := authHTTP.NewAuthHandler(authService)
+	authHandler := authHTTP.NewAuthHandler(authService, frontendURL)
 	projectHandler := projectHTTP.NewProjectHandler(projectService)
 	buildHandler := buildHTTP.NewBuildHandler(buildService)
 	buildExecHandler := buildExecHTTP.NewBuildTestCaseExecutionHandler(buildExecService)
@@ -154,7 +154,7 @@ func NewRouter(db *sql.DB) http.Handler {
 	// --- API subrouter ---
 	apiMux := http.NewServeMux()
 	registerRoutes(apiMux, projectHandler, buildHandler,
-		buildExecHandler, failureHandler, userHandler, testSuiteHandler, testCaseHandler, userConfigHandler)
+		buildExecHandler, failureHandler, userHandler, testSuiteHandler, testCaseHandler, userConfigHandler, authMiddleware)
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
 
 	// --- Auth routes (not under /api prefix) ---
@@ -192,12 +192,12 @@ func setupGothProviders() {
 		baseURL = "http://localhost:8080"
 	}
 
+	providers := []goth.Provider{}
+
 	// Development provider (GitHub)
 	if githubClientID := os.Getenv("GITHUB_CLIENT_ID"); githubClientID != "" {
 		githubClientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
-		goth.UseProviders(
-			github.New(githubClientID, githubClientSecret, baseURL+"/auth/github/callback"),
-		)
+		providers = append(providers, github.New(githubClientID, githubClientSecret, baseURL+"/auth/github/callback"))
 	}
 
 	// Production provider (Okta)
@@ -205,10 +205,12 @@ func setupGothProviders() {
 		oktaClientSecret := os.Getenv("OKTA_CLIENT_SECRET")
 		oktaDomain := os.Getenv("OKTA_DOMAIN")
 		if oktaDomain != "" {
-			goth.UseProviders(
-				okta.New(oktaClientID, oktaClientSecret, baseURL+"/auth/okta/callback", oktaDomain),
-			)
+			providers = append(providers, okta.New(oktaClientID, oktaClientSecret, baseURL+"/auth/okta/callback", oktaDomain))
 		}
+	}
+
+	if len(providers) > 0 {
+		goth.UseProviders(providers...)
 	}
 }
 
@@ -221,7 +223,8 @@ func registerRoutes(mux *http.ServeMux,
 	userHandler *userHTTP.UserHandler,
 	testSuiteHandler *testSuiteHTTP.TestSuiteHandler,
 	testCaseHandler *testCaseHTTP.TestCaseHandler,
-	userConfigHandler *userConfigHTTP.UserConfigHandler) {
+	userConfigHandler *userConfigHTTP.UserConfigHandler,
+	authMiddleware *authMiddleware.AuthMiddleware) {
 
 	// Project routes
 	mux.HandleFunc("GET /projects", projectHandler.GetAllProjects)
@@ -271,9 +274,19 @@ func registerRoutes(mux *http.ServeMux,
 	mux.HandleFunc("PUT /test-cases", testCaseHandler.UpdateTestCase)
 	mux.HandleFunc("DELETE /test-cases", testCaseHandler.DeleteTestCase)
 
-	// User config routes
-	mux.HandleFunc("GET /users/{userID}/configs", userConfigHandler.GetUserConfigs)
-	mux.HandleFunc("POST /users/{userID}/configs", userConfigHandler.SaveUserConfig)
+	// User config routes (protected)
+	mux.Handle(
+		"GET /configs",
+		authMiddleware.RequireAuth(http.HandlerFunc(userConfigHandler.GetUserConfigs)),
+	)
+	mux.Handle(
+		"POST /configs",
+		authMiddleware.RequireAuth(http.HandlerFunc(userConfigHandler.SaveUserConfig)),
+	)
+	mux.Handle(
+		"PUT /configs/active",
+		authMiddleware.RequireAuth(http.HandlerFunc(userConfigHandler.UpdateActiveLayoutID)),
+	)
 }
 
 // registerAuthRoutes registers authentication HTTP routes

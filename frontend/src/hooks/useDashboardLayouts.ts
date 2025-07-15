@@ -7,6 +7,7 @@ import {
 } from "../types/dashboard";
 import { COMPONENT_DEFINITIONS } from "../components/dashboard/ComponentRegistry";
 import { dashboardApi } from "../services/dashboardApi";
+import { useAuth } from "../context/AuthContext";
 import { fetchBuilds } from '../services/api';
 
 const STORAGE_KEY = "dashboard-layouts";
@@ -61,6 +62,7 @@ const defaultLayout: DashboardLayout = {
 };
 
 export const useDashboardLayouts = () => {
+  const { user } = useAuth();
   const [layouts, setLayouts] = useState<DashboardLayout[]>([defaultLayout]);
   const [activeLayoutId, setActiveLayoutId] = useState<string>("default");
   const [isEditing, setIsEditing] = useState(false);
@@ -75,49 +77,60 @@ export const useDashboardLayouts = () => {
       setIsLoading(true);
       setError(null);
       console.log("Attempting to load layouts...");
-      try {
-        // Try API first
-        console.log("Fetching layouts from API...");
-        const data = await dashboardApi.getLayouts();
-        console.log("API response received:", data);
 
-        if (data && data.layouts) {
-          let finalLayouts: DashboardLayout[];
-          let finalActiveId: string;
-          
-          if (data.layouts.length > 0) {
-            console.log("Layouts found on server, applying them.");
-            finalLayouts = data.layouts;
-            finalActiveId = data.activeId || data.layouts[0].id;
-          } else {
-            console.log("No layouts found on server, applying default layout.");
-            finalLayouts = [defaultLayout];
-            finalActiveId = "default";
-          }
-          
-          console.log("Setting final layouts:", finalLayouts);
-          setLayouts(finalLayouts);
-          setActiveLayoutId(finalActiveId);
+      if (user) {
+        try {
+          // Try API first
+          console.log("Fetching layouts from API...");
+          const data = await dashboardApi.getLayouts(user.id);
+          console.log("API response received:", data);
 
-          // Update localStorage with server data
-          console.log("Updating localStorage with server data:", { layouts: finalLayouts, activeLayoutId: finalActiveId });
-          localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify({
+          if (data && data.layouts) {
+            let finalLayouts: DashboardLayout[];
+            let finalActiveId: string;
+
+            if (data.layouts.length > 0) {
+              console.log("Layouts found on server, applying them.");
+              finalLayouts = data.layouts;
+              finalActiveId = data.activeId || data.layouts[0].id;
+            } else {
+              console.log(
+                "No layouts found on server, applying default layout.",
+              );
+              finalLayouts = [defaultLayout];
+              finalActiveId = "default";
+            }
+
+            console.log("Setting final layouts:", finalLayouts);
+            setLayouts(finalLayouts);
+            setActiveLayoutId(finalActiveId);
+
+            // Update localStorage with server data
+            console.log("Updating localStorage with server data:", {
               layouts: finalLayouts,
               activeLayoutId: finalActiveId,
-            }),
-          );
+            });
+            localStorage.setItem(
+              STORAGE_KEY,
+              JSON.stringify({
+                layouts: finalLayouts,
+                activeLayoutId: finalActiveId,
+              }),
+            );
 
-          setIsLoading(false);
-          setIsInitialized(true);
-          console.log("Initialization complete - API data loaded");
-          return;
+            setIsLoading(false);
+            setIsInitialized(true);
+            console.log("Initialization complete - API data loaded");
+            return;
+          }
+        } catch (e) {
+          console.error(
+            "Failed to load layouts from API, using localStorage fallback",
+            e,
+          );
+          setError("Could not connect to the server. Displaying cached data.");
+          // Continue to localStorage fallback
         }
-      } catch (e) {
-        console.error("Failed to load layouts from API, using localStorage fallback", e);
-        setError("Could not connect to the server. Displaying cached data.");
-        // Continue to localStorage fallback
       }
 
       // Fallback to localStorage
@@ -136,12 +149,17 @@ export const useDashboardLayouts = () => {
             setLayouts(parsed.layouts);
             setActiveLayoutId(parsed.activeLayoutId || parsed.layouts[0].id);
           } else {
-            console.log("localStorage data is outdated or empty, using default layout.");
+            console.log(
+              "localStorage data is outdated or empty, using default layout.",
+            );
             setLayouts([defaultLayout]);
             setActiveLayoutId("default");
           }
         } catch (e) {
-          console.error("Failed to parse layouts from localStorage, using default.", e);
+          console.error(
+            "Failed to parse layouts from localStorage, using default.",
+            e,
+          );
           localStorage.removeItem(STORAGE_KEY);
           setLayouts([defaultLayout]);
           setActiveLayoutId("default");
@@ -157,14 +175,16 @@ export const useDashboardLayouts = () => {
     };
 
     loadLayouts();
-  }, []);
+  }, [user]);
 
   const saveLayouts = async (
     newLayouts: DashboardLayout[],
     newActiveId: string,
   ) => {
-    if (!isInitialized) {
-      console.warn("Attempted to save layouts before initialization is complete. Aborting.");
+    if (!isInitialized || !user) {
+      console.warn(
+        "Attempted to save layouts before initialization is complete or without a user. Aborting.",
+      );
       return;
     }
     const previousLayouts = layouts;
@@ -179,7 +199,11 @@ export const useDashboardLayouts = () => {
 
     try {
       console.log("Sending layouts to API...");
-      const savedData = await dashboardApi.saveLayouts(newLayouts, newActiveId);
+      const savedData = await dashboardApi.saveLayouts(
+        user.id,
+        newLayouts,
+        newActiveId,
+      );
       console.log("API save response received:", savedData);
       if (savedData && savedData.layouts) {
         // Update state with the response from the server
@@ -196,13 +220,15 @@ export const useDashboardLayouts = () => {
       }
     } catch (e) {
       console.error("Failed to save layouts to API, rolling back.", e);
-      setError("Failed to save changes to the server. Your changes have been reverted.");
-      
+      setError(
+        "Failed to save changes to the server. Your changes have been reverted.",
+      );
+
       // Rollback to the previous state
       console.log("Rolling back state and localStorage.");
       setLayouts(previousLayouts);
       setActiveLayoutId(previousActiveId);
-      
+
       // Also rollback localStorage to ensure consistency
       localStorage.setItem(
         STORAGE_KEY,
@@ -217,16 +243,18 @@ export const useDashboardLayouts = () => {
   };
 
   const changeActiveLayoutId = async (layoutId: string) => {
-    if (!isInitialized) {
-      console.warn("Attempted to change active layout before initialization is complete. Aborting.");
+    if (!isInitialized || !user) {
+      console.warn(
+        "Attempted to change active layout before initialization is complete or without a user. Aborting.",
+      );
       return;
     }
-    
+
     const previousActiveId = activeLayoutId;
     setActiveLayoutId(layoutId);
 
     try {
-      await dashboardApi.saveActiveLayoutId(layoutId);
+      await dashboardApi.saveActiveLayoutId(user.id, layoutId);
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify({

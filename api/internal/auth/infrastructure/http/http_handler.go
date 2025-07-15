@@ -15,11 +15,12 @@ import (
 // AuthHandler handles HTTP requests for authentication
 type AuthHandler struct {
 	authService ports.AuthService
+	frontendURL string
 }
 
 // NewAuthHandler creates a new AuthHandler
-func NewAuthHandler(authService ports.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(authService ports.AuthService, frontendURL string) *AuthHandler {
+	return &AuthHandler{authService: authService, frontendURL: frontendURL}
 }
 
 // BeginOAuth2Auth handles the start of OAuth2 authentication
@@ -67,7 +68,7 @@ func (h *AuthHandler) BeginOAuth2Auth(w http.ResponseWriter, r *http.Request) {
 // @Accept json
 // @Produce json
 // @Param provider path string true "OAuth2 provider name"
-// @Success 200 {object} models.User
+// @Success 200 {object} object
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /auth/{provider}/callback [get]
@@ -112,7 +113,7 @@ func (h *AuthHandler) OAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Redirect to frontend with success
-	http.Redirect(w, r, "/auth/success", http.StatusTemporaryRedirect)
+	http.Redirect(w, r, h.frontendURL+"/dashboard", http.StatusTemporaryRedirect)
 }
 
 // Logout handles user logout
@@ -158,7 +159,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Success 200 {object} models.User
+// @Success 200 {object} object
 // @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /auth/me [get]
@@ -239,7 +240,7 @@ func (h *AuthHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Success 200 {array} models.APIKey
+// @Success 200 {array} object
 // @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /auth/api-keys [get]

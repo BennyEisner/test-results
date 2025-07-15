@@ -2,19 +2,20 @@ import axios from "axios";
 import { DashboardLayout } from "../types/dashboard";
 
 const API_BASE = "/api";
-const USER_ID = 1; // Hardcoded user ID for development
 
 export const dashboardApi = {
-  getLayouts: async (): Promise<{
+  getLayouts: async (
+    userId: number,
+  ): Promise<{
     layouts: DashboardLayout[];
     activeId: string;
   }> => {
-    console.log("dashboardApi.getLayouts: Making API call to get layouts");
-    const response = await axios.get(
-      `${API_BASE}/users/${USER_ID}/configs`,
+    console.log(
+      `dashboardApi.getLayouts: Making API call to get layouts for user ${userId}`,
     );
+    const response = await axios.get(`${API_BASE}/configs`);
     console.log("dashboardApi.getLayouts: Raw API response:", response.data);
-    
+
     if (response.data && response.data.length > 0) {
       const config = response.data[0];
       console.log("dashboardApi.getLayouts: Found config:", config);
@@ -29,42 +30,56 @@ export const dashboardApi = {
   },
 
   saveLayouts: async (
+    userId: number,
     layouts: DashboardLayout[],
     activeId: string,
   ): Promise<{
     layouts: DashboardLayout[];
     activeId: string;
   }> => {
-    console.log("dashboardApi.saveLayouts: Saving layouts:", { layouts, activeId });
+    console.log(`dashboardApi.saveLayouts: Saving layouts for user ${userId}:`, {
+      layouts,
+      activeId,
+    });
     const payload = {
       layouts: JSON.stringify(layouts),
       active_layout_id: activeId,
     };
     console.log("dashboardApi.saveLayouts: Payload:", payload);
-    
-    const response = await axios.post(`${API_BASE}/users/${USER_ID}/configs`, payload);
+
+    const response = await axios.post(`${API_BASE}/configs`, payload);
     console.log("dashboardApi.saveLayouts: Raw API response:", response.data);
-    
+
     if (response.data) {
       const savedLayouts = JSON.parse(response.data.layouts);
-      const result = { 
-        layouts: savedLayouts, 
-        activeId: response.data.active_layout_id 
+      const result = {
+        layouts: savedLayouts,
+        activeId: response.data.active_layout_id,
       };
       console.log("dashboardApi.saveLayouts: Returning:", result);
       return result;
     }
-    
+
     // Fallback to the input data if response doesn't contain expected data
-    console.log("dashboardApi.saveLayouts: No response data, falling back to input");
+    console.log(
+      "dashboardApi.saveLayouts: No response data, falling back to input",
+    );
     return { layouts, activeId };
   },
 
-  saveActiveLayoutId: async (activeId: string): Promise<void> => {
-    console.log("dashboardApi.saveActiveLayoutId: Saving active layout ID:", activeId);
-    await axios.put(`${API_BASE}/users/${USER_ID}/configs/active`, {
+  saveActiveLayoutId: async (
+    userId: number,
+    activeId: string,
+  ): Promise<void> => {
+    console.log(
+      `dashboardApi.saveActiveLayoutId: Saving active layout ID for user ${userId}:`,
+      activeId,
+    );
+    await axios.put(`${API_BASE}/configs/active`, {
       active_layout_id: activeId,
     });
-    console.log("dashboardApi.saveActiveLayoutId: Successfully saved active layout ID");
+    console.log(
+      "dashboardApi.saveActiveLayoutId: Successfully saved active layout ID",
+    );
   },
 };

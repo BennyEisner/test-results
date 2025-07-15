@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, Button, Table, Modal, Form, Alert, Badge } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 import { authApi } from '../../services/authApi';
-import { User, APIKey } from '../../types/auth';
+import { APIKey } from '../../types/auth';
 import './UserProfile.css';
 
 const UserProfile: React.FC = () => {
@@ -234,4 +234,4 @@ const UserProfile: React.FC = () => {
   );
 };
 
-export default UserProfile; 
+export default UserProfile;

@@ -17,34 +17,15 @@ import (
 	_ "go.uber.org/automaxprocs"
 )
 
-// @title           Test Results API
-// @version         1.0
-// @description     A hexagonal architecture API for managing test results, builds, and projects.
-// @termsOfService  http://swagger.io/terms/
-
-// @contact.name   API Support
-// @contact.url    http://www.swagger.io/support
-// @contact.email  support@swagger.io
-
-// @license.name  Apache 2.0
-// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
-
-// @host      localhost:8080
-// @BasePath  /api
-
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
-// @description Type "Bearer" followed by a space and JWT token.
-
 // Config holds the application configuration
 type Config struct {
-	DBHost     string
-	DBPort     int
-	DBUser     string
-	DBPassword string
-	DBName     string
-	ServerAddr string
+	DBHost      string
+	DBPort      int
+	DBUser      string
+	DBPassword  string
+	DBName      string
+	ServerAddr  string
+	FrontendURL string
 }
 
 // loadConfig loads configuration from environment variables
@@ -54,6 +35,7 @@ func loadConfig() *Config {
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
+	frontendURL := os.Getenv("FRONTEND_URL")
 
 	portInt, err := strconv.Atoi(dbPort)
 	if err != nil {
@@ -61,12 +43,13 @@ func loadConfig() *Config {
 	}
 
 	return &Config{
-		DBHost:     dbHost,
-		DBPort:     portInt,
-		DBUser:     dbUser,
-		DBPassword: dbPassword,
-		DBName:     dbName,
-		ServerAddr: ":8080",
+		DBHost:      dbHost,
+		DBPort:      portInt,
+		DBUser:      dbUser,
+		DBPassword:  dbPassword,
+		DBName:      dbName,
+		ServerAddr:  ":8080",
+		FrontendURL: frontendURL,
 	}
 }
 
@@ -92,9 +75,9 @@ func connectDB(config *Config) (*sql.DB, error) {
 }
 
 // createServer creates and configures the HTTP server
-func createServer(db *sql.DB) http.Handler {
+func createServer(db *sql.DB, frontendURL string) http.Handler {
 	// Use the new hexagonal architecture router
-	return container.NewRouter(db)
+	return container.NewRouter(db, frontendURL)
 }
 
 // runServer starts the HTTP server
@@ -115,7 +98,7 @@ func run() error {
 	}
 	defer db.Close()
 
-	server := createServer(db)
+	server := createServer(db, config.FrontendURL)
 	return runServer(config.ServerAddr, server)
 }
 
