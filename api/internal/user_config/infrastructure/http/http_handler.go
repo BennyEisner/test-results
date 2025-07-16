@@ -3,8 +3,8 @@ package http
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
+	"github.com/BennyEisner/test-results/internal/auth/infrastructure/middleware"
 	"github.com/BennyEisner/test-results/internal/user_config/domain/models"
 	"github.com/BennyEisner/test-results/internal/user_config/domain/ports"
 )
@@ -19,25 +19,24 @@ func NewUserConfigHandler(service ports.UserConfigService) *UserConfigHandler {
 	return &UserConfigHandler{Service: service}
 }
 
-// GetUserConfigs handles GET /users/{userID}/configs
+// GetUserConfigs handles GET /configs
 // @Summary Get user configs
-// @Description Retrieve all configuration settings for a specific user
+// @Description Retrieve all configuration settings for the authenticated user
 // @Tags user-configs
 // @Accept json
 // @Produce json
-// @Param userID path int true "User ID"
 // @Success 200 {array} object
-// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /users/{userID}/configs [get]
+// @Router /configs [get]
 func (h *UserConfigHandler) GetUserConfigs(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.PathValue("userID")
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid user_id", http.StatusBadRequest)
+	authContext, ok := middleware.GetAuthContext(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	configs, err := h.Service.GetUserConfigs(r.Context(), userID)
+
+	configs, err := h.Service.GetUserConfigs(r.Context(), authContext.UserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -49,32 +48,37 @@ func (h *UserConfigHandler) GetUserConfigs(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// SaveUserConfig handles POST /users/{userID}/configs
+// SaveUserConfig handles POST /configs
 // @Summary Save user config
-// @Description Create or update a configuration setting for a user
+// @Description Create or update a configuration setting for the authenticated user
 // @Tags user-configs
 // @Accept json
 // @Produce json
-// @Param userID path int true "User ID"
 // @Param config body object true "Config creation request"
 // @Success 201 {object} object
 // @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /users/{userID}/configs [post]
+// @Router /configs [post]
 func (h *UserConfigHandler) SaveUserConfig(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.PathValue("userID")
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid user_id", http.StatusBadRequest)
+	authContext, ok := middleware.GetAuthContext(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	var req models.UserConfig
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	config, err := h.Service.SaveUserConfig(r.Context(), userID, req.Layouts, req.ActiveLayoutID)
+	config, err := h.Service.SaveUserConfig(
+		r.Context(),
+		authContext.UserID,
+		req.Layouts,
+		req.ActiveLayoutID,
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -87,23 +91,22 @@ func (h *UserConfigHandler) SaveUserConfig(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// UpdateActiveLayoutID handles PUT /users/{userID}/configs/active
+// UpdateActiveLayoutID handles PUT /configs/active
 // @Summary Update active layout ID
-// @Description Update only the active layout ID for a user's configuration
+// @Description Update only the active layout ID for the authenticated user's configuration
 // @Tags user-configs
 // @Accept json
 // @Produce json
-// @Param userID path int true "User ID"
 // @Param request body object true "Active layout ID update request"
 // @Success 200 {object} map[string]string
 // @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
-// @Router /users/{userID}/configs/active [put]
+// @Router /configs/active [put]
 func (h *UserConfigHandler) UpdateActiveLayoutID(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.PathValue("userID")
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "invalid user_id", http.StatusBadRequest)
+	authContext, ok := middleware.GetAuthContext(r)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -115,7 +118,11 @@ func (h *UserConfigHandler) UpdateActiveLayoutID(w http.ResponseWriter, r *http.
 		return
 	}
 
-	err = h.Service.UpdateActiveLayoutID(r.Context(), userID, req.ActiveLayoutID)
+	err := h.Service.UpdateActiveLayoutID(
+		r.Context(),
+		authContext.UserID,
+		req.ActiveLayoutID,
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -58,6 +58,18 @@ cd api && go run main.go
 cd ../frontend && npm install && npm start
 ```
 
+### Authentication Setup (Optional)
+
+If you want to use the authentication system:
+
+```bash
+# Run the authentication setup script
+./scripts/setup-auth-dev.sh
+
+# Follow the prompts to set up GitHub OAuth2
+# See docs/auth-development.md for detailed instructions
+```
+
 ### Seed Database
 
 Insert test data manually or using a seed script.
@@ -178,6 +190,7 @@ Additional documentation is available in the `docs/` directory:
 * [Architectural Design Records (ADR)](docs/ADR.md) - Design decisions and architectural considerations
 * [API Documentation](docs/api.md) - Detailed API reference and usage
 * [Database Documentation](docs/db.md) - Database schema and migration information
+* [Authentication Development Guide](docs/auth-development.md) - Local development setup and usage for authentication system
 * [Contributing Guide](docs/contributing.md) - How to contribute to the project
 * [Feature Branch Workflow](docs/feature-branch.md) - Git workflow for feature development
 

@@ -10,3 +10,4 @@ coverage.xml
 node_modules/
 .DS_Store
 cli/bin/
+./memory-bank
