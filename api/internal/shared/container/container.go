@@ -48,6 +48,23 @@ import (
 func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	mux := http.NewServeMux()
 
+	// Configure session store for Goth
+	key := os.Getenv("SESSION_SECRET")
+	if key == "" {
+		key = "dev-secret-key-change-in-production"
+	}
+
+	maxAge := 86400 * 30 // 30 days
+	isProd := os.Getenv("ENVIRONMENT") == "production"
+
+	store := sessions.NewFilesystemStore("", []byte(key))
+	store.MaxLength(maxAge)
+	store.Options.Path = "/"
+	store.Options.HttpOnly = true
+	store.Options.Secure = isProd
+
+	gothic.Store = store
+
 	// --- Setup Goth providers ---
 	setupGothProviders()
 
@@ -158,9 +175,7 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
 
 	// --- Auth routes (not under /api prefix) ---
-	authMux := http.NewServeMux()
-	registerAuthRoutes(authMux, authHandler, authMiddleware)
-	mux.Handle("/auth/", http.StripPrefix("/auth", authMux))
+	registerAuthRoutes(mux, authHandler, authMiddleware)
 
 	// Apply middleware
 	logger := slog.Default()
@@ -169,23 +184,6 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 
 // setupGothProviders configures OAuth2 providers for authentication
 func setupGothProviders() {
-	// Configure session store for Goth
-	key := os.Getenv("SESSION_SECRET")
-	if key == "" {
-		key = "dev-secret-key-change-in-production"
-	}
-
-	maxAge := 86400 * 30 // 30 days
-	isProd := os.Getenv("ENVIRONMENT") == "production"
-
-	store := sessions.NewCookieStore([]byte(key))
-	store.MaxAge(maxAge)
-	store.Options.Path = "/"
-	store.Options.HttpOnly = true
-	store.Options.Secure = isProd
-
-	gothic.Store = store
-
 	// Register OAuth2 providers
 	baseURL := os.Getenv("BASE_URL")
 	if baseURL == "" {
@@ -292,17 +290,17 @@ func registerRoutes(mux *http.ServeMux,
 // registerAuthRoutes registers authentication HTTP routes
 func registerAuthRoutes(mux *http.ServeMux, authHandler *authHTTP.AuthHandler, authMiddleware *authMiddleware.AuthMiddleware) {
 	// OAuth2 authentication routes
-	mux.HandleFunc("GET /{provider}", authHandler.BeginOAuth2Auth)
-	mux.HandleFunc("GET /{provider}/callback", authHandler.OAuth2Callback)
+	mux.HandleFunc("GET /auth/{provider}", authHandler.BeginOAuth2Auth)
+	mux.HandleFunc("GET /auth/{provider}/callback", authHandler.OAuth2Callback)
 
 	// Session management routes
-	mux.HandleFunc("POST /logout", authHandler.Logout)
+	mux.HandleFunc("POST /auth/logout", authHandler.Logout)
 
 	// User management routes (protected)
-	mux.Handle("GET /me", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.GetCurrentUser)))
+	mux.Handle("GET /auth/me", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.GetCurrentUser)))
 
 	// API key management routes (protected)
-	mux.Handle("GET /api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.ListAPIKeys)))
-	mux.Handle("POST /api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.CreateAPIKey)))
-	mux.Handle("DELETE /api-keys/{id}", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.DeleteAPIKey)))
+	mux.Handle("GET /auth/api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.ListAPIKeys)))
+	mux.Handle("POST /auth/api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.CreateAPIKey)))
+	mux.Handle("DELETE /auth/api-keys/{id}", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.DeleteAPIKey)))
 }

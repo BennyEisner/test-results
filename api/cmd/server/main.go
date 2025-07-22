@@ -13,19 +13,26 @@ import (
 
 	_ "github.com/BennyEisner/test-results/docs"
 	"github.com/BennyEisner/test-results/internal/shared/container"
+	"github.com/gorilla/sessions"
 	_ "github.com/lib/pq"
+	"github.com/markbates/goth"
+	"github.com/markbates/goth/gothic"
+	"github.com/markbates/goth/providers/github"
 	_ "go.uber.org/automaxprocs"
 )
 
 // Config holds the application configuration
 type Config struct {
-	DBHost      string
-	DBPort      int
-	DBUser      string
-	DBPassword  string
-	DBName      string
-	ServerAddr  string
-	FrontendURL string
+	DBHost        string
+	DBPort        int
+	DBUser        string
+	DBPassword    string
+	DBName        string
+	ServerAddr    string
+	FrontendURL   string
+	GithubKey     string
+	GithubSecret  string
+	SessionSecret string
 }
 
 // loadConfig loads configuration from environment variables
@@ -36,6 +43,9 @@ func loadConfig() *Config {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 	frontendURL := os.Getenv("FRONTEND_URL")
+	githubKey := os.Getenv("GITHUB_KEY")
+	githubSecret := os.Getenv("GITHUB_SECRET")
+	sessionSecret := os.Getenv("SESSION_SECRET")
 
 	portInt, err := strconv.Atoi(dbPort)
 	if err != nil {
@@ -43,13 +53,16 @@ func loadConfig() *Config {
 	}
 
 	return &Config{
-		DBHost:      dbHost,
-		DBPort:      portInt,
-		DBUser:      dbUser,
-		DBPassword:  dbPassword,
-		DBName:      dbName,
-		ServerAddr:  ":8080",
-		FrontendURL: frontendURL,
+		DBHost:        dbHost,
+		DBPort:        portInt,
+		DBUser:        dbUser,
+		DBPassword:    dbPassword,
+		DBName:        dbName,
+		ServerAddr:    ":8080",
+		FrontendURL:   frontendURL,
+		GithubKey:     githubKey,
+		GithubSecret:  githubSecret,
+		SessionSecret: sessionSecret,
 	}
 }
 
@@ -88,9 +101,28 @@ func runServer(addr string, handler http.Handler) error {
 	return err
 }
 
+// initGoth initializes the Goth providers
+func initGoth(config *Config) {
+	callbackURL := fmt.Sprintf("http://localhost%s/auth/github/callback", config.ServerAddr)
+	goth.UseProviders(
+		github.New(config.GithubKey, config.GithubSecret, callbackURL),
+	)
+
+	// Initialize session store
+	store := sessions.NewCookieStore([]byte(config.SessionSecret))
+	store.MaxAge(86400 * 30) // 30 days
+	store.Options.Path = "/"
+	store.Options.HttpOnly = true
+	store.Options.Secure = false // Set to true in production
+
+	gothic.Store = store
+}
+
 // run initializes and runs the application
 func run() error {
 	config := loadConfig()
+
+	initGoth(config)
 
 	db, err := connectDB(config)
 	if err != nil {

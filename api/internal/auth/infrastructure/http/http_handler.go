@@ -2,9 +2,9 @@ package http
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/BennyEisner/test-results/internal/auth/domain/models"
@@ -35,30 +35,8 @@ func NewAuthHandler(authService ports.AuthService, frontendURL string) *AuthHand
 // @Failure 500 {object} map[string]string
 // @Router /auth/{provider} [get]
 func (h *AuthHandler) BeginOAuth2Auth(w http.ResponseWriter, r *http.Request) {
-	// Extract provider from URL path
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 3 {
-		http.Error(w, "invalid provider path", http.StatusBadRequest)
-		return
-	}
-	provider := pathParts[2]
-
-	// Generate state for CSRF protection
-	state := r.URL.Query().Get("state")
-	if state == "" {
-		// Generate random state if not provided
-		state = generateRandomState()
-	}
-
-	// Begin OAuth2 authentication
-	authURL, err := h.authService.BeginOAuth2Auth(r.Context(), provider, state)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Redirect to OAuth2 provider
-	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
+	// Use Goth's BeginAuthHandler which properly stores the session
+	gothic.BeginAuthHandler(w, r)
 }
 
 // OAuth2Callback handles the OAuth2 callback
@@ -73,20 +51,30 @@ func (h *AuthHandler) BeginOAuth2Auth(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /auth/{provider}/callback [get]
 func (h *AuthHandler) OAuth2Callback(w http.ResponseWriter, r *http.Request) {
-	// Extract provider from URL path (for validation)
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 4 {
-		http.Error(w, "invalid callback path", http.StatusBadRequest)
-		return
+	// Log request headers
+	for name, headers := range r.Header {
+		for _, h := range headers {
+			log.Printf("Header: %v: %v", name, h)
+		}
 	}
-	_ = pathParts[2] // provider - used for validation but not needed for Goth
+
+	// Log session
+	session, err := gothic.Store.Get(r, gothic.SessionName)
+	if err != nil {
+		log.Printf("OAuth2Callback: could not get session from store: %s", err.Error())
+	} else {
+		log.Printf("OAuth2Callback: session values: %+v", session.Values)
+	}
 
 	// Complete OAuth2 authentication using Goth
 	gothUser, err := gothic.CompleteUserAuth(w, r)
 	if err != nil {
+		log.Printf("OAuth2Callback: gothic.CompleteUserAuth error=%s", err.Error())
 		http.Error(w, "authentication failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	log.Printf("OAuth2Callback: gothUser=%+v", gothUser)
 
 	// Create or update user in our database
 	user, err := h.authService.CreateOrUpdateUser(r.Context(), gothUser)
@@ -96,7 +84,7 @@ func (h *AuthHandler) OAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create session
-	session, err := h.authService.CreateSession(r.Context(), user.ID, user.Provider)
+	authSession, err := h.authService.CreateSession(r.Context(), user.ID, user.Provider)
 	if err != nil {
 		http.Error(w, "failed to create session: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -105,7 +93,7 @@ func (h *AuthHandler) OAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	// Set session cookie
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_id",
-		Value:    session.ID,
+		Value:    authSession.ID,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   r.TLS != nil, // Secure in production
@@ -288,13 +276,7 @@ func (h *AuthHandler) DeleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	authContext := authCtx.(*models.AuthContext)
 
 	// Extract API key ID from URL
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 4 {
-		http.Error(w, "invalid API key ID", http.StatusBadRequest)
-		return
-	}
-
-	keyID, err := strconv.ParseInt(pathParts[3], 10, 64)
+	keyID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		http.Error(w, "invalid API key ID", http.StatusBadRequest)
 		return

@@ -69,4 +69,4 @@ export const authApi = {
       throw new Error('Failed to delete API key');
     }
   }
-}; 
+};
