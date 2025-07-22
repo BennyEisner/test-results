@@ -9,6 +9,7 @@ import (
 
 	"github.com/BennyEisner/test-results/internal/auth/domain/models"
 	"github.com/BennyEisner/test-results/internal/auth/domain/ports"
+	"github.com/BennyEisner/test-results/internal/auth/infrastructure/middleware"
 	"github.com/markbates/goth/gothic"
 )
 
@@ -51,6 +52,8 @@ func (h *AuthHandler) BeginOAuth2Auth(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /auth/{provider}/callback [get]
 func (h *AuthHandler) OAuth2Callback(w http.ResponseWriter, r *http.Request) {
+	log.Printf("OAuth2Callback: received request for URL: %s", r.URL.String())
+
 	// Log request headers
 	for name, headers := range r.Header {
 		for _, h := range headers {
@@ -91,14 +94,16 @@ func (h *AuthHandler) OAuth2Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set session cookie
-	http.SetCookie(w, &http.Cookie{
+	cookie := &http.Cookie{
 		Name:     "session_id",
 		Value:    authSession.ID,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   r.TLS != nil, // Secure in production
 		MaxAge:   86400,        // 24 hours
-	})
+	}
+	http.SetCookie(w, cookie)
+	log.Printf("OAuth2Callback: setting session cookie: %+v", cookie)
 
 	// Redirect to frontend with success
 	http.Redirect(w, r, h.frontendURL+"/dashboard", http.StatusTemporaryRedirect)
@@ -152,22 +157,26 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} map[string]string
 // @Router /auth/me [get]
 func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	log.Println("GetCurrentUser: received request")
 	// Get auth context from middleware
-	authCtx := r.Context().Value("auth_context")
-	if authCtx == nil {
+	authContext, ok := middleware.GetAuthContext(r)
+	if !ok {
+		log.Println("GetCurrentUser: auth_context is nil")
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	authContext := authCtx.(*models.AuthContext)
+	log.Printf("GetCurrentUser: authContext=%+v", authContext)
 
 	// Get user details
 	user, err := h.authService.GetUserByID(r.Context(), authContext.UserID)
 	if err != nil {
+		log.Printf("GetCurrentUser: failed to get user: %v", err)
 		http.Error(w, "failed to get user: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	log.Printf("GetCurrentUser: successfully retrieved user: %+v", user)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(user)
 }

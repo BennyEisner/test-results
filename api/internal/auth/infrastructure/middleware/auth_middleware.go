@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strings"
 
@@ -93,18 +94,24 @@ func (m *AuthMiddleware) authenticateAPIKey(r *http.Request) (*models.AuthContex
 
 // authenticateSession attempts to authenticate using a session cookie
 func (m *AuthMiddleware) authenticateSession(r *http.Request) (*models.AuthContext, error) {
+	log.Println("authenticateSession: attempting to authenticate using session cookie")
 	// Get session ID from cookie
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
+		log.Printf("authenticateSession: could not get session cookie: %v", err)
 		return nil, err
 	}
+
+	log.Printf("authenticateSession: found session cookie: %+v", cookie)
 
 	// Validate session
 	authContext, err := m.authService.ValidateSession(r.Context(), cookie.Value)
 	if err != nil {
+		log.Printf("authenticateSession: could not validate session: %v", err)
 		return nil, err
 	}
 
+	log.Printf("authenticateSession: successfully validated session for user %d", authContext.UserID)
 	return authContext, nil
 }
 

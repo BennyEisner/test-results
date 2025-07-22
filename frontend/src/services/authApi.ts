@@ -1,6 +1,6 @@
 import { User, APIKey, CreateAPIKeyRequest, CreateAPIKeyResponse } from '../types/auth';
 
-const AUTH_BASE = '/auth';
+const AUTH_BASE = 'auth';
 
 export const authApi = {
   // OAuth2 Authentication

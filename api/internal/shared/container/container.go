@@ -4,13 +4,6 @@ import (
 	"database/sql"
 	"log/slog"
 	"net/http"
-	"os"
-
-	"github.com/gorilla/sessions"
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/gothic"
-	"github.com/markbates/goth/providers/github"
-	"github.com/markbates/goth/providers/okta"
 
 	authApp "github.com/BennyEisner/test-results/internal/auth/application"
 	authDB "github.com/BennyEisner/test-results/internal/auth/infrastructure/database"
@@ -47,26 +40,6 @@ import (
 // NewRouter creates and configures the HTTP router with all handlers
 func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	mux := http.NewServeMux()
-
-	// Configure session store for Goth
-	key := os.Getenv("SESSION_SECRET")
-	if key == "" {
-		key = "dev-secret-key-change-in-production"
-	}
-
-	maxAge := 86400 * 30 // 30 days
-	isProd := os.Getenv("ENVIRONMENT") == "production"
-
-	store := sessions.NewFilesystemStore("", []byte(key))
-	store.MaxLength(maxAge)
-	store.Options.Path = "/"
-	store.Options.HttpOnly = true
-	store.Options.Secure = isProd
-
-	gothic.Store = store
-
-	// --- Setup Goth providers ---
-	setupGothProviders()
 
 	// --- Standard Kubernetes health endpoints ---
 	// @Summary Liveness probe
@@ -179,37 +152,8 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 
 	// Apply middleware
 	logger := slog.Default()
-	return middleware.Cors(middleware.LoggingMiddleware(logger)(mux))
-}
-
-// setupGothProviders configures OAuth2 providers for authentication
-func setupGothProviders() {
-	// Register OAuth2 providers
-	baseURL := os.Getenv("BASE_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:8080"
-	}
-
-	providers := []goth.Provider{}
-
-	// Development provider (GitHub)
-	if githubClientID := os.Getenv("GITHUB_CLIENT_ID"); githubClientID != "" {
-		githubClientSecret := os.Getenv("GITHUB_CLIENT_SECRET")
-		providers = append(providers, github.New(githubClientID, githubClientSecret, baseURL+"/auth/github/callback"))
-	}
-
-	// Production provider (Okta)
-	if oktaClientID := os.Getenv("OKTA_CLIENT_ID"); oktaClientID != "" {
-		oktaClientSecret := os.Getenv("OKTA_CLIENT_SECRET")
-		oktaDomain := os.Getenv("OKTA_DOMAIN")
-		if oktaDomain != "" {
-			providers = append(providers, okta.New(oktaClientID, oktaClientSecret, baseURL+"/auth/okta/callback", oktaDomain))
-		}
-	}
-
-	if len(providers) > 0 {
-		goth.UseProviders(providers...)
-	}
+	corsMiddleware := middleware.Cors(frontendURL)
+	return corsMiddleware(middleware.LoggingMiddleware(logger)(mux))
 }
 
 // registerRoutes registers all HTTP routes
@@ -292,14 +236,8 @@ func registerAuthRoutes(mux *http.ServeMux, authHandler *authHTTP.AuthHandler, a
 	// OAuth2 authentication routes
 	mux.HandleFunc("GET /auth/{provider}", authHandler.BeginOAuth2Auth)
 	mux.HandleFunc("GET /auth/{provider}/callback", authHandler.OAuth2Callback)
-
-	// Session management routes
 	mux.HandleFunc("POST /auth/logout", authHandler.Logout)
-
-	// User management routes (protected)
 	mux.Handle("GET /auth/me", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.GetCurrentUser)))
-
-	// API key management routes (protected)
 	mux.Handle("GET /auth/api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.ListAPIKeys)))
 	mux.Handle("POST /auth/api-keys", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.CreateAPIKey)))
 	mux.Handle("DELETE /auth/api-keys/{id}", authMiddleware.RequireAuth(http.HandlerFunc(authHandler.DeleteAPIKey)))
