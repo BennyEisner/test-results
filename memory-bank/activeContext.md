@@ -1,33 +1,26 @@
 # Active Context
 
-## Current Focus: Resolving OAuth2 Authentication Issue
+## Current Focus: Resolving GitHub OAuth2 Authentication
 
-Our immediate priority is to resolve a persistent OAuth2 authentication issue where the system returns a "you must select a provider" error. This problem appears to stem from a failure to properly manage the Goth session during the authentication flow.
+The primary focus has been on debugging and resolving a series of issues that prevented the GitHub OAuth2 authentication from functioning correctly. The work involved a multi-step diagnostic process to identify and fix several distinct problems in the authentication flow.
 
-## Summary of the Problem
+## Summary of Fixes
 
-When a user attempts to log in with GitHub, the backend returns a 400 Bad Request with the error "you must select a provider." This indicates that the session is not being correctly stored or retrieved during the OAuth2 callback. The core of the issue is that the Goth session, which should contain the provider information, is empty when the callback is handled.
+The authentication system was plagued by several issues that were resolved sequentially:
 
-## Solutions Attempted
+1.  **Session Management Conflict**: The initial "you must select a provider" error was caused by a conflicting Goth initialization. The `main.go` file correctly configured a `CookieStore`, but this was being overwritten in `container.go` by a misconfigured `FilesystemStore`. The fix involved centralizing all Goth and session store configuration into `main.go` and removing the conflicting code from `container.go`.
 
-We have tried several solutions, each of which has led to a circular problem:
+2.  **Provider Name Extraction**: After fixing the session, a new issue arose where the provider name was not being correctly extracted from the request URL. This was resolved by implementing a custom `gothic.GetProviderName` function in `main.go` that manually and reliably parses the provider from the URL path.
 
-1.  **Initial Approach**: The initial implementation had the `BeginOAuth2Auth` function in the service layer, but it did not have access to the HTTP request/response objects needed to store the session. This led to the "you must select a provider" error.
+3.  **Incorrect Client Credentials**: The final and most critical issue was an `incorrect_client_credentials` error from the GitHub API. Through diagnostic logging, it was discovered that the application was using the wrong environment variable names for the GitHub credentials.
+    - The code was looking for `GITHUB_KEY` and `GITHUB_SECRET`.
+    - The correct variables, as defined in the user's `.env` file, were `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
 
-2.  **Moving Logic to HTTP Handler**: To address the session storage issue, we moved the Goth session handling to the HTTP layer. The `BeginOAuth2Auth` handler was updated to call `gothic.BeginAuthHandler` directly, which should have stored the session. However, this resulted in the same error, suggesting that the session was still not being properly stored.
-
-3.  **Manual URL Path Manipulation**: We then tried to manually set the URL path for Goth in both the `BeginOAuth2Auth` and `OAuth2Callback` handlers. This was an attempt to ensure that Goth could correctly identify the provider from the URL. This also failed to resolve the issue.
-
-4.  **Goth Initialization**: We ensured that the Goth providers were properly initialized in `main.go` and that the necessary environment variables were set in `.env.example`. This did not resolve the issue.
-
-5.  **Routing Adjustments**: We removed the `http.StripPrefix` from the auth routes in `container.go` and updated the route paths to include the `/auth` prefix. This was done to ensure the provider name was correctly passed to the handler. This also did not resolve the issue.
+4.  **Final Correction**: The code in `main.go` was updated to load the correct `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` environment variables. The `.env.example` file was also updated to reflect this change, ensuring future consistency.
 
 ## Next Steps
 
-The current approach has not been successful, and we are stuck in a loop. The next steps are to:
-
-1.  **Re-evaluate the Goth Integration**: We need to take a step back and re-evaluate how Goth is integrated into the application. This includes reviewing the Goth documentation and examples to ensure that we are using it correctly.
-
-2.  **Simplify the Authentication Flow**: We should try to simplify the authentication flow to its most basic form to isolate the problem. This might involve creating a minimal test case that only includes the Goth integration.
-
-3.  **Update Memory Bank**: We will update the `progress.md` file to reflect the current status of the authentication issue and the solutions we have tried.
+With the authentication code now fully corrected, the immediate next steps are:
+1.  **User Configuration**: The user must ensure their local `.env` file is correctly populated with the `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` values from their GitHub OAuth application.
+2.  **Verification**: Restart the Docker containers and perform an end-to-end test of the login flow to confirm that authentication is now working as expected.
+3.  **Future Work**: Once authentication is verified, development can proceed with other planned features, such as implementing user roles and improving error handling.

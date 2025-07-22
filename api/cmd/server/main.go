@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	_ "strconv"
+	"strings"
 	_ "time"
 
 	_ "github.com/BennyEisner/test-results/docs"
@@ -23,16 +24,16 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	DBHost        string
-	DBPort        int
-	DBUser        string
-	DBPassword    string
-	DBName        string
-	ServerAddr    string
-	FrontendURL   string
-	GithubKey     string
-	GithubSecret  string
-	SessionSecret string
+	DBHost         string
+	DBPort         int
+	DBUser         string
+	DBPassword     string
+	DBName         string
+	ServerAddr     string
+	FrontendURL    string
+	GithubClientID string
+	GithubSecret   string
+	SessionSecret  string
 }
 
 // loadConfig loads configuration from environment variables
@@ -43,8 +44,8 @@ func loadConfig() *Config {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 	frontendURL := os.Getenv("FRONTEND_URL")
-	githubKey := os.Getenv("GITHUB_KEY")
-	githubSecret := os.Getenv("GITHUB_SECRET")
+	githubClientID := os.Getenv("GITHUB_CLIENT_ID")
+	githubSecret := os.Getenv("GITHUB_CLIENT_SECRET")
 	sessionSecret := os.Getenv("SESSION_SECRET")
 
 	portInt, err := strconv.Atoi(dbPort)
@@ -53,16 +54,16 @@ func loadConfig() *Config {
 	}
 
 	return &Config{
-		DBHost:        dbHost,
-		DBPort:        portInt,
-		DBUser:        dbUser,
-		DBPassword:    dbPassword,
-		DBName:        dbName,
-		ServerAddr:    ":8080",
-		FrontendURL:   frontendURL,
-		GithubKey:     githubKey,
-		GithubSecret:  githubSecret,
-		SessionSecret: sessionSecret,
+		DBHost:         dbHost,
+		DBPort:         portInt,
+		DBUser:         dbUser,
+		DBPassword:     dbPassword,
+		DBName:         dbName,
+		ServerAddr:     ":8080",
+		FrontendURL:    frontendURL,
+		GithubClientID: githubClientID,
+		GithubSecret:   githubSecret,
+		SessionSecret:  sessionSecret,
 	}
 }
 
@@ -105,7 +106,7 @@ func runServer(addr string, handler http.Handler) error {
 func initGoth(config *Config) {
 	callbackURL := fmt.Sprintf("http://localhost%s/auth/github/callback", config.ServerAddr)
 	goth.UseProviders(
-		github.New(config.GithubKey, config.GithubSecret, callbackURL),
+		github.New(config.GithubClientID, config.GithubSecret, callbackURL),
 	)
 
 	// Initialize session store
@@ -116,6 +117,17 @@ func initGoth(config *Config) {
 	store.Options.Secure = false // Set to true in production
 
 	gothic.Store = store
+
+	// Override the default provider name extraction logic to be more robust.
+	// This manual parsing is more reliable than the default implementation.
+	gothic.GetProviderName = func(r *http.Request) (string, error) {
+		// The path for auth routes is /auth/{provider} or /auth/{provider}/callback
+		parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/"), "/")
+		if len(parts) > 1 && parts[0] == "auth" {
+			return parts[1], nil
+		}
+		return "", fmt.Errorf("could not find provider in path")
+	}
 }
 
 // run initializes and runs the application
