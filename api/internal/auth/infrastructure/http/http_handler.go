@@ -195,13 +195,11 @@ func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 // @Router /auth/api-keys [post]
 func (h *AuthHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 	// Get auth context from middleware
-	authCtx := r.Context().Value("auth_context")
-	if authCtx == nil {
+	authContext, ok := middleware.GetAuthContext(r)
+	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-
-	authContext := authCtx.(*models.AuthContext)
 
 	// Parse request
 	var req CreateAPIKeyRequest
@@ -243,13 +241,11 @@ func (h *AuthHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 // @Router /auth/api-keys [get]
 func (h *AuthHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 	// Get auth context from middleware
-	authCtx := r.Context().Value("auth_context")
-	if authCtx == nil {
+	authContext, ok := middleware.GetAuthContext(r)
+	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-
-	authContext := authCtx.(*models.AuthContext)
 
 	// List API keys
 	apiKeys, err := h.authService.ListAPIKeys(r.Context(), authContext.UserID)
@@ -276,13 +272,11 @@ func (h *AuthHandler) ListAPIKeys(w http.ResponseWriter, r *http.Request) {
 // @Router /auth/api-keys/{id} [delete]
 func (h *AuthHandler) DeleteAPIKey(w http.ResponseWriter, r *http.Request) {
 	// Get auth context from middleware
-	authCtx := r.Context().Value("auth_context")
-	if authCtx == nil {
+	authContext, ok := middleware.GetAuthContext(r)
+	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-
-	authContext := authCtx.(*models.AuthContext)
 
 	// Extract API key ID from URL
 	keyID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
