@@ -5,7 +5,7 @@ import ComponentRegistry from './ComponentRegistry';
 import BuildSelect from '../build/BuildSelect';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import './DashboardContainer.css';
+import '../../styles/dashboard.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -82,16 +82,10 @@ const DashboardContainer = ({
                         <div className="component-content">
                             <ComponentRegistry
                                 type={component.type}
-                                props={
-                                    component.isStatic
-                                        ? component.props
-                                        : {
-                                            ...component.props,
-                                            ...(projectId && { projectId }),
-                                            ...(suiteId && { suiteId }),
-                                            ...(selectedBuildId && { buildId: selectedBuildId }),
-                                        }
-                                }
+                                props={component.props}
+                                projectId={projectId ?? undefined}
+                                suiteId={suiteId ?? undefined}
+                                buildId={selectedBuildId}
                             />
                         </div>
                     </div>

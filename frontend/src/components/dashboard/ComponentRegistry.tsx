@@ -4,6 +4,9 @@ import ExecutionsSummary from '../execution/ExecutionsSummary';
 import BuildDoughnutChart from '../build/BuildDoughnutChart';
 import BuildDurationTrendChart from '../build/BuildDurationTrendChart';
 import MostFailedTestsTable from '../test/MostFailedTestsTable';
+import MetricCard from '../widgets/MetricCard';
+import StatusBadge from '../widgets/StatusBadge';
+import DataChart from '../widgets/DataChart';
 import { fetchBuilds } from '../../services/api';
 
 interface ComponentRegistryProps {
@@ -62,6 +65,15 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
                 return <ExecutionsSummary buildId={summaryBuildId} {...componentProps} />;
             }
             return <div className="component-placeholder">Select a build to view the summary.</div>;
+        
+        case 'metric-card':
+            return <MetricCard {...componentProps} value={props.value} />;
+
+        case 'status-badge':
+            return <StatusBadge {...componentProps} status={props.status} >{props.children}</StatusBadge>;
+
+        case 'data-chart':
+            return <DataChart {...componentProps} type={props.type} data={props.data} />;
 
         default:
             return <div className="component-placeholder">Unknown component: {type}</div>;
@@ -209,5 +221,87 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
             }
         ]
     },
-
+    'metric-card': {
+        name: 'Metric Card',
+        description: 'Display a single metric with a trend indicator',
+        category: 'Widgets',
+        defaultProps: { title: 'Metric', value: 'N/A' },
+        defaultGridSize: { w: 3, h: 2, minW: 2, minH: 2 },
+        configFields: [
+            {
+                key: 'title',
+                label: 'Title',
+                type: 'text',
+                defaultValue: 'Metric',
+            },
+            {
+                key: 'value',
+                label: 'Value',
+                type: 'text',
+                defaultValue: 'N/A',
+            },
+            {
+                key: 'change',
+                label: 'Change',
+                type: 'text',
+            },
+            {
+                key: 'changeType',
+                label: 'Change Type',
+                type: 'select',
+                options: ['increase', 'decrease', 'neutral'],
+                defaultValue: 'neutral',
+            },
+        ],
+    },
+    'status-badge': {
+        name: 'Status Badge',
+        description: 'Display a status badge',
+        category: 'Widgets',
+        defaultProps: { status: 'neutral', children: 'Status' },
+        defaultGridSize: { w: 2, h: 1, minW: 2, minH: 1 },
+        configFields: [
+            {
+                key: 'status',
+                label: 'Status',
+                type: 'select',
+                options: ['success', 'warning', 'danger', 'info', 'neutral'],
+                defaultValue: 'neutral',
+            },
+            {
+                key: 'children',
+                label: 'Text',
+                type: 'text',
+                defaultValue: 'Status',
+            },
+        ],
+    },
+    'data-chart': {
+        name: 'Data Chart',
+        description: 'Display a chart from data',
+        category: 'Charts',
+        defaultProps: { type: 'bar', data: {} },
+        defaultGridSize: { w: 6, h: 8, minW: 4, minH: 4 },
+        configFields: [
+            {
+                key: 'type',
+                label: 'Chart Type',
+                type: 'select',
+                options: ['line', 'bar', 'pie', 'doughnut'],
+                defaultValue: 'bar',
+            },
+            {
+                key: 'data',
+                label: 'Data',
+                type: 'textarea',
+                defaultValue: '{}',
+            },
+            {
+                key: 'options',
+                label: 'Options',
+                type: 'textarea',
+                defaultValue: '{}',
+            },
+        ],
+    },
 };

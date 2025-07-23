@@ -61,10 +61,28 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialI
                                     ))}
                                 </>
                             ) : (field.options ? (
-                                field.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)
+                                field.options.map(opt => {
+                                    if (typeof opt === 'object') {
+                                        return <option key={opt.value} value={opt.value}>{opt.label}</option>;
+                                    }
+                                    return <option key={opt} value={opt}>{String(opt)}</option>;
+                                })
                             ) : null)}
                         </Form.Select>
                         {helpText && <Form.Text className="text-muted">{helpText}</Form.Text>}
+                    </Form.Group>
+                );
+            case 'textarea':
+                return (
+                    <Form.Group key={key} className="mb-3">
+                        <Form.Label>{label}</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            value={value}
+                            placeholder={placeholder}
+                            onChange={(e) => setConfig({ ...config, [key]: e.target.value })}
+                        />
                     </Form.Group>
                 );
             case 'text':

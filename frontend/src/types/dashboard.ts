@@ -42,9 +42,9 @@ export interface ComponentProps {
 export interface ConfigField {
   key: string;
   label: string;
-  type: "select" | "text" | "number" | "boolean" | "multi-select";
+  type: "select" | "text" | "number" | "boolean" | "multi-select" | "textarea";
   required?: boolean;
-  options?: { value: string | number; label: string }[];
+  options?: (string | number)[] | { value: string | number; label: string }[];
   defaultValue?: any;
   placeholder?: string;
   helpText?: string;
@@ -55,7 +55,10 @@ export type ComponentType =
   | "build-chart"
   | "build-duration-trend-chart"
   | "most-failed-tests-table"
-  | "executions-summary";
+  | "executions-summary"
+  | "metric-card"
+  | "status-badge"
+  | "data-chart";
 
 export interface DashboardSettings {
   theme: "light" | "dark";

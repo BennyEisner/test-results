@@ -12,6 +12,11 @@
 - **Dashboard Editing**: The dashboard supports an editing mode that allows users to add, remove, and rearrange components via drag-and-drop.
 - **Component Registry**: A component registry dynamically renders widgets and defines their properties, including configuration options for static components.
 - **Enhanced Authentication Flow**: The login process is now more robust with centralized redirection, loading and error states, and improved user feedback on the login page.
+- **Analytical Dashboard Redesign**: The application's UI has been transformed into a statistics-focused dashboard. This includes:
+    - A professional, data-centric design with a clear visual hierarchy.
+    - Reusable widget components (`MetricCard`, `StatusBadge`, `DataChart`).
+    - A semantic color scheme for intuitive status indication.
+    - A flexible grid-based layout using `react-grid-layout`.
 
 ## What's Left to Build
 

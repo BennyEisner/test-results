@@ -13,8 +13,10 @@ The application follows a classic three-tier architecture with a frontend, a bac
 - **Repository Pattern**: The backend uses repositories to abstract the data access logic, decoupling the application from the specific database implementation.
 - **Dependency Injection**: The backend uses a container to manage and inject dependencies, which promotes loose coupling and testability.
 - **RESTful API**: The backend exposes a RESTful API for the frontend and CLI to consume.
-- **Component-Based UI**: The frontend is built with React, using a component-based architecture to create a modular and reusable UI.
-- **State Management**: The frontend uses React Context for managing global state, such as authentication status.
+- **Component-Based UI**: The frontend is built with React, using a component-based architecture to create a modular and reusable UI. The new dashboard design introduces a widget-based system with a `ComponentRegistry` that dynamically renders components based on a layout configuration.
+- **Widget-Based Dashboard**: The dashboard is composed of reusable widgets such as `MetricCard`, `StatusBadge`, and `DataChart`. This approach allows for flexible and customizable dashboard layouts.
+- **Semantic Color Scheme**: The UI now uses a semantic color palette to convey meaning and status. Colors are used consistently for errors (red), warnings (amber), success (green), and informational data (blue).
+- **State Management**: The frontend uses React Context for managing global state, such as authentication status and dashboard layouts.
 
 ## Component Relationships and Data Flow
 1.  A user or CI/CD pipeline uses the **CLI** to submit a test result file (JUnit or ReadyAPI XML) to the **backend API**.
