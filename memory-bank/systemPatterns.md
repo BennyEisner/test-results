@@ -15,8 +15,14 @@ The application follows a classic three-tier architecture with a frontend, a bac
 - **RESTful API**: The backend exposes a RESTful API for the frontend and CLI to consume.
 - **Component-Based UI**: The frontend is built with React, using a component-based architecture to create a modular and reusable UI. The new dashboard design introduces a widget-based system with a `ComponentRegistry` that dynamically renders components based on a layout configuration.
 - **Widget-Based Dashboard**: The dashboard is composed of reusable widgets such as `MetricCard`, `StatusBadge`, and `DataChart`. This approach allows for flexible and customizable dashboard layouts.
+- **Global Navigation**: A `BreadcrumbNavbar` has been implemented to provide consistent navigation and context across the application. It includes a project dropdown for easy project switching.
 - **Semantic Color Scheme**: The UI now uses a semantic color palette to convey meaning and status. Colors are used consistently for errors (red), warnings (amber), success (green), and informational data (blue).
 - **State Management**: The frontend uses React Context for managing global state, such as authentication status and dashboard layouts.
+
+- **Dashboard Backend Component**: The dashboard backend is a key component responsible for providing data to the frontend for visualization. It is designed to be stateless and follows the hexagonal architecture pattern. It exposes a set of API endpoints for fetching dashboard data, such as project status, metrics, and chart data. The component relies on the `build` and `build_test_case_execution` modules to access the necessary data from the database.
+- **Frontend Dashboard Component**: The frontend dashboard provides a flexible and interactive interface for visualizing project data. It uses a widget-based system with a `ComponentRegistry` that dynamically renders components based on a layout configuration. The dashboard's state is managed through a combination of React component state and the `useDashboardLayouts` hook.
+- **Dynamic Chart Data**: The system now supports dynamic chart data, allowing users to visualize different data sets in the dashboard. The backend has been updated to support different chart types, and the frontend has been updated to handle the dynamic data.
+- **[BROKEN]** **API Contract Mismatch**: A recent change to the backend API has broken the contract with the frontend. The `GetChartData` endpoint was modified to accept `project_id` as a query parameter instead of a path parameter, causing all chart data requests to fail with a 400 Bad Request error. This has rendered the dashboard's chart functionality completely non-functional.
 
 ## Component Relationships and Data Flow
 1.  A user or CI/CD pipeline uses the **CLI** to submit a test result file (JUnit or ReadyAPI XML) to the **backend API**.

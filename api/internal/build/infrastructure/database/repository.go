@@ -217,3 +217,50 @@ func (r *SQLBuildRepository) Delete(ctx context.Context, id int64) error {
 
 	return nil
 }
+
+// Count returns the total number of builds
+func (r *SQLBuildRepository) Count(ctx context.Context) (int, error) {
+	query := `SELECT COUNT(*) FROM builds`
+
+	var count int
+	err := r.db.QueryRowContext(ctx, query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count builds: %w", err)
+	}
+
+	return count, nil
+}
+
+// GetLatestBuildStatus returns the status of the latest build for a project
+func (r *SQLBuildRepository) GetLatestBuildStatus(ctx context.Context, projectID int64) (string, error) {
+	query := `
+		SELECT 
+			CASE 
+				WHEN COUNT(btce.id) = 0 THEN 'unknown'
+				WHEN COUNT(CASE WHEN btce.status = 'failed' THEN 1 END) > 0 THEN 'danger'
+				WHEN COUNT(CASE WHEN btce.status = 'skipped' THEN 1 END) > 0 THEN 'warning'
+				ELSE 'success'
+			END as status
+		FROM builds b
+		JOIN test_suites ts ON b.test_suite_id = ts.id
+		LEFT JOIN build_test_case_executions btce ON b.id = btce.build_id
+		WHERE ts.project_id = $1
+		AND b.created_at = (
+			SELECT MAX(b2.created_at) 
+			FROM builds b2 
+			JOIN test_suites ts2 ON b2.test_suite_id = ts2.id 
+			WHERE ts2.project_id = $1
+		)
+	`
+
+	var status string
+	err := r.db.QueryRowContext(ctx, query, projectID).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "unknown", nil
+		}
+		return "", fmt.Errorf("failed to get latest build status: %w", err)
+	}
+
+	return status, nil
+}

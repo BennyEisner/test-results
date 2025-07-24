@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { fetchMostFailedTests } from '../../services/api';
 import {
     createColumnHelper,
@@ -32,7 +32,7 @@ const columns = [
     }),
 ];
 
-const MostFailedTestsTable: React.FC<MostFailedTestsTableProps> = ({ projectId, limit = 10, suiteId }) => {
+const MostFailedTestsTable = ({ projectId, limit = 10, suiteId }: MostFailedTestsTableProps) => {
     const [tests, setTests] = useState<MostFailedTest[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);

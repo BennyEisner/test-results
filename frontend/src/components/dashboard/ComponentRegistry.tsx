@@ -8,6 +8,7 @@ import MetricCard from '../widgets/MetricCard';
 import StatusBadge from '../widgets/StatusBadge';
 import DataChart from '../widgets/DataChart';
 import { fetchBuilds } from '../../services/api';
+import { dashboardApi } from '../../services/dashboardApi';
 
 interface ComponentRegistryProps {
     type: ComponentType;
@@ -67,13 +68,24 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
             return <div className="component-placeholder">Select a build to view the summary.</div>;
         
         case 'metric-card':
-            return <MetricCard {...componentProps} value={props.value} />;
+            return <MetricCard {...componentProps} projectId={projectId} metricType={props.metricType || 'passing-rate'} />;
 
         case 'status-badge':
-            return <StatusBadge {...componentProps} status={props.status} >{props.children}</StatusBadge>;
+            return <StatusBadge projectId={projectId} />;
 
         case 'data-chart':
-            return <DataChart {...componentProps} type={props.type} data={props.data} />;
+            return <DataChart 
+                        {...componentProps} 
+                        projectId={projectId} 
+                        suiteId={suiteId}
+                        buildId={buildId}
+                        chartType={props.chartType || 'bar'} 
+                        dataSource={props.dataSource || 'build-duration'} 
+                        isStatic={props.isStatic} 
+                        staticProjectId={props.projectId} 
+                        staticSuiteId={props.suiteId}
+                        staticBuildId={props.buildId}
+                    />;
 
         default:
             return <div className="component-placeholder">Unknown component: {type}</div>;
@@ -284,23 +296,58 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
         defaultGridSize: { w: 6, h: 8, minW: 4, minH: 4 },
         configFields: [
             {
-                key: 'type',
+                key: 'title',
+                label: 'Component Title',
+                type: 'text',
+                defaultValue: 'Data Chart',
+                placeholder: 'Enter component title'
+            },
+            {
+                key: 'dataSource',
+                label: 'Data Source',
+                type: 'select',
+                asyncOptions: async () => {
+                    const response = await dashboardApi.getAvailableWidgets();
+                    return response.charts;
+                },
+                defaultValue: 'build-duration',
+            },
+            {
+                key: 'chartType',
                 label: 'Chart Type',
                 type: 'select',
                 options: ['line', 'bar', 'pie', 'doughnut'],
                 defaultValue: 'bar',
             },
             {
-                key: 'data',
-                label: 'Data',
-                type: 'textarea',
-                defaultValue: '{}',
+                key: 'isStatic',
+                label: 'Static Chart',
+                type: 'checkbox',
+                defaultValue: false,
             },
             {
-                key: 'options',
-                label: 'Options',
-                type: 'textarea',
-                defaultValue: '{}',
+                key: 'projectId',
+                label: 'Project ID',
+                type: 'text',
+                required: true,
+                placeholder: 'Enter project ID',
+                condition: (props: ComponentProps) => props.isStatic,
+            },
+            {
+                key: 'suiteId',
+                label: 'Suite ID',
+                type: 'text',
+                required: false,
+                placeholder: 'Enter suite ID (optional)',
+                condition: (props: ComponentProps) => props.isStatic,
+            },
+            {
+                key: 'buildId',
+                label: 'Build ID',
+                type: 'text',
+                required: false,
+                placeholder: 'Enter build ID (optional)',
+                condition: (props: ComponentProps) => props.isStatic,
             },
         ],
     },

@@ -46,8 +46,8 @@ func (h *BuildHandler) GetBuildByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBuilds handles GET /builds
-// @Summary Get builds by project or test suite
-// @Description Retrieve builds by either project_id or suite_id
+// @Summary Get builds
+// @Description Retrieve builds, optionally filtered by project_id or suite_id
 // @Tags builds
 // @Accept json
 // @Produce json
@@ -60,7 +60,6 @@ func (h *BuildHandler) GetBuildByID(w http.ResponseWriter, r *http.Request) {
 func (h *BuildHandler) GetBuilds(w http.ResponseWriter, r *http.Request) {
 	projectIDStr := r.URL.Query().Get("project_id")
 	suiteIDStr := r.URL.Query().Get("suite_id")
-
 	ctx := r.Context()
 
 	if projectIDStr != "" {
@@ -93,7 +92,34 @@ func (h *BuildHandler) GetBuilds(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respondWithError(w, http.StatusBadRequest, "missing project_id or suite_id")
+	respondWithError(w, http.StatusBadRequest, "project_id or suite_id must be provided")
+}
+
+// GetBuildsByTestSuite handles GET /test-suites/{suiteID}/builds
+// @Summary Get builds by test suite ID
+// @Description Retrieve all builds for a specific test suite
+// @Tags builds
+// @Accept json
+// @Produce json
+// @Param suite_id query int true "Test Suite ID"
+// @Success 200 {array} object
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /builds [get]
+func (h *BuildHandler) GetBuildsByTestSuite(w http.ResponseWriter, r *http.Request) {
+	suiteIDStr := r.URL.Query().Get("suite_id")
+	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "invalid suite_id")
+		return
+	}
+	ctx := r.Context()
+	builds, err := h.Service.GetBuildsByTestSuite(ctx, suiteID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondWithJSON(w, http.StatusOK, builds)
 }
 
 // CreateBuild handles POST /builds

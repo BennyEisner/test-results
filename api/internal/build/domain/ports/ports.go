@@ -14,6 +14,8 @@ type BuildRepository interface {
 	Create(ctx context.Context, build *models.Build) error
 	Update(ctx context.Context, id int64, build *models.Build) (*models.Build, error)
 	Delete(ctx context.Context, id int64) error
+	Count(ctx context.Context) (int, error)
+	GetLatestBuildStatus(ctx context.Context, projectID int64) (string, error)
 }
 
 // BuildService defines the interface for build business logic

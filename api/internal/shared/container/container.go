@@ -15,6 +15,8 @@ import (
 	buildExecApp "github.com/BennyEisner/test-results/internal/build_test_case_execution/application"
 	buildExecDB "github.com/BennyEisner/test-results/internal/build_test_case_execution/infrastructure/database"
 	buildExecHTTP "github.com/BennyEisner/test-results/internal/build_test_case_execution/infrastructure/http"
+	dashboardApp "github.com/BennyEisner/test-results/internal/dashboard/application"
+	dashboardHTTP "github.com/BennyEisner/test-results/internal/dashboard/infrastructure/http"
 	failureApp "github.com/BennyEisner/test-results/internal/failure/application"
 	failureDB "github.com/BennyEisner/test-results/internal/failure/infrastructure/database"
 	failureHTTP "github.com/BennyEisner/test-results/internal/failure/infrastructure/http"
@@ -126,6 +128,7 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	testSuiteService := testSuiteApp.NewTestSuiteService(testSuiteRepo)
 	testCaseService := testCaseApp.NewTestCaseService(testCaseRepo)
 	userConfigService := userConfigApp.NewUserConfigService(userConfigRepo)
+	dashboardService := dashboardApp.NewDashboardService(buildRepo, buildExecRepo)
 
 	// Wire up HTTP handlers
 	authHandler := authHTTP.NewAuthHandler(authService, frontendURL)
@@ -137,6 +140,7 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	testSuiteHandler := testSuiteHTTP.NewTestSuiteHandler(testSuiteService)
 	testCaseHandler := testCaseHTTP.NewTestCaseHandler(testCaseService)
 	userConfigHandler := userConfigHTTP.NewUserConfigHandler(userConfigService)
+	dashboardHandler := dashboardHTTP.NewDashboardHandler(dashboardService)
 
 	// Wire up middleware
 	authMiddleware := authMiddleware.NewAuthMiddleware(authService)
@@ -144,7 +148,7 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	// --- API subrouter ---
 	apiMux := http.NewServeMux()
 	registerRoutes(apiMux, projectHandler, buildHandler,
-		buildExecHandler, failureHandler, userHandler, testSuiteHandler, testCaseHandler, userConfigHandler, authMiddleware)
+		buildExecHandler, failureHandler, userHandler, testSuiteHandler, testCaseHandler, userConfigHandler, authMiddleware, dashboardHandler)
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
 
 	// --- Auth routes (not under /api prefix) ---
@@ -166,7 +170,26 @@ func registerRoutes(mux *http.ServeMux,
 	testSuiteHandler *testSuiteHTTP.TestSuiteHandler,
 	testCaseHandler *testCaseHTTP.TestCaseHandler,
 	userConfigHandler *userConfigHTTP.UserConfigHandler,
-	authMiddleware *authMiddleware.AuthMiddleware) {
+	authMiddleware *authMiddleware.AuthMiddleware,
+	dashboardHandler *dashboardHTTP.DashboardHandler,
+) {
+	// Dashboard routes
+	mux.Handle(
+		"GET /dashboard/projects/{projectID}/status",
+		authMiddleware.RequireAuth(http.HandlerFunc(dashboardHandler.GetStatus)),
+	)
+	mux.Handle(
+		"GET /dashboard/projects/{projectID}/metric/{metricType}",
+		authMiddleware.RequireAuth(http.HandlerFunc(dashboardHandler.GetMetric)),
+	)
+	mux.Handle(
+		"GET /dashboard/projects/{projectID}/chart/{chartType}",
+		authMiddleware.RequireAuth(http.HandlerFunc(dashboardHandler.GetChartData)),
+	)
+	mux.Handle(
+		"GET /dashboard/available-widgets",
+		authMiddleware.RequireAuth(http.HandlerFunc(dashboardHandler.GetAvailableWidgets)),
+	)
 
 	// Project routes
 	mux.HandleFunc("GET /projects", projectHandler.GetAllProjects)
@@ -217,18 +240,9 @@ func registerRoutes(mux *http.ServeMux,
 	mux.HandleFunc("DELETE /test-cases", testCaseHandler.DeleteTestCase)
 
 	// User config routes (protected)
-	mux.Handle(
-		"GET /configs",
-		authMiddleware.RequireAuth(http.HandlerFunc(userConfigHandler.GetUserConfigs)),
-	)
-	mux.Handle(
-		"POST /configs",
-		authMiddleware.RequireAuth(http.HandlerFunc(userConfigHandler.SaveUserConfig)),
-	)
-	mux.Handle(
-		"PUT /configs/active",
-		authMiddleware.RequireAuth(http.HandlerFunc(userConfigHandler.UpdateActiveLayoutID)),
-	)
+	mux.Handle("GET /users/{id}/config", authMiddleware.RequireAuth(http.HandlerFunc(userConfigHandler.GetUserConfigs)))
+	mux.Handle("PUT /users/{id}/config", authMiddleware.RequireAuth(http.HandlerFunc(userConfigHandler.SaveUserConfig)))
+	mux.Handle("PUT /configs/active", authMiddleware.RequireAuth(http.HandlerFunc(userConfigHandler.UpdateActiveLayoutID)))
 }
 
 // registerAuthRoutes registers authentication HTTP routes

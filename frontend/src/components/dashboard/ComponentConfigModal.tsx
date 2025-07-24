@@ -14,16 +14,25 @@ interface ComponentConfigModalProps {
 
 const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialIsStatic = false }: ComponentConfigModalProps) => {
     const [config, setConfig] = useState<ComponentProps>({});
-    const [isStatic, setIsStatic] = useState(initialIsStatic);
+    const [asyncOptions, setAsyncOptions] = useState<Record<string, { value: string; label: string }[]>>({});
 
     const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && componentType) {
+            const componentDef = COMPONENT_DEFINITIONS[componentType];
+            const fieldsToFetch = componentDef.configFields?.filter(f => f.asyncOptions) || [];
+
+            fieldsToFetch.forEach(field => {
+                field.asyncOptions!().then(options => {
+                    setAsyncOptions(prev => ({ ...prev, [field.key]: options }));
+                });
+            });
+
             fetchProjects().then(setProjects);
-            setIsStatic(initialIsStatic);
+            setConfig(prev => ({ ...prev, isStatic: initialIsStatic }));
         }
-    }, [isOpen, initialIsStatic]);
+    }, [isOpen, componentType, initialIsStatic]);
 
     if (!componentType) {
         return null;
@@ -33,11 +42,14 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialI
 
     const handleSave = () => {
         const finalProps = { ...componentDef.defaultProps, ...config };
-        onSave(componentType, finalProps, isStatic);
+        onSave(componentType, finalProps, config.isStatic || false);
         onClose();
     };
 
     const renderField = (field: ConfigField) => {
+        if (field.condition && !field.condition(config)) {
+            return null;
+        }
 
         const { key, label, type, placeholder, helpText } = field;
         const value = config[key] || field.defaultValue;
@@ -51,23 +63,17 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialI
                             value={value}
                             onChange={(e) => setConfig({ ...config, [key]: e.target.value })}
                         >
-                            {field.key === 'projectId' ? (
-                                <>
-                                    <option value="">Select a Project</option>
-                                    {projects.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.name}
-                                        </option>
-                                    ))}
-                                </>
-                            ) : (field.options ? (
-                                field.options.map(opt => {
-                                    if (typeof opt === 'object') {
-                                        return <option key={opt.value} value={opt.value}>{opt.label}</option>;
-                                    }
-                                    return <option key={opt} value={opt}>{String(opt)}</option>;
-                                })
-                            ) : null)}
+                            {field.key === 'projectId' && <option value="">Select a Project</option>}
+                            {field.key === 'projectId' ? projects.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                    {p.name}
+                                </option>
+                            )) : (field.asyncOptions ? asyncOptions[field.key] : field.options)?.map(opt => {
+                                if (typeof opt === 'object') {
+                                    return <option key={opt.value} value={opt.value}>{opt.label}</option>;
+                                }
+                                return <option key={opt} value={opt}>{String(opt)}</option>;
+                            })}
                         </Form.Select>
                         {helpText && <Form.Text className="text-muted">{helpText}</Form.Text>}
                     </Form.Group>
@@ -97,6 +103,18 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialI
                         />
                     </Form.Group>
                 );
+            case 'checkbox':
+                return (
+                    <Form.Group key={key} className="mb-3">
+                        <Form.Check
+                            type="switch"
+                            id={key}
+                            label={label}
+                            checked={value}
+                            onChange={(e) => setConfig({ ...config, [key]: e.target.checked })}
+                        />
+                    </Form.Group>
+                );
             default:
                 return null;
         }
@@ -109,7 +127,7 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialI
             </Modal.Header>
             <Modal.Body>
                 <Form>
-                    {isStatic && componentDef.configFields?.map(renderField)}
+                    {componentDef.configFields?.map(renderField)}
                 </Form>
             </Modal.Body>
             <Modal.Footer>

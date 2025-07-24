@@ -17,15 +17,18 @@ func NewUserConfigService(repo ports.UserConfigRepository) ports.UserConfigServi
 	return &UserConfigService{repo: repo}
 }
 
-func (s *UserConfigService) GetUserConfigs(ctx context.Context, userID int64) ([]*userconfigmodels.UserConfig, error) {
+func (s *UserConfigService) GetUserConfigs(ctx context.Context, userID int64) (*userconfigmodels.UserConfig, error) {
 	config, err := s.repo.GetByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	if config == nil {
-		return []*userconfigmodels.UserConfig{}, nil
+		// Return a default or empty config if none is found
+		return &userconfigmodels.UserConfig{
+			UserID: userID,
+		}, nil
 	}
-	return []*userconfigmodels.UserConfig{config}, nil
+	return config, nil
 }
 
 func (s *UserConfigService) GetUserConfig(ctx context.Context, userID int64, key string) (*userconfigmodels.UserConfig, error) {

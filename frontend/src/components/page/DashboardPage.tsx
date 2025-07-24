@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { DashboardContext } from '../../context/DashboardContext';
 import SuiteMenu from '../suite/SuiteMenu';
 import DashboardContainer from '../dashboard/DashboardContainer';
 import DashboardEditor from '../dashboard/DashboardEditor';
@@ -18,7 +17,6 @@ const DashboardPage = () => {
         updateGridLayout,
         addComponent,
         removeComponent,
-        updateLayout,
     } = useDashboardLayouts();
 
     const handleProjectSelect = (projectId: number) => {
@@ -30,18 +28,6 @@ const DashboardPage = () => {
         setSelectedSuiteId(typeof suiteId === 'string' ? parseInt(suiteId, 10) : suiteId);
     };
 
-    const updateWidgetProps = (widgetId: string, props: Record<string, any>) => {
-        if (activeLayout) {
-            const updatedComponents = activeLayout.components.map(c => {
-                if (c.id === widgetId) {
-                    return { ...c, props: { ...c.props, ...props } };
-                }
-                return c;
-            });
-            updateLayout({ ...activeLayout, components: updatedComponents });
-        }
-    };
-
     const handleAddComponent = (type: ComponentType, props?: ComponentProps, isStatic?: boolean) => {
         addComponent(type, props, isStatic);
     };
@@ -51,37 +37,35 @@ const DashboardPage = () => {
     }
 
     return (
-        <DashboardContext.Provider value={{ selectedProjectId, selectedSuiteId, onProjectSelect: handleProjectSelect, onSuiteSelect: handleSuiteSelect, updateWidgetProps }}>
-            <PageLayout>
-                {selectedProjectId && (
-                    <SuiteMenu
-                        projectId={selectedProjectId}
-                        onSuiteSelect={handleSuiteSelect}
-                    />
-                )}
-                <div className={`home-page ${selectedProjectId ? 'dashboard-with-sidebar' : ''}`}>
-                    <div className="dashboard-header">
-                        <h2>{activeLayout.name}{selectedProjectId && ` - Project ${selectedProjectId}`}</h2>
-                        <button onClick={() => setIsEditing(!isEditing)}>
-                            {isEditing ? 'Done' : 'Edit Dashboard'}
-                        </button>
-                    </div>
-
-                    {isEditing && (
-                        <DashboardEditor onAddComponent={handleAddComponent} />
-                    )}
-
-                    <DashboardContainer
-                        layout={activeLayout}
-                        isEditing={isEditing}
-                        onLayoutChange={updateGridLayout}
-                        onRemoveComponent={removeComponent}
-                        projectId={selectedProjectId ?? undefined}
-                        suiteId={selectedSuiteId ?? undefined}
-                    />
+        <PageLayout onProjectSelect={handleProjectSelect}>
+            {selectedProjectId && (
+                <SuiteMenu
+                    projectId={selectedProjectId}
+                    onSuiteSelect={handleSuiteSelect}
+                />
+            )}
+            <div className={`home-page ${selectedProjectId ? 'dashboard-with-sidebar' : ''}`}>
+                <div className="dashboard-header">
+                    <h2>{activeLayout.name}{selectedProjectId && ` - Project ${selectedProjectId}`}</h2>
+                    <button onClick={() => setIsEditing(!isEditing)}>
+                        {isEditing ? 'Done' : 'Edit Dashboard'}
+                    </button>
                 </div>
-            </PageLayout>
-        </DashboardContext.Provider>
+
+                {isEditing && (
+                    <DashboardEditor onAddComponent={handleAddComponent} />
+                )}
+
+                <DashboardContainer
+                    layout={activeLayout}
+                    isEditing={isEditing}
+                    onLayoutChange={updateGridLayout}
+                    onRemoveComponent={removeComponent}
+                    projectId={selectedProjectId ?? undefined}
+                    suiteId={selectedSuiteId ?? undefined}
+                />
+            </div>
+        </PageLayout>
     );
 };
 

@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/BennyEisner/test-results/internal/auth/infrastructure/middleware"
 	"github.com/BennyEisner/test-results/internal/user_config/domain/models"
@@ -25,7 +26,7 @@ func NewUserConfigHandler(service ports.UserConfigService) *UserConfigHandler {
 // @Tags user-configs
 // @Accept json
 // @Produce json
-// @Success 200 {array} object
+// @Success 200 {object} object
 // @Failure 401 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /configs [get]
@@ -33,6 +34,23 @@ func (h *UserConfigHandler) GetUserConfigs(w http.ResponseWriter, r *http.Reques
 	authContext, ok := middleware.GetAuthContext(r)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userIDStr := r.PathValue("id")
+	if userIDStr == "" {
+		http.Error(w, "user ID is required", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	if userID != authContext.UserID {
+		http.Error(w, "you are not authorized to access this resource", http.StatusForbidden)
 		return
 	}
 
@@ -64,6 +82,23 @@ func (h *UserConfigHandler) SaveUserConfig(w http.ResponseWriter, r *http.Reques
 	authContext, ok := middleware.GetAuthContext(r)
 	if !ok {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	userIDStr := r.PathValue("id")
+	if userIDStr == "" {
+		http.Error(w, "user ID is required", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := strconv.ParseInt(userIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	if userID != authContext.UserID {
+		http.Error(w, "you are not authorized to modify this resource", http.StatusForbidden)
 		return
 	}
 

@@ -17,6 +17,8 @@
     - Reusable widget components (`MetricCard`, `StatusBadge`, `DataChart`).
     - A semantic color scheme for intuitive status indication.
     - A flexible grid-based layout using `react-grid-layout`.
+- **Dashboard Backend**: The backend for the dashboard has been implemented, following the hexagonal architecture pattern. This includes a new `dashboard` domain with its own services, repositories, and HTTP handlers. The backend provides endpoints for fetching status, metrics, and chart data.
+- **Frontend Dashboard**: The frontend dashboard provides a flexible and interactive interface for visualizing project data. It uses a widget-based system with a `ComponentRegistry` that dynamically renders components based on a layout configuration.
 
 ## What's Left to Build
 
@@ -26,6 +28,12 @@
 
 ## Known Issues
 
+- **[CRITICAL REGRESSION]** **Dashboard Charts Broken:** All dashboard charts are currently broken due to a series of backend changes that misaligned the API contract between the frontend and backend. All chart-related API calls are failing with a 400 Bad Request error.
+- **Hardcoded Widgets**: The `GetAvailableWidgets` function in the dashboard service returns a hardcoded list of widgets. This should be replaced with a dynamic, configuration-based approach.
+- **Frontend Error Handling**: The dashboard displays placeholder messages when required data is not available, but more robust error handling is needed to handle API errors and other unexpected issues.
 - **No Rate Limiting**: The authentication endpoints lack rate limiting, which makes them vulnerable to brute-force attacks.
 - **Improved Error Handling**: The login flow now has improved error handling, displaying messages to the user on failure. However, more comprehensive error handling across the application is still needed.
-- **Dashboard State Management**: The `DashboardContext` is defined but not yet implemented, meaning there is no global state management for the dashboard's project and suite selections.
+- **[RESOLVED]** **Data Not Rendering from API:** Fixed the issue where the `DataChart` component was not displaying data from the API. The problem was that the backend `GetChartData` function was not handling the `bar` and `line` chart types that were being requested by the frontend. Modified the service to return hardcoded data for these chart types.
+- **[RESOLVED]** **Grid Layout Race Condition:** Fixed a race condition in the dashboard grid layout system where layout updates were attempted before initialization was complete. Added proper initialization checks to prevent the "Attempted to update grid layout before initialization is complete" error.
+- **[RESOLVED]** **`build-duration` Chart Error:** Fixed an issue where the `build-duration` chart was failing due to a data type mismatch. The repository now correctly scans the `duration` as a `float64` and casts it to an `int`.
+- **Redundant API Calls:** The dashboard makes multiple, seemingly unnecessary, calls to save the layout on initial load.

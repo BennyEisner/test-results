@@ -1,49 +1,53 @@
 # Active Context
 
-## Current Focus: Analytical Dashboard Implementation
+## Current Work Focus - CRITICAL ISSUE
+**SYSTEM IS BROKEN** - The dashboard chart functionality is completely non-functional due to recent backend changes. All chart API endpoints are returning 400 Bad Request errors.
 
-The current focus is on the implementation of a new analytical, statistics-focused dashboard. This involves creating a cohesive visual system, developing reusable widget components, and ensuring a professional and data-centric user experience.
+## Recent Changes That Broke The System
+**Breaking Changes Made:**
+1. **Modified HTTP Handler Parameter Parsing:** Changed `api/internal/dashboard/infrastructure/http/http_handler.go` to read `project_id` from query parameters instead of path parameters, breaking the existing API contract.
+2. **Updated Service Layer Signatures:** Modified `DashboardService.GetChartData()` interface to accept `suiteID` and `buildID` parameters.
+3. **Updated Repository Layer:** Modified `BuildTestCaseExecutionRepository.GetChartData()` to accept additional filtering parameters.
+4. **Frontend API Changes:** Updated `dashboardApi.getChartData()` to send `suiteId` and `buildId` as query parameters.
+5. **Component Registry Updates:** Added configuration fields for static charts in `ComponentRegistry.tsx`.
 
-## Key Findings
+## State Before Breaking Changes
+- Dashboard was functional with basic chart rendering
+- Charts displayed data correctly for project-level filtering
+- API endpoints worked with path-based project ID: `/api/dashboard/projects/{projectID}/chart/{chartType}`
+- No suite or build-level filtering was implemented
 
-### Authentication Flow
+## Current Error State
+**API Errors:**
+- `GET /api/dashboard/projects/1/chart/build-duration` returns 400 Bad Request
+- `GET /api/dashboard/projects/1/chart/build-duration?suite_id=3` returns 400 Bad Request  
+- `GET /api/dashboard/projects/1/chart/build-duration?suite_id=3&build_id=3` returns 400 Bad Request
 
-The authentication process is handled via an OAuth2 flow managed by `AuthContext` and the `authApi` service.
+## Root Cause Analysis
+**Primary Issue:** The HTTP handler now expects `project_id` as a query parameter but the frontend is still sending it as a path parameter. This creates a mismatch where:
+- Frontend sends: `/api/dashboard/projects/1/chart/build-duration`
+- Backend expects: `/api/dashboard/chart/build-duration?project_id=1`
 
--   **`LoginPage.tsx`**: Presents login options (GitHub, Okta) and triggers the `login` function from `AuthContext`.
--   **`AuthContext.tsx`**: Manages the user's authentication state (`user`, `isAuthenticated`, `isLoading`). It initiates the OAuth2 flow by redirecting to the backend and fetches the current user's data on load.
--   **`authApi.ts`**: A service layer that handles all HTTP requests to the backend's `/auth` endpoints, including login, logout, and user data retrieval.
--   **`auth_middleware.go`**: The authentication middleware is responsible for validating user sessions and API keys. It attaches an `AuthContext` to the request, which is then used by the HTTP handlers to access user information.
--   **`http_handler.go`**: The HTTP handlers for the `/auth` endpoints have been updated to consistently use the `middleware.GetAuthContext(r)` helper function to retrieve the `AuthContext`. This resolves a critical bug where handlers were using an incorrect context key, leading to `401 Unauthorized` errors.
+**Secondary Issues:**
+1. Route configuration may not match the new parameter expectations
+2. Service layer signature changes propagated through entire backend stack
+3. Frontend and backend API contracts are now misaligned
 
-### Dashboard Architecture
+## Immediate Investigation Needed
+1. **Check Route Configuration:** Verify how the dashboard routes are configured in the main server
+2. **API Contract Alignment:** Determine if we should revert the HTTP handler changes or update the frontend API calls
+3. **Parameter Parsing:** Ensure the HTTP handler correctly reads parameters from the expected locations
+4. **Service Layer Compatibility:** Verify all service implementations match the updated interfaces
 
-The dashboard has been redesigned with a focus on analytics and data visualization.
+## Recovery Strategy Options
+1. **Revert Backend Changes:** Roll back all backend modifications to restore functionality
+2. **Fix Parameter Parsing:** Update HTTP handler to read project_id from path while maintaining new query parameters
+3. **Update Frontend:** Modify frontend to match new backend API contract
+4. **Hybrid Approach:** Maintain backward compatibility while adding new functionality
 
--   **`DashboardContainer.tsx`**: The core component for rendering the dashboard grid using `react-grid-layout`. It manages the layout of widgets and passes down necessary context, such as `projectId` and `suiteId`.
--   **`ComponentRegistry.tsx`**: A factory for dashboard widgets that dynamically renders components based on a `type` string. It has been updated to support new widget types: `MetricCard`, `StatusBadge`, and `DataChart`.
--   **Widget Components**: A new set of reusable widget components has been created in `frontend/src/components/widgets/`:
-    -   `MetricCard.tsx`: Displays a single metric with a title, value, and trend indicator.
-    -   `StatusBadge.tsx`: A badge for displaying status information with semantic coloring.
-    -   `DataChart.tsx`: A versatile chart component for visualizing data.
--   **Styling**: A dedicated CSS file, `frontend/src/styles/dashboard.css`, has been created to provide a consistent and professional look and feel for the dashboard, including a semantic color scheme.
--   **Types**: The `frontend/src/types/dashboard.ts` file has been updated to include the new widget types and configuration options.
-
-### Recent Authentication Enhancements
-
-**Post-Login Redirection Improvements:**
--   **Centralized Redirection Logic**: Moved redirection logic from `AuthContext.tsx` to `App.tsx` using a new `AppRoutes` component that observes authentication state changes.
--   **Automatic Dashboard Redirect**: Authenticated users visiting `/login` are now automatically redirected to `/dashboard`.
--   **Clean Separation of Concerns**: `AuthContext` now focuses solely on state management, while routing logic is handled in the appropriate component.
-
-**Login Page Enhancements:**
--   **Error State Management**: Added comprehensive error handling to `AuthContext` with `error` state and `clearError` function.
--   **Loading States**: Login buttons now show loading spinners and are disabled during authentication process.
--   **User Feedback**: Error messages are displayed prominently on the login page when authentication fails.
--   **Already Authenticated Handling**: Users who are already logged in see a clear "Go to Dashboard" button instead of login options.
-
-## Next Steps
-
--   Continue to refine the dashboard by adding more widget types and configuration options.
--   Implement the `DashboardContext` to provide global state management for dashboard-related selections.
--   Enhance the data visualization capabilities of the `DataChart` component.
+## Next Steps & Issues
+- **CRITICAL:** Restore basic chart functionality before implementing new features
+- **Investigate:** Root cause of 400 Bad Request errors
+- **Decide:** Whether to revert changes or fix forward
+- **Test:** Ensure basic dashboard functionality works before adding enhancements
+- **Document:** Proper API contracts for future development
