@@ -103,6 +103,18 @@ const ComponentConfigModal = ({ isOpen, onClose, componentType, onSave, initialI
                         />
                     </Form.Group>
                 );
+            case 'number':
+                return (
+                    <Form.Group key={key} className="mb-3">
+                        <Form.Label>{label}</Form.Label>
+                        <Form.Control
+                            type="number"
+                            value={value}
+                            placeholder={placeholder}
+                            onChange={(e) => setConfig({ ...config, [key]: e.target.value ? Number(e.target.value) : undefined })}
+                        />
+                    </Form.Group>
+                );
             case 'checkbox':
                 return (
                     <Form.Group key={key} className="mb-3">

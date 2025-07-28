@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Chart, registerables, ChartData } from 'chart.js';
 import { dashboardApi } from '../../services/dashboardApi';
 import { DataChartDTO } from '../../types/dashboard';
+import { useSmartRefresh } from '../../hooks/useSmartRefresh';
 
 Chart.register(...registerables);
+
+type RefreshTrigger = 'project' | 'suite' | 'build';
 
 interface DataChartProps {
     projectId?: string | number;
@@ -15,6 +18,8 @@ interface DataChartProps {
     staticProjectId?: string | number;
     staticSuiteId?: string | number;
     staticBuildId?: string | number;
+    limit?: number;
+    refreshOn?: RefreshTrigger[];
 }
 
 const transformData = (data: DataChartDTO | null): ChartData => {
@@ -44,42 +49,28 @@ const DataChart = ({
     staticProjectId,
     staticSuiteId,
     staticBuildId,
+    limit,
+    refreshOn = ['project', 'suite', 'build'],
 }: DataChartProps) => {
     const chartRef = useRef<HTMLCanvasElement>(null);
     const chartInstance = useRef<Chart | null>(null);
-    const [chartData, setChartData] = useState<DataChartDTO | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
 
-    const effectiveProjectId = isStatic ? staticProjectId : projectId;
-    const effectiveSuiteId = isStatic ? staticSuiteId : suiteId;
-    const effectiveBuildId = isStatic ? staticBuildId : buildId;
-
-    useEffect(() => {
-        if (effectiveProjectId) {
-            const fetchChartData = async () => {
-                try {
-                    setLoading(true);
-                    const response = await dashboardApi.getChartData(
-                        Number(effectiveProjectId),
-                        dataSource,
-                        effectiveSuiteId ? Number(effectiveSuiteId) : undefined,
-                        effectiveBuildId ? Number(effectiveBuildId) : undefined
-                    );
-                    setChartData(response.chart_data);
-                } catch (err) {
-                    setError(err as Error);
-                } finally {
-                    setLoading(false);
-                }
-            };
-            fetchChartData();
-        }
-    }, [effectiveProjectId, effectiveSuiteId, effectiveBuildId, dataSource, isStatic]);
+    const { data, error, isLoading } = useSmartRefresh({
+        projectId,
+        suiteId,
+        buildId,
+        isStatic,
+        staticProjectId,
+        staticSuiteId,
+        staticBuildId,
+        fetcher: (pid, sid, bid, lim) => dashboardApi.getChartData(pid, dataSource, sid, bid, lim),
+        refreshOn,
+        limit,
+    });
 
     useEffect(() => {
-        if (chartRef.current) {
-            const transformedData = transformData(chartData);
+        if (chartRef.current && data) {
+            const transformedData = transformData(data.chart_data);
             console.log('Transformed Chart Data:', transformedData);
 
             if (chartInstance.current) {
@@ -100,9 +91,9 @@ const DataChart = ({
                 chartInstance.current = null;
             }
         };
-    }, [chartType, chartData]);
+    }, [chartType, data]);
 
-    if (loading) {
+    if (isLoading) {
         return <div>Loading...</div>;
     }
 

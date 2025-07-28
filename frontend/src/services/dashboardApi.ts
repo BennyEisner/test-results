@@ -19,7 +19,8 @@ export const getChartData = async (
     projectId: number,
     chartType: string,
     suiteId?: number,
-    buildId?: number
+    buildId?: number,
+    limit?: number,
 ): Promise<ChartDataResponse> => {
     const params = new URLSearchParams();
     if (suiteId) {
@@ -27,6 +28,9 @@ export const getChartData = async (
     }
     if (buildId) {
         params.append('build_id', String(buildId));
+    }
+    if (limit) {
+        params.append('limit', String(limit));
     }
     const queryString = params.toString();
     const url = `/dashboard/projects/${projectId}/chart/${chartType}${queryString ? `?${queryString}` : ''}`;

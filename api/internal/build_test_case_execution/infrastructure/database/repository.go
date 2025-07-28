@@ -186,7 +186,7 @@ func (r *SQLBuildTestCaseExecutionRepository) GetMetric(ctx context.Context, pro
 }
 
 // GetChartData returns data for a chart
-func (r *SQLBuildTestCaseExecutionRepository) GetChartData(ctx context.Context, projectID int64, chartType string, suiteID *int64, buildID *int64) (*dashboardModels.DataChartDTO, error) {
+func (r *SQLBuildTestCaseExecutionRepository) GetChartData(ctx context.Context, projectID int64, chartType string, suiteID *int64, buildID *int64, limit *int) (*dashboardModels.DataChartDTO, error) {
 	var query string
 	args := []interface{}{projectID}
 	paramIndex := 2
@@ -250,29 +250,37 @@ func (r *SQLBuildTestCaseExecutionRepository) GetChartData(ctx context.Context, 
 		paramIndex++
 	}
 
+	limitVal := 10
+	if limit != nil {
+		limitVal = *limit
+	}
+
 	switch chartType {
 	case "bar":
 		query += `
 			GROUP BY tc.name
 			ORDER BY value DESC
-			LIMIT 10
 		`
 	case "build-duration":
 		query += `
 			ORDER BY b.created_at DESC
-			LIMIT 10
 		`
 	case "line", "pass-fail-trend":
 		query += `
 			GROUP BY date
 			ORDER BY date
-			LIMIT 10
 		`
 	case "test-case-pass-rate":
 		query += `
 			GROUP BY tc.name
 			ORDER BY value DESC
 		`
+	}
+
+	if chartType != "test-case-pass-rate" {
+		query += fmt.Sprintf(" LIMIT $%d", paramIndex)
+		args = append(args, limitVal)
+		paramIndex++
 	}
 
 	rows, err := r.db.QueryContext(ctx, query, args...)

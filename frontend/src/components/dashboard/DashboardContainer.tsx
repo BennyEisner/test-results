@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import { DashboardLayout, GridLayoutItem } from '../../types/dashboard';
-import ComponentRegistry from './ComponentRegistry';
+import MemoizedComponentRegistry from './ComponentRegistry';
 import BuildSelect from '../build/BuildSelect';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -80,7 +80,7 @@ const DashboardContainer = ({
                             </div>
                         )}
                         <div className="component-content">
-                            <ComponentRegistry
+                            <MemoizedComponentRegistry
                                 type={component.type}
                                 props={component.props}
                                 projectId={projectId ?? undefined}

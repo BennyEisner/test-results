@@ -88,7 +88,18 @@ func (h *DashboardHandler) GetChartData(w http.ResponseWriter, r *http.Request) 
 		buildID = &id
 	}
 
-	chartData, err := h.service.GetChartData(r.Context(), projectID, chartType, suiteID, buildID)
+	limitStr := r.URL.Query().Get("limit")
+	var limit *int
+	if limitStr != "" {
+		l, err := strconv.Atoi(limitStr)
+		if err != nil {
+			http.Error(w, "Invalid limit", http.StatusBadRequest)
+			return
+		}
+		limit = &l
+	}
+
+	chartData, err := h.service.GetChartData(r.Context(), projectID, chartType, suiteID, buildID, limit)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("unknown chart type: %s", chartType) {
 			http.Error(w, err.Error(), http.StatusBadRequest)

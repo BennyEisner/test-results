@@ -15,7 +15,7 @@ type BuildTestCaseExecutionRepository interface {
 	Update(ctx context.Context, id int64, execution *models.BuildTestCaseExecution) (*models.BuildTestCaseExecution, error)
 	Delete(ctx context.Context, id int64) error
 	GetMetric(ctx context.Context, projectID int64, metricType string) (*dashboardModels.MetricCardDTO, error)
-	GetChartData(ctx context.Context, projectID int64, chartType string, suiteID *int64, buildID *int64) (*dashboardModels.DataChartDTO, error)
+	GetChartData(ctx context.Context, projectID int64, chartType string, suiteID *int64, buildID *int64, limit *int) (*dashboardModels.DataChartDTO, error)
 }
 
 // BuildTestCaseExecutionService defines the interface for build test case execution business logic

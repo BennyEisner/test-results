@@ -8,7 +8,6 @@ import {
 import { COMPONENT_DEFINITIONS } from "../components/dashboard/ComponentRegistry";
 import { dashboardApi } from "../services/dashboardApi";
 import { useAuth } from "../context/AuthContext";
-import { fetchBuilds } from '../services/api';
 
 const STORAGE_KEY = "dashboard-layouts";
 
@@ -22,7 +21,7 @@ const defaultLayout: DashboardLayout = {
     {
       id: "builds-1",
       type: "builds-table",
-      props: { title: "Recent Builds", fetchFunction: () => fetchBuilds(1) },
+      props: { title: "Recent Builds" },
       visible: true,
     },
     {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { User } from '../types/auth';
 import { authApi } from '../services/authApi';
 
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setError(null);
     };
 
-    const value: AuthContextType = {
+    const value = useMemo(() => ({
         user,
         isAuthenticated: !!user,
         isLoading,
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         logout,
         refreshUser,
         clearError
-    };
+    }), [user, isLoading, error]);
 
     return (
         <AuthContext.Provider value={value}>

@@ -1,3 +1,4 @@
+import React from 'react';
 import { ComponentType, ComponentProps, ComponentDefinition } from '../../types/dashboard';
 import BuildsTable from '../build/BuildsTable';
 import ExecutionsSummary from '../execution/ExecutionsSummary';
@@ -74,6 +75,14 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
             return <StatusBadge projectId={projectId} />;
 
         case 'data-chart':
+            // Configure smart refresh based on data source
+            let refreshOn: ('project' | 'suite' | 'build')[] = ['project', 'suite', 'build'];
+            if (props.dataSource === 'build-duration') {
+                // Build duration charts should only refresh on project/suite changes
+                // Not on build changes since they show trends across multiple builds
+                refreshOn = ['project', 'suite'];
+            }
+            
             return <DataChart 
                         {...componentProps} 
                         projectId={projectId} 
@@ -85,6 +94,8 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
                         staticProjectId={props.projectId} 
                         staticSuiteId={props.suiteId}
                         staticBuildId={props.buildId}
+                        limit={props.limit}
+                        refreshOn={refreshOn}
                     />;
 
         default:
@@ -92,7 +103,9 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
     }
 }
 
-export default ComponentRegistry;
+const MemoizedComponentRegistry = React.memo(ComponentRegistry);
+
+export default MemoizedComponentRegistry;
 
 export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> = {
     'builds-table': {
@@ -348,6 +361,14 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
                 required: false,
                 placeholder: 'Enter build ID (optional)',
                 condition: (props: ComponentProps) => props.isStatic,
+            },
+            {
+                key: 'limit',
+                label: 'Limit',
+                type: 'number',
+                required: false,
+                defaultValue: 10,
+                placeholder: 'Enter the number of items to display',
             },
         ],
     },
