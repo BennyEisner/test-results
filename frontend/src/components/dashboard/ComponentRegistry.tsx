@@ -73,7 +73,7 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
                 return <ExecutionsSummary buildId={summaryBuildId} {...componentProps} />;
             }
             return <div className="component-placeholder">Select a build to view the summary.</div>;
-        
+
         case 'metric-card':
             return <MetricCard {...componentProps} projectId={projectId} metricType={props.metricType || 'passing-rate'} />;
 
@@ -88,21 +88,21 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
                 // Not on build changes since they show trends across multiple builds
                 refreshOn = ['project', 'suite'];
             }
-            
-            return <DataChart 
-                        {...componentProps} 
-                        projectId={projectId} 
-                        suiteId={suiteId}
-                        buildId={buildId}
-                        chartType={props.chartType || 'bar'} 
-                        dataSource={props.dataSource || 'build-duration'} 
-                        isStatic={props.isStatic} 
-                        staticProjectId={props.projectId} 
-                        staticSuiteId={props.suiteId}
-                        staticBuildId={props.buildId}
-                        limit={props.limit}
-                        refreshOn={refreshOn}
-                    />;
+
+            return <DataChart
+                {...componentProps}
+                projectId={projectId}
+                suiteId={suiteId}
+                buildId={buildId}
+                chartType={props.chartType || 'bar'}
+                dataSource={props.dataSource || 'build-duration'}
+                isStatic={props.isStatic}
+                staticProjectId={props.projectId}
+                staticSuiteId={props.suiteId}
+                staticBuildId={props.buildId}
+                limit={props.limit}
+                refreshOn={refreshOn}
+            />;
 
         default:
             return <div className="component-placeholder">Unknown component: {type}</div>;
