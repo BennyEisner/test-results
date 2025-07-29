@@ -98,11 +98,15 @@ export interface MetricCardDTO {
 export interface DataChartDTO {
   labels: string[];
   datasets: DatasetDTO[];
+  xAxisLabel?: string;
+  yAxisLabel?: string;
 }
 
 export interface DatasetDTO {
   label: string;
   data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string | string[];
 }
 
 export interface Widget {

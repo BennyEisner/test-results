@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useDashboard } from '../../context/DashboardContext';
 import SuiteMenu from '../suite/SuiteMenu';
 import DashboardContainer from '../dashboard/DashboardContainer';
 import DashboardEditor from '../dashboard/DashboardEditor';
@@ -8,8 +8,7 @@ import './HomePage.css';
 import { ComponentType, ComponentProps } from '../../types/dashboard';
 
 const DashboardPage = () => {
-    const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
-    const [selectedSuiteId, setSelectedSuiteId] = useState<number | null>(null);
+    const { projectId, setProjectId, setSuiteId, setBuildId } = useDashboard();
     const {
         activeLayout,
         isEditing,
@@ -20,12 +19,14 @@ const DashboardPage = () => {
     } = useDashboardLayouts();
 
     const handleProjectSelect = (projectId: number) => {
-        setSelectedProjectId(projectId);
-        setSelectedSuiteId(null);
+        setProjectId(projectId);
+        setSuiteId(null);
+        setBuildId(null);
     };
 
     const handleSuiteSelect = (suiteId: number | string) => {
-        setSelectedSuiteId(typeof suiteId === 'string' ? parseInt(suiteId, 10) : suiteId);
+        setSuiteId(typeof suiteId === 'string' ? parseInt(suiteId, 10) : suiteId);
+        setBuildId(null);
     };
 
     const handleAddComponent = (type: ComponentType, props?: ComponentProps, isStatic?: boolean) => {
@@ -38,15 +39,15 @@ const DashboardPage = () => {
 
     return (
         <PageLayout onProjectSelect={handleProjectSelect}>
-            {selectedProjectId && (
+            {projectId && (
                 <SuiteMenu
-                    projectId={selectedProjectId}
+                    projectId={projectId as number}
                     onSuiteSelect={handleSuiteSelect}
                 />
             )}
-            <div className={`home-page ${selectedProjectId ? 'dashboard-with-sidebar' : ''}`}>
+            <div className={`home-page ${projectId ? 'dashboard-with-sidebar' : ''}`}>
                 <div className="dashboard-header">
-                    <h2>{activeLayout.name}{selectedProjectId && ` - Project ${selectedProjectId}`}</h2>
+                    <h2>{activeLayout.name}{projectId && ` - Project ${projectId}`}</h2>
                     <button onClick={() => setIsEditing(!isEditing)}>
                         {isEditing ? 'Done' : 'Edit Dashboard'}
                     </button>
@@ -61,8 +62,6 @@ const DashboardPage = () => {
                     isEditing={isEditing}
                     onLayoutChange={updateGridLayout}
                     onRemoveComponent={removeComponent}
-                    projectId={selectedProjectId ?? undefined}
-                    suiteId={selectedSuiteId ?? undefined}
                 />
             </div>
         </PageLayout>

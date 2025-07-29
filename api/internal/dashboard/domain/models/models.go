@@ -16,8 +16,10 @@ type MetricCardDTO struct {
 
 // DataChartDTO represents the data for a chart widget.
 type DataChartDTO struct {
-	Labels   []string     `json:"labels"`
-	Datasets []DatasetDTO `json:"datasets"`
+	Labels     []string     `json:"labels"`
+	Datasets   []DatasetDTO `json:"datasets"`
+	XAxisLabel string       `json:"xAxisLabel"`
+	YAxisLabel string       `json:"yAxisLabel"`
 }
 
 type WidgetOption struct {
@@ -32,6 +34,8 @@ type AvailableWidgetsDTO struct {
 
 // DatasetDTO represents a dataset for a chart.
 type DatasetDTO struct {
-	Label string `json:"label"`
-	Data  []int  `json:"data"`
+	Label           string   `json:"label"`
+	Data            []int    `json:"data"`
+	BackgroundColor []string `json:"backgroundColor,omitempty"`
+	BorderColor     []string `json:"borderColor,omitempty"`
 }

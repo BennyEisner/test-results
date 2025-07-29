@@ -1,7 +1,7 @@
 import { Line } from 'react-chartjs-2';
 import { useState, useEffect } from 'react';
-import { getBuildDurationTrends } from '../../services/api';
-import { BuildDurationTrend } from '../../types';
+import { dashboardApi } from '../../services/dashboardApi';
+import { DataChartDTO } from '../../types/dashboard';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -34,21 +34,10 @@ const BuildDurationTrendChart = ({ projectId, suiteId }: BuildDurationTrendChart
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const trends = await getBuildDurationTrends(projectId, suiteId);
-                if (trends && Array.isArray(trends) && trends.length > 0) {
-                    const data = {
-                        labels: trends.map((t: BuildDurationTrend) => new Date(t.created_at).toLocaleDateString()),
-                        datasets: [
-                            {
-                                label: 'Build Duration (s)',
-                                data: trends.map((t: BuildDurationTrend) => t.duration),
-                                fill: false,
-                                borderColor: 'rgb(75, 192, 192)',
-                                tension: 0.1,
-                            },
-                        ],
-                    };
-                    setChartData(data);
+                const response = await dashboardApi.getChartData(projectId, 'build-duration-trend', suiteId);
+                const trends = response.chart_data as DataChartDTO;
+                if (trends && trends.labels && trends.datasets && trends.datasets.length > 0) {
+                    setChartData(trends);
                 } else {
                     console.log('No trends data available or invalid format:', trends);
                 }

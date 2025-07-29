@@ -66,15 +66,29 @@ func (h *DashboardHandler) GetChartData(w http.ResponseWriter, r *http.Request) 
 
 	chartType := r.PathValue("chartType")
 
-	suiteIDStr := r.URL.Query().Get("suite_id")
 	var suiteID *int64
-	if suiteIDStr != "" {
+	if chartType == "build-duration-trend" {
+		suiteIDStr := r.URL.Query().Get("suite_id")
+		if suiteIDStr == "" {
+			http.Error(w, "suite_id is required for build-duration-trend", http.StatusBadRequest)
+			return
+		}
 		id, err := strconv.ParseInt(suiteIDStr, 10, 64)
 		if err != nil {
 			http.Error(w, "Invalid suite ID", http.StatusBadRequest)
 			return
 		}
 		suiteID = &id
+	} else {
+		suiteIDStr := r.URL.Query().Get("suite_id")
+		if suiteIDStr != "" {
+			id, err := strconv.ParseInt(suiteIDStr, 10, 64)
+			if err != nil {
+				http.Error(w, "Invalid suite ID", http.StatusBadRequest)
+				return
+			}
+			suiteID = &id
+		}
 	}
 
 	buildIDStr := r.URL.Query().Get("build_id")

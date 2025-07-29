@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/BennyEisner/test-results/internal/build_test_case_execution/domain/models"
 	"github.com/BennyEisner/test-results/internal/build_test_case_execution/domain/ports"
@@ -187,101 +188,119 @@ func (r *SQLBuildTestCaseExecutionRepository) GetMetric(ctx context.Context, pro
 
 // GetChartData returns data for a chart
 func (r *SQLBuildTestCaseExecutionRepository) GetChartData(ctx context.Context, projectID int64, chartType string, suiteID *int64, buildID *int64, limit *int) (*dashboardModels.DataChartDTO, error) {
-	var query string
+	var baseQuery string
+	var groupBy string
+	var orderBy string
 	args := []interface{}{projectID}
 	paramIndex := 2
 
-	switch chartType {
-	case "bar":
-		query = `
-			SELECT
-				tc.name as label,
-				COUNT(btce.id) as value
-			FROM build_test_case_executions btce
-			JOIN test_cases tc ON btce.test_case_id = tc.id
-			JOIN builds b ON btce.build_id = b.id
-			JOIN test_suites ts ON b.test_suite_id = ts.id
-			WHERE ts.project_id = $1
-		`
-	case "build-duration":
-		query = `
-			SELECT 
-				b.id as label,
-				b.duration as value
-			FROM builds b
-			JOIN test_suites ts ON b.test_suite_id = ts.id
-			WHERE ts.project_id = $1
-		`
-	case "line", "pass-fail-trend":
-		query = `
-			SELECT 
-				DATE(b.created_at) as date,
-				SUM(CASE WHEN btce.status = 'passed' THEN 1 ELSE 0 END) as passed,
-				SUM(CASE WHEN btce.status = 'failed' THEN 1 ELSE 0 END) as failed
-			FROM build_test_case_executions btce
-			JOIN builds b ON btce.build_id = b.id
-			JOIN test_suites ts ON b.test_suite_id = ts.id
-			WHERE ts.project_id = $1
-		`
-	case "test-case-pass-rate":
-		query = `
-			SELECT 
-				tc.name as label,
-				(SUM(CASE WHEN e.status = 'passed' THEN 1 ELSE 0 END) * 100.0 / COUNT(e.id)) as value
-			FROM build_test_case_executions e
-			JOIN test_cases tc ON e.test_case_id = tc.id
-			JOIN builds b ON e.build_id = b.id
-			JOIN test_suites ts ON b.test_suite_id = ts.id
-			WHERE ts.project_id = $1
-		`
-	default:
-		return nil, fmt.Errorf("unknown chart type: %s", chartType)
-	}
-
-	if suiteID != nil {
-		query += fmt.Sprintf(" AND ts.id = $%d", paramIndex)
-		args = append(args, *suiteID)
-		paramIndex++
-	}
-
-	if buildID != nil {
-		query += fmt.Sprintf(" AND b.id = $%d", paramIndex)
-		args = append(args, *buildID)
-		paramIndex++
-	}
-
-	limitVal := 10
+	limitVal := 15 // A more reasonable default limit
 	if limit != nil {
 		limitVal = *limit
 	}
 
 	switch chartType {
 	case "bar":
-		query += `
-			GROUP BY tc.name
-			ORDER BY value DESC
-		`
+		baseQuery = `
+            SELECT
+                tc.name as label,
+                COUNT(btce.id) as value
+            FROM build_test_case_executions btce
+            JOIN test_cases tc ON btce.test_case_id = tc.id
+            JOIN builds b ON btce.build_id = b.id
+            JOIN test_suites ts ON b.test_suite_id = ts.id
+            WHERE ts.project_id = $1
+        `
+		groupBy = "GROUP BY tc.name"
+		orderBy = "ORDER BY value DESC"
 	case "build-duration":
-		query += `
-			ORDER BY b.created_at DESC
-		`
+		baseQuery = `
+            WITH ranked_builds AS (
+                SELECT
+                    b.id::text as label,
+                    b.duration as value,
+                    ts.id as suite_id,
+                    ROW_NUMBER() OVER(PARTITION BY ts.id ORDER BY b.created_at DESC) as rn
+                FROM builds b
+                JOIN test_suites ts ON b.test_suite_id = ts.id
+                WHERE ts.project_id = $1
+            )
+            SELECT label, value FROM ranked_builds
+        `
+		orderBy = "ORDER BY suite_id, rn"
 	case "line", "pass-fail-trend":
-		query += `
-			GROUP BY date
-			ORDER BY date
-		`
+		baseQuery = `
+            SELECT
+                DATE(b.created_at)::text as date,
+                SUM(CASE WHEN btce.status = 'passed' THEN 1 ELSE 0 END) as passed,
+                SUM(CASE WHEN btce.status = 'failed' THEN 1 ELSE 0 END) as failed
+            FROM build_test_case_executions btce
+            JOIN builds b ON btce.build_id = b.id
+            JOIN test_suites ts ON b.test_suite_id = ts.id
+            WHERE ts.project_id = $1
+        `
+		groupBy = "GROUP BY DATE(b.created_at)"
+		orderBy = "ORDER BY DATE(b.created_at)"
 	case "test-case-pass-rate":
-		query += `
-			GROUP BY tc.name
-			ORDER BY value DESC
-		`
+		if buildID != nil {
+			baseQuery = `
+                SELECT
+                    tc.name as label,
+                    CASE WHEN e.status = 'passed' THEN 100.0 ELSE 0.0 END as value
+                FROM build_test_case_executions e
+                JOIN test_cases tc ON e.test_case_id = tc.id
+                JOIN builds b ON e.build_id = b.id
+                WHERE b.id = $1
+            `
+			args = []interface{}{*buildID}
+			paramIndex = 2
+		} else {
+			baseQuery = `
+                SELECT
+                    tc.name as label,
+                    (SUM(CASE WHEN e.status = 'passed' THEN 1 ELSE 0 END) * 100.0 / COUNT(e.id)) as value
+                FROM build_test_case_executions e
+                JOIN test_cases tc ON e.test_case_id = tc.id
+                JOIN builds b ON e.build_id = b.id
+                JOIN test_suites ts ON b.test_suite_id = ts.id
+                WHERE ts.project_id = $1
+            `
+			groupBy = "GROUP BY tc.name"
+			orderBy = "ORDER BY value DESC"
+		}
+	default:
+		return nil, fmt.Errorf("unknown chart type: %s", chartType)
 	}
 
-	if chartType != "test-case-pass-rate" {
+	var conditions string
+	if chartType == "build-duration" {
+		conditions = fmt.Sprintf(" WHERE rn <= $%d", paramIndex)
+		args = append(args, limitVal)
+		paramIndex++
+		if suiteID != nil {
+			conditions += fmt.Sprintf(" AND suite_id = $%d", paramIndex)
+			args = append(args, *suiteID)
+			paramIndex++
+		}
+	} else if buildID == nil {
+		if suiteID != nil {
+			conditions += fmt.Sprintf(" AND ts.id = $%d", paramIndex)
+			args = append(args, *suiteID)
+			paramIndex++
+		}
+	}
+
+	query := fmt.Sprintf("%s %s %s %s", baseQuery, conditions, groupBy, orderBy)
+
+	// Apply limit for other chart types that need it
+	if chartType != "build-duration" && chartType != "test-case-pass-rate" {
 		query += fmt.Sprintf(" LIMIT $%d", paramIndex)
 		args = append(args, limitVal)
 		paramIndex++
 	}
+
+	log.Printf("Executing GetChartData query: %s", query)
+	log.Printf("With args: %v", args)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -318,34 +337,66 @@ func (r *SQLBuildTestCaseExecutionRepository) GetChartData(ctx context.Context, 
 		}
 	}
 
+	log.Printf("GetChartData query returned %d labels", len(labels))
+
+	// Define color schemes for different chart types
+	var xAxisLabel, yAxisLabel string
+	var backgroundColors, borderColors []string
+
 	switch chartType {
 	case "bar":
+		xAxisLabel = "Test Cases"
+		yAxisLabel = "Number of Executions"
+		backgroundColors = []string{"#3B82F6"}
+		borderColors = []string{"#1D4ED8"}
 		datasets = append(datasets, dashboardModels.DatasetDTO{
-			Label: "Executions",
-			Data:  passedData,
+			Label:           "Executions",
+			Data:            passedData,
+			BackgroundColor: backgroundColors,
+			BorderColor:     borderColors,
 		})
 	case "build-duration":
+		xAxisLabel = "Build ID"
+		yAxisLabel = "Duration (seconds)"
+		backgroundColors = []string{"#10B981"}
+		borderColors = []string{"#059669"}
 		datasets = append(datasets, dashboardModels.DatasetDTO{
-			Label: "Duration (s)",
-			Data:  passedData,
+			Label:           "Duration (s)",
+			Data:            passedData,
+			BackgroundColor: backgroundColors,
+			BorderColor:     borderColors,
 		})
 	case "test-case-pass-rate":
+		xAxisLabel = "Test Cases"
+		yAxisLabel = "Pass Rate (%)"
+		backgroundColors = []string{"#F59E0B"}
+		borderColors = []string{"#D97706"}
 		datasets = append(datasets, dashboardModels.DatasetDTO{
-			Label: "Pass Rate (%)",
-			Data:  passedData,
+			Label:           "Pass Rate (%)",
+			Data:            passedData,
+			BackgroundColor: backgroundColors,
+			BorderColor:     borderColors,
 		})
 	case "line", "pass-fail-trend":
+		xAxisLabel = "Date"
+		yAxisLabel = "Number of Tests"
 		datasets = append(datasets, dashboardModels.DatasetDTO{
-			Label: "Passed",
-			Data:  passedData,
+			Label:           "Passed",
+			Data:            passedData,
+			BackgroundColor: []string{"#10B981"},
+			BorderColor:     []string{"#059669"},
 		}, dashboardModels.DatasetDTO{
-			Label: "Failed",
-			Data:  failedData,
+			Label:           "Failed",
+			Data:            failedData,
+			BackgroundColor: []string{"#EF4444"},
+			BorderColor:     []string{"#DC2626"},
 		})
 	}
 
 	return &dashboardModels.DataChartDTO{
-		Labels:   labels,
-		Datasets: datasets,
+		Labels:     labels,
+		Datasets:   datasets,
+		XAxisLabel: xAxisLabel,
+		YAxisLabel: yAxisLabel,
 	}, nil
 }

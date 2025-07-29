@@ -21,6 +21,7 @@ export const getChartData = async (
     suiteId?: number,
     buildId?: number,
     limit?: number,
+    signal?: AbortSignal
 ): Promise<ChartDataResponse> => {
     const params = new URLSearchParams();
     if (suiteId) {
@@ -34,7 +35,7 @@ export const getChartData = async (
     }
     const queryString = params.toString();
     const url = `/dashboard/projects/${projectId}/chart/${chartType}${queryString ? `?${queryString}` : ''}`;
-    const response = await api.get(url);
+    const response = await api.get(url, { signal });
     return response.data;
 };
 

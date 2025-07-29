@@ -1,21 +1,26 @@
 # Progress
 
 ## What Works
--   **Dashboard Performance:** The excessive API calls on the dashboard have been resolved, improving performance.
--   The static charts are now loading correctly.
--   The "limit" option for dynamic charts is fully functional.
+
+*   **Dashboard Rendering & Layout:** The dashboard renders, and the layout can be edited and saved.
+*   **Stable Chart UI:** The `DataChart` component is now stable. It no longer gets stuck in a "loading" state or crashes when data is null, thanks to the implementation of request cancellation and memoization.
+*   **Project/Suite Level Data:** Charts correctly display data when filtered at the project and suite levels.
 
 ## What's Left to Build
--   All major dashboard functionality is now complete. Future work will focus on enhancements and new features.
+
+*   **Build-Level Chart Data:** The core issue of the "Test Case Pass Rate" chart not loading data at the build level needs to be resolved.
+*   **Chart Readability and Aesthetics:** General improvements to chart readability (labels, colors, etc.) are still pending.
+*   **Comprehensive Testing:** The dashboard requires thorough testing across all features and filter levels once the build-level issue is fixed.
 
 ## Current Status
--   The application is in a stable and fully functional state.
+
+The project is at a critical juncture. The UI-level bugs have been resolved, revealing a persistent, underlying issue with data fetching or processing at the build level. The immediate focus is on executing the `data_chart_investigation_plan.md` to perform a root cause analysis.
 
 ## Known Issues
--   There are no known issues at this time.
+
+*   **Build-Level Data Failure:** The "Test Case Pass Rate" chart consistently fails to display data when a specific build is selected. The root cause is unknown and is the subject of the current investigation.
 
 ## Evolution of Project Decisions
--   **`useSmartRefresh` Hook Optimization:** An issue causing excessive API calls was traced to the `useSmartRefresh` hook. The `useEffect` dependency array was not correctly using the `refreshOn` parameter, leading to unnecessary re-fetching. The logic has been updated to respect `refreshOn`, resolving the performance issue.
--   The investigation into the static chart loading issue revealed a logic flaw in the `useSmartRefresh` hook, which was not triggering a data fetch on the initial render. This has been corrected.
--   The "limit" functionality was not working due to the `ComponentConfigModal` handling the limit value as a string instead of a number. This has been resolved by ensuring the value is correctly converted.
--   The initial concern about an API contract mismatch was unfounded, as the frontend and backend were aligned.
+
+*   **Shift from UI to Data Investigation:** The debugging focus has shifted from fixing frontend race conditions to a systematic investigation of the entire data flow, from the frontend request to the backend database query.
+*   **Adoption of Request Cancellation:** Implementing request cancellation in the `useSmartRefresh` hook has proven to be a valuable pattern for improving UI stability in asynchronous operations.

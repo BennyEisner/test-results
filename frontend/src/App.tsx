@@ -9,6 +9,7 @@ import HomePage from './components/page/HomePage';
 import DashboardPage from './components/page/DashboardPage';
 import PageLayout from './components/common/PageLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { DashboardProvider } from './context/DashboardContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import LoginPage from './components/auth/LoginPage';
 import UserProfile from './components/auth/UserProfile';
@@ -86,11 +87,13 @@ const AppRoutes = () => {
 function App() {
     return (
         <AuthProvider>
-            <Router>
-                <div className="app-container">
-                    <AppRoutes />
-                </div>
-            </Router>
+            <DashboardProvider>
+                <Router>
+                    <div className="app-container">
+                        <AppRoutes />
+                    </div>
+                </Router>
+            </DashboardProvider>
         </AuthProvider>
     );
 }

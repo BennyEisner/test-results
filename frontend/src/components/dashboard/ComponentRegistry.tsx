@@ -3,7 +3,6 @@ import { ComponentType, ComponentProps, ComponentDefinition } from '../../types/
 import BuildsTable from '../build/BuildsTable';
 import ExecutionsSummary from '../execution/ExecutionsSummary';
 import BuildDoughnutChart from '../build/BuildDoughnutChart';
-import BuildDurationTrendChart from '../build/BuildDurationTrendChart';
 import MostFailedTestsTable from '../test/MostFailedTestsTable';
 import MetricCard from '../widgets/MetricCard';
 import StatusBadge from '../widgets/StatusBadge';
@@ -44,13 +43,20 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
             return <div className="component-placeholder">Select a build to view the chart.</div>;
 
         case 'build-duration-trend-chart':
-            const finalProjectId = (projectId ? Number(projectId) : undefined) ?? (props.projectId ? Number(props.projectId) : undefined);
-            const suiteIdNumber = (suiteId ? Number(suiteId) : undefined) ?? (props.suiteId ? Number(props.suiteId) : undefined);
-            if (finalProjectId && suiteIdNumber) {
-                const { projectId: _, suiteId: __, ...restProps } = componentProps;
-                return <BuildDurationTrendChart projectId={finalProjectId} suiteId={suiteIdNumber} {...restProps} />;
-            }
-            return <div className="component-placeholder">Select a project and suite to view the trend chart.</div>;
+            return <DataChart
+                {...componentProps}
+                projectId={projectId}
+                suiteId={suiteId}
+                buildId={buildId}
+                chartType="line"
+                dataSource="build-duration-trend"
+                isStatic={props.isStatic}
+                staticProjectId={props.projectId}
+                staticSuiteId={props.suiteId}
+                staticBuildId={props.buildId}
+                limit={props.limit}
+                refreshOn={['project', 'suite', 'build']}
+            />;
 
         case 'most-failed-tests-table':
             const finalMostFailedProjectId = (projectId ? Number(projectId) : undefined) ?? (props.projectId ? Number(props.projectId) : undefined);

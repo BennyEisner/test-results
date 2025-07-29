@@ -1,39 +1,31 @@
 # System Patterns
 
-## System Architecture
-The application follows a classic three-tier architecture with a frontend, a backend, and a database. It is designed as a monorepo, which simplifies development and deployment.
+## Backend for Frontend (BFF)
 
-- **Frontend**: A single-page application (SPA) built with React. It communicates with the backend via a RESTful API.
-- **Backend**: A Go-based REST API that implements a hexagonal architecture. This separates the core application logic from external concerns like the database and HTTP handlers.
-- **Database**: A PostgreSQL database that serves as the single source of truth for all test data.
-- **CLI**: A Go-based command-line tool that acts as a client to the backend API, allowing for programmatic submission of test results.
+The system employs a Backend for Frontend (BFF) pattern, where the backend API is specifically designed to serve the needs of the frontend. This pattern simplifies the frontend code by offloading complex data processing and aggregation to the backend.
 
-## Design Patterns
-- **Hexagonal Architecture (Ports and Adapters)**: The Go backend is structured around this pattern. The core application logic is isolated in the `internal` directory, with `domain`, `application`, and `infrastructure` layers. This promotes separation of concerns and testability.
-- **Repository Pattern**: The backend uses repositories to abstract the data access logic, decoupling the application from the specific database implementation.
-- **Dependency Injection**: The backend uses a container to manage and inject dependencies, which promotes loose coupling and testability.
-- **RESTful API**: The backend exposes a RESTful API for the frontend and CLI to consume.
-- **Component-Based UI**: The frontend is built with React, using a component-based architecture to create a modular and reusable UI. The new dashboard design introduces a widget-based system with a `ComponentRegistry` that dynamically renders components based on a layout configuration.
-- **Widget-Based Dashboard**: The dashboard is composed of reusable widgets such as `MetricCard`, `StatusBadge`, and `DataChart`. This approach allows for flexible and customizable dashboard layouts.
-- **Global Navigation**: A `BreadcrumbNavbar` has been implemented to provide consistent navigation and context across the application. It includes a project dropdown for easy project switching.
-- **Semantic Color Scheme**: The UI now uses a semantic color palette to convey meaning and status. Colors are used consistently for errors (red), warnings (amber), success (green), and informational data (blue).
-- **State Management**: The frontend uses React Context for managing global state, such as authentication status and dashboard layouts.
-- **`useSmartRefresh` Hook**: A custom hook that provides a "smart" refresh mechanism for dashboard widgets. It fetches data based on specified triggers (`project`, `suite`, `build`) and context changes. A recent fix optimized this hook to prevent excessive API calls by correctly respecting the `refreshOn` parameter.
+### Key Characteristics
 
-- **Dashboard Backend Component**: The dashboard backend is a key component responsible for providing data to the frontend for visualization. It is designed to be stateless and follows the hexagonal architecture pattern. It exposes a set of API endpoints for fetching dashboard data, such as project status, metrics, and chart data. The component relies on the `build` and `build_test_case_execution` modules to access the necessary data from the database.
-- **Frontend Dashboard Component**: The frontend dashboard provides a flexible and interactive interface for visualizing project data. It uses a widget-based system with a `ComponentRegistry` that dynamically renders components based on a layout configuration. The dashboard's state is managed through a combination of React component state and the `useDashboardLayouts` hook.
-- **Dynamic Chart Data**: The system now supports dynamic chart data, allowing users to visualize different data sets in the dashboard. The backend has been updated to support different chart types, and the frontend has been updated to handle the dynamic data.
-- **API Contract**: The API contract between the frontend and backend is stable and functioning as expected.
+*   **Data Aggregation:** The backend aggregates data from multiple sources and provides it to the frontend in a single, easy-to-use format.
+*   **Simplified Frontend:** The frontend is responsible for rendering the UI and handling user interactions, while the backend handles the business logic.
+*   **Improved Performance:** The BFF pattern can improve performance by reducing the number of API calls the frontend needs to make.
 
-## Component Relationships and Data Flow
-1.  A user or CI/CD pipeline uses the **CLI** to submit a test result file (JUnit or ReadyAPI XML) to the **backend API**.
-2.  The **backend API** receives the request, parses the data, and stores it in the **PostgreSQL database**.
-3.  A user accesses the **React frontend** in their browser.
-4.  The **frontend** makes API calls to the **backend** to fetch test data.
-5.  The **backend** retrieves the data from the **database** and returns it to the **frontend**.
-6.  The **frontend** renders the data in a user-friendly dashboard with tables and charts.
+## Hexagonal Architecture
 
-## Key Architectural Decisions
-- **Monorepo**: The decision to use a monorepo simplifies cross-cutting concerns and dependency management between the frontend, backend, and CLI.
-- **Hexagonal Architecture**: This choice for the backend architecture ensures a clean separation of concerns and makes the application more maintainable and testable.
-- **Containerization**: Using Docker and Docker Compose for the entire stack simplifies the development setup and ensures consistency between environments.
+The backend is built using a hexagonal architecture, which separates the core business logic from the infrastructure concerns. This makes the code more modular, testable, and maintainable.
+
+### Key Characteristics
+
+*   **Ports and Adapters:** The core business logic is exposed through a set of ports, and the infrastructure concerns are implemented as adapters that plug into these ports.
+*   **Dependency Inversion:** The dependencies flow from the outside in, which means that the core business logic does not depend on the infrastructure concerns.
+*   **Testability:** The hexagonal architecture makes it easy to test the core business logic in isolation from the infrastructure concerns.
+
+## Centralized State Management
+
+The frontend uses a centralized state management pattern, where the state of the application is stored in a single, global store. This makes it easy to manage the state of the application and to share data between components.
+
+### Key Characteristics
+
+*   **Single Source of Truth:** The global store is the single source of truth for the application's state.
+*   **Predictable State Changes:** The state of the application can only be changed by dispatching actions, which makes the state changes predictable and easy to debug.
+*   **Easy Data Sharing:** The global store makes it easy to share data between components, without having to pass props down through the component tree.

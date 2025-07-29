@@ -1,23 +1,32 @@
 # Active Context
 
-## Current Work Focus
-The primary focus is on ensuring the dashboard is fully functional and documenting the recent fixes.
+## Current Focus: Root Cause Analysis of Data Chart Failures
+
+The primary focus has shifted from fixing UI behavior to performing a root cause analysis of why the "Test Case Pass Rate" chart fails to display data at the build level. While UI stability has been improved, the underlying data issue persists.
 
 ## Recent Changes
-1.  **`useSmartRefresh` Hook:** Fixed a logic flaw that caused excessive API calls. The hook now correctly respects the `refreshOn` parameter, preventing unnecessary data fetching.
-2.  **`useSmartRefresh` Hook:** Fixed a logic flaw that prevented static widgets from loading on the initial render. The hook now correctly triggers a data fetch when the component mounts.
-3.  **`ComponentConfigModal`:** Corrected an issue where the `limit` parameter was being handled as a string instead of a number, which caused the limit functionality to fail.
 
-## Current State
--   **Dashboard Performance:** The excessive API calls on the dashboard have been resolved.
--   **Static Charts:** The loading issue has been resolved, and all static widgets now render correctly.
--   **Dynamic Chart Limit:** The `limit` option is now fully functional.
+To address UI instability (race conditions and "stuck in loading" states), the following changes were made:
 
-## Root Cause Analysis
--   **Excessive API Calls:** The `useSmartRefresh` hook's `useEffect` dependency array was not correctly using the `refreshOn` parameter, causing it to re-fetch data on every context change.
--   **Static Charts Loading Issue:** The `useSmartRefresh` hook was not triggering a data fetch on the initial render for static components because the trigger logic did not account for the initial state.
--   **Limit Functionality Issue:** The `ComponentConfigModal` was not converting the `limit` value from a string to a number, causing the API to ignore the parameter.
+1.  **`useSmartRefresh` Hook:**
+    *   Integrated an `AbortController` to cancel in-flight `fetch` requests when a new request is initiated.
+2.  **`dashboardApi` Service:**
+    *   Updated the `getChartData` function to accept and use an `AbortSignal`.
+3.  **`DataChart` Component:**
+    *   Memoized the `fetcher` function using `useCallback` to prevent unnecessary re-renders and request cancellations.
+
+These changes successfully stabilized the UI, but did not resolve the core data problem.
 
 ## Next Steps
-- ✅ Update the `progress.md` and `systemPatterns.md` files in the memory bank to reflect the recent fixes.
-- The dashboard performance issue has been resolved. The excessive API calls were caused by the `useSmartRefresh` hook not properly respecting the `refreshOn` parameter.
+
+The next step is to execute the `data_chart_investigation_plan.md`. This plan outlines a systematic approach to debugging the issue, starting from the frontend and moving to the backend to isolate the root cause.
+
+## Important Patterns and Preferences
+
+*   **Centralized State Management:** The use of `DashboardContext` is a key pattern for managing the dashboard's state.
+*   **Backend for Frontend (BFF) Pattern:** The backend provides the frontend with the exact data it needs, simplifying frontend code.
+
+## Learnings and Project Insights
+
+*   **Separating UI and Data Issues:** It's crucial to differentiate between UI behavior bugs (like race conditions) and underlying data fetching/processing issues. Addressing them separately can lead to a clearer diagnosis.
+*   **Value of Systematic Investigation:** When a problem is not immediately obvious, a structured investigation plan is essential to avoid circular debugging and ensure all potential causes are examined.

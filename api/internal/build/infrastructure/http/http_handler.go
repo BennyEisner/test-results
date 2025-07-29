@@ -5,16 +5,17 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/BennyEisner/test-results/internal/build/domain/ports"
+	"github.com/BennyEisner/test-results/internal/build/application"
+	"github.com/BennyEisner/test-results/internal/build/domain/models"
 )
 
 // BuildHandler handles HTTP requests for builds
 type BuildHandler struct {
-	Service ports.BuildService
+	Service application.BuildService
 }
 
 // NewBuildHandler creates a new BuildHandler
-func NewBuildHandler(service ports.BuildService) *BuildHandler {
+func NewBuildHandler(service application.BuildService) *BuildHandler {
 	return &BuildHandler{Service: service}
 }
 
@@ -25,7 +26,7 @@ func NewBuildHandler(service ports.BuildService) *BuildHandler {
 // @Accept json
 // @Produce json
 // @Param id path int true "Build ID"
-// @Success 200 {object} object
+// @Success 200 {object} models.Build
 // @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /builds/{id} [get]
@@ -37,7 +38,7 @@ func (h *BuildHandler) GetBuildByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	build, err := h.Service.GetBuild(ctx, id)
+	build, err := h.Service.GetBuildByID(ctx, id)
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, err.Error())
 		return
@@ -46,75 +47,43 @@ func (h *BuildHandler) GetBuildByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetBuilds handles GET /builds
-// @Summary Get builds
-// @Description Retrieve builds, optionally filtered by project_id or suite_id
+// @Summary Get builds by project or test suite
+// @Description Retrieve builds by either project_id or suite_id
 // @Tags builds
 // @Accept json
 // @Produce json
-// @Param project_id query int false "Project ID"
+// @Param project_id query int true "Project ID"
 // @Param suite_id query int false "Test Suite ID"
-// @Success 200 {array} object
+// @Success 200 {array} models.Build
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /builds [get]
 func (h *BuildHandler) GetBuilds(w http.ResponseWriter, r *http.Request) {
 	projectIDStr := r.URL.Query().Get("project_id")
-	suiteIDStr := r.URL.Query().Get("suite_id")
-	ctx := r.Context()
-
-	if projectIDStr != "" {
-		projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
-		if err != nil {
-			respondWithError(w, http.StatusBadRequest, "invalid project_id")
-			return
-		}
-		builds, err := h.Service.GetBuildsByProject(ctx, projectID)
-		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		respondWithJSON(w, http.StatusOK, builds)
+	if projectIDStr == "" {
+		respondWithError(w, http.StatusBadRequest, "missing project_id")
 		return
 	}
 
+	projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "invalid project_id")
+		return
+	}
+
+	var suiteID *int64
+	suiteIDStr := r.URL.Query().Get("suite_id")
 	if suiteIDStr != "" {
-		suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
+		id, err := strconv.ParseInt(suiteIDStr, 10, 64)
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, "invalid suite_id")
 			return
 		}
-		builds, err := h.Service.GetBuildsByTestSuite(ctx, suiteID)
-		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		respondWithJSON(w, http.StatusOK, builds)
-		return
+		suiteID = &id
 	}
 
-	respondWithError(w, http.StatusBadRequest, "project_id or suite_id must be provided")
-}
-
-// GetBuildsByTestSuite handles GET /test-suites/{suiteID}/builds
-// @Summary Get builds by test suite ID
-// @Description Retrieve all builds for a specific test suite
-// @Tags builds
-// @Accept json
-// @Produce json
-// @Param suite_id query int true "Test Suite ID"
-// @Success 200 {array} object
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /builds [get]
-func (h *BuildHandler) GetBuildsByTestSuite(w http.ResponseWriter, r *http.Request) {
-	suiteIDStr := r.URL.Query().Get("suite_id")
-	suiteID, err := strconv.ParseInt(suiteIDStr, 10, 64)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "invalid suite_id")
-		return
-	}
 	ctx := r.Context()
-	builds, err := h.Service.GetBuildsByTestSuite(ctx, suiteID)
+	builds, err := h.Service.GetBuilds(ctx, projectID, suiteID)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -128,39 +97,36 @@ func (h *BuildHandler) GetBuildsByTestSuite(w http.ResponseWriter, r *http.Reque
 // @Tags builds
 // @Accept json
 // @Produce json
-// @Param build body object true "Build creation request" schema="{project_id:int,suite_id:int,build_number:string}"
-// @Success 201 {object} object
+// @Param build body models.Build true "Build to create"
+// @Success 201 {object} models.Build
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /builds [post]
 func (h *BuildHandler) CreateBuild(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		ProjectID   int64  `json:"project_id"`
-		SuiteID     int64  `json:"suite_id"`
-		BuildNumber string `json:"build_number"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var build models.Build
+	if err := json.NewDecoder(r.Body).Decode(&build); err != nil {
 		respondWithError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	ctx := r.Context()
-	build, err := h.Service.CreateBuild(ctx, req.ProjectID, req.SuiteID, req.BuildNumber)
+	id, err := h.Service.CreateBuild(ctx, &build)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	build.ID = id
 	respondWithJSON(w, http.StatusCreated, build)
 }
 
 // UpdateBuild handles PUT /builds/{id}
 // @Summary Update a build
-// @Description Update an existing build's build number
+// @Description Update an existing build's details
 // @Tags builds
 // @Accept json
 // @Produce json
 // @Param id path int true "Build ID"
-// @Param build body object true "Build update request" schema="{build_number:string}"
-// @Success 200 {object} object
+// @Param build body models.Build true "Build to update"
+// @Success 200 {object} models.Build
 // @Failure 400 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Router /builds/{id} [put]
@@ -171,15 +137,14 @@ func (h *BuildHandler) UpdateBuild(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "invalid build ID")
 		return
 	}
-	var req struct {
-		BuildNumber string `json:"build_number"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var build models.Build
+	if err := json.NewDecoder(r.Body).Decode(&build); err != nil {
 		respondWithError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
+	build.ID = id
 	ctx := r.Context()
-	build, err := h.Service.UpdateBuild(ctx, id, req.BuildNumber)
+	err = h.Service.UpdateBuild(ctx, &build)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
