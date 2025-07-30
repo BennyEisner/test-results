@@ -2,20 +2,25 @@
 
 ## What Works
 
-- **GitHub OAuth2 Authentication**: The end-to-end authentication flow with GitHub is now fully functional. A series of complex issues, including session management conflicts, provider name extraction errors, incorrect credential usage, CORS misconfiguration, and a context key mismatch, have been diagnosed and resolved.
-- **API Key Management**: Users can create, list, and delete API keys through the `UserProfile` component, which is essential for integrating with CI/CD pipelines and other external tools.
-- **Protected Routes**: The `ProtectedRoute` component effectively guards protected routes, ensuring that only authenticated users can access them.
-- **Routing**: The routing logic has been improved to handle authentication state changes correctly. Unauthenticated users are now redirected to a dedicated `/login` route, while authenticated users are redirected to the dashboard.
-- **API Base Path**: The `authApi` service has been updated to use an absolute path for authentication requests, which resolves the 400 error that occurred when initiating login from the home page.
-- **Proxy Configuration**: The Vite proxy has been updated to correctly rewrite the path for API requests, ensuring that they are properly routed to the backend.
+*   **Dashboard Rendering & Layout:** The dashboard renders, and the layout can be edited and saved.
+*   **Stable Chart UI:** The `DataChart` component is now stable. It no longer gets stuck in a "loading" state or crashes when data is null, thanks to the implementation of request cancellation and memoization.
+*   **Project/Suite Level Data:** Charts correctly display data when filtered at the project and suite levels.
 
 ## What's Left to Build
 
-- **User Roles and Permissions**: The system currently lacks a role-based access control (RBAC) system, which is necessary for managing user permissions and restricting access to certain features.
-- **Two-Factor Authentication (2FA)**: To enhance security, 2FA should be implemented to provide an additional layer of protection for user accounts.
-- **Audit Logs**: There is no auditing mechanism to track user activities, such as login attempts, API key creation, or other sensitive operations.
+*   **Build-Level Chart Data:** The core issue of the "Test Case Pass Rate" chart not loading data at the build level needs to be resolved.
+*   **Chart Readability and Aesthetics:** General improvements to chart readability (labels, colors, etc.) are still pending.
+*   **Comprehensive Testing:** The dashboard requires thorough testing across all features and filter levels once the build-level issue is fixed.
+
+## Current Status
+
+The project is at a critical juncture. The UI-level bugs have been resolved, revealing a persistent, underlying issue with data fetching or processing at the build level. The immediate focus is on executing the `data_chart_investigation_plan.md` to perform a root cause analysis.
 
 ## Known Issues
 
-- **No Rate Limiting**: The authentication endpoints lack rate limiting, which makes them vulnerable to brute-force attacks.
-- **Insufficient Error Handling**: While basic error handling is in place, the system could benefit from more robust error handling and reporting to improve the user experience and facilitate debugging.
+*   **Build-Level Data Failure:** The "Test Case Pass Rate" chart consistently fails to display data when a specific build is selected. The root cause is unknown and is the subject of the current investigation.
+
+## Evolution of Project Decisions
+
+*   **Shift from UI to Data Investigation:** The debugging focus has shifted from fixing frontend race conditions to a systematic investigation of the entire data flow, from the frontend request to the backend database query.
+*   **Adoption of Request Cancellation:** Implementing request cancellation in the `useSmartRefresh` hook has proven to be a valuable pattern for improving UI stability in asynchronous operations.

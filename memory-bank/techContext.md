@@ -2,7 +2,10 @@
 
 ## Technology Stack
 - **Backend**: Go, Gorilla Mux, Goth (for OAuth)
-- **Frontend**: React, TypeScript, Vite, Tanstack Table, Chart.js, React Router, Axios, Bootstrap
+- **Frontend**: React, TypeScript, Vite, Tanstack Table, Chart.js, React Router, Axios, Bootstrap, React-Grid-Layout
+- **Dashboard Widgets**: The dashboard is built with a set of reusable widgets, including `MetricCard`, `StatusBadge`, and `DataChart`.
+- **Layout Components**: The application uses a `PageLayout` component to provide a consistent layout across all pages.
+- **Styling**: In addition to Bootstrap, the dashboard uses a dedicated CSS file (`dashboard.css`) for custom styling and a semantic color scheme.
 - **Database**: PostgreSQL
 - **CLI**: Go
 - **Containerization**: Docker, Docker Compose

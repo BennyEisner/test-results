@@ -294,7 +294,7 @@ func (r *SQLAuthRepository) ListAPIKeysByUser(ctx context.Context, userID int64)
 	}
 	defer rows.Close()
 
-	var apiKeys []*models.APIKey
+	apiKeys := make([]*models.APIKey, 0)
 	for rows.Next() {
 		apiKey := &models.APIKey{}
 		err := rows.Scan(

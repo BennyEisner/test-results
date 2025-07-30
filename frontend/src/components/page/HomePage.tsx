@@ -1,6 +1,5 @@
 import { Row, Col, Card, Alert, Button, Container } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import AppNavbar from '../common/AppNavbar';
+import UniversalNavbar from '../common/UniversalNavbar';
 import BuildsTable from '../build/BuildsTable';
 import { useAuth } from '../../context/AuthContext';
 import { authApi } from '../../services/authApi';
@@ -8,7 +7,7 @@ import './HomePage.css';
 import { fetchBuilds } from '../../services/api';
 
 const HomePage = () => {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated } = useAuth();
 
     const handleGitHubLogin = () => {
         authApi.beginOAuth2Auth('github');
@@ -21,7 +20,7 @@ const HomePage = () => {
     if (!isAuthenticated) {
         return (
             <div>
-                <AppNavbar />
+                <UniversalNavbar />
                 <Container className="welcome-container">
                     <Row className="justify-content-center">
                         <Col md={8} lg={6}>
@@ -29,14 +28,14 @@ const HomePage = () => {
                                 <Card.Body className="p-5">
                                     <h1 className="mb-4">Welcome to Test Results</h1>
                                     <p className="lead mb-4">
-                                        Track, analyze, and visualize your test results across all your projects. 
+                                        Track, analyze, and visualize your test results across all your projects.
                                         Get insights into test performance and identify areas for improvement.
                                     </p>
-                                    
+
                                     <div className="login-options mb-4">
-                                        <Button 
-                                            variant="outline-dark" 
-                                            size="lg" 
+                                        <Button
+                                            variant="outline-dark"
+                                            size="lg"
                                             className="login-button mb-3"
                                             onClick={handleGitHubLogin}
                                         >
@@ -44,9 +43,9 @@ const HomePage = () => {
                                             Continue with GitHub
                                         </Button>
 
-                                        <Button 
-                                            variant="primary" 
-                                            size="lg" 
+                                        <Button
+                                            variant="primary"
+                                            size="lg"
                                             className="login-button"
                                             onClick={handleOktaLogin}
                                         >
@@ -91,21 +90,6 @@ const HomePage = () => {
 
     return (
         <div>
-            <AppNavbar />
-            
-            {/* Welcome message for authenticated users */}
-            <Row className="mb-4">
-                <Col>
-                    <Alert variant="success" className="welcome-alert">
-                        <h5>Welcome back, {user?.name || 'User'}!</h5>
-                        <p className="mb-0">
-                            Ready to dive into your test results? Check out your{' '}
-                            <Link to="/dashboard">dashboard</Link> or explore your{' '}
-                            <Link to="/projects">projects</Link>.
-                        </p>
-                    </Alert>
-                </Col>
-            </Row>
 
             <Row>
                 {/* Recent Builds Card */}

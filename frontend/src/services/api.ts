@@ -1,78 +1,55 @@
-import type { Project } from "../types";
+import axios from 'axios';
+import type { Project, Suite, Build, TestCaseExecution, Failure, SearchResult, BuildDurationTrend, MostFailedTest } from "../types";
 
-import type { Suite } from "../types";
-
-import type { Build } from "../types";
-
-import type { TestCaseExecution } from "../types";
-
-import type { Failure, SearchResult, BuildDurationTrend, MostFailedTest } from "../types";
-
-const API_BASE_URL = "http://localhost:8080/api";
+const api = axios.create({
+  baseURL: "http://localhost:8080/api",
+  withCredentials: true,
+});
 
 export const fetchProjects = async (): Promise<Project[]> => {
-  const response = await fetch(`${API_BASE_URL}/projects`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch projects: ${response.status}`);
-  }
-  return response.json();
+  const response = await api.get(`/projects`);
+  return response.data;
 };
 
 export const fetchSuites = async (
   projectId: string | number,
 ): Promise<Suite[]> => {
-  const response = await fetch(`${API_BASE_URL}/test-suites?project_id=${projectId}`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch suites");
-  }
-  return response.json();
+  const response = await api.get(`/test-suites?project_id=${projectId}`);
+  return response.data;
 };
 
 export const fetchBuilds = async (
   projectId: string | number,
   suiteId?: string | number,
 ): Promise<Build[]> => {
-  let url = `${API_BASE_URL}/builds?project_id=${projectId}`;
+  let url = `/builds?project_id=${projectId}`;
   if (suiteId) {
     url += `&suite_id=${suiteId}`;
   }
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Failed to fetch builds");
-  }
-  return response.json();
+  const response = await api.get(url);
+  return response.data;
 };
 
 export const fetchExecutions = async (
   buildId: string | number,
 ): Promise<TestCaseExecution[]> => {
-  // Used TestCaseExecution type
-  const response = await fetch(`${API_BASE_URL}/builds/${buildId}/executions`); // Added API_BASE_URL
-  if (!response.ok) {
-    throw new Error("Failed to fetch executions");
-  }
-  return response.json();
+  const response = await api.get(`/builds/${buildId}/executions`);
+  return response.data;
 };
 
 export const fetchFailures = async (
   buildId: string | number,
 ): Promise<Failure[]> => {
-  const response = await fetch(`${API_BASE_URL}/builds/${buildId}/failures`); // Added API_BASE_URL
-  if (!response.ok) {
-    throw new Error("Failed to fetch executions");
-  }
-  return response.json();
+  const response = await api.get(`/builds/${buildId}/failures`);
+  return response.data;
 };
 
 export const search = async (query: string): Promise<SearchResult[]> => {
   if (!query.trim()) {
     return [];
   }
-  const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
-  if (!response.ok) {
-    throw new Error("Failed to search");
-  }
-  return response.json();
+  const response = await api.get(`/search?q=${encodeURIComponent(query)}`);
+  return response.data;
 };
 
 export const getBuildDurationTrends = async (
@@ -111,7 +88,7 @@ export const fetchMostFailedTests = async (
 
   const testCases = await Promise.all(
     Object.keys(failureCounts).map(testCaseId =>
-      fetch(`${API_BASE_URL}/test-cases?id=${testCaseId}`).then(res => res.json()),
+      api.get(`/test-cases?id=${testCaseId}`).then(res => res.data),
     ),
   );
 
@@ -126,3 +103,5 @@ export const fetchMostFailedTests = async (
     .sort((a, b) => b.failure_count - a.failure_count)
     .slice(0, limit);
 };
+
+export default api;

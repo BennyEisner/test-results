@@ -1,7 +1,7 @@
 .build-select-container {
     padding: 0.5rem 1rem;
-    background-color: var(--white-color);
-    border-bottom: 1px solid var(--border-color);
+    background-color: #232323;
+    border-bottom: 1px solid #232323;
     display: flex;
     align-items: center;
 }
@@ -16,26 +16,26 @@
 .build-select-item {
     padding: 0.5rem 1rem;
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: .25rem;
     margin-right: 0.5rem;
     background-color: transparent;
     border: 1px solid transparent;
     transition: all 0.2s ease;
-    color: var(--text-light-color);
+    color: #F1F0F0;
     font-weight: 600;
 }
 
 .build-select-item:hover {
-    background-color: var(--light-gray-color);
-    color: var(--text-color);
+    background-color: #232323;
+    color: #ffffff;
 }
 
 .build-select-item.active {
-    background-color: var(--primary-color);
-    color: var(--white-color);
-    border-color: var(--primary-color);
+    background-color: #292E89;
+    color: #ffffff;
+    border-color: #292E89;
 }
 
 .build-select-item.active:hover {
-    background-color: var(--primary-hover-color);
+    background-color: #292E89;
 }

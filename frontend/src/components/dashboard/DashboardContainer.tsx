@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
+import { useDashboard } from '../../context/DashboardContext';
 import { DashboardLayout, GridLayoutItem } from '../../types/dashboard';
-import ComponentRegistry from './ComponentRegistry';
+import MemoizedComponentRegistry from './ComponentRegistry';
 import BuildSelect from '../build/BuildSelect';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import './DashboardContainer.css';
+import '../../styles/dashboard.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -14,8 +15,6 @@ interface DashboardContainerProps {
     isEditing?: boolean;
     onLayoutChange?: (gridLayout: GridLayoutItem[]) => void;
     onRemoveComponent?: (componentId: string) => void;
-    projectId?: string | number | null;
-    suiteId?: string | number | null;
 }
 
 const DashboardContainer = ({
@@ -23,15 +22,13 @@ const DashboardContainer = ({
     isEditing = false,
     onLayoutChange,
     onRemoveComponent,
-    projectId,
-    suiteId,
 }: DashboardContainerProps) => {
-    const [selectedBuildId, setSelectedBuildId] = useState<string | number | null>(null);
+    const { projectId, suiteId, buildId, setBuildId } = useDashboard();
 
     useEffect(() => {
         // Reset selected build when project or suite changes
-        setSelectedBuildId(null);
-    }, [projectId, suiteId]);
+        setBuildId(null);
+    }, [projectId, suiteId, setBuildId]);
 
     const handleGridLayoutChange = (newGridLayout: any[]) => {
         if (onLayoutChange) {
@@ -40,7 +37,7 @@ const DashboardContainer = ({
     };
 
     const handleBuildSelect = (buildId: string | number) => {
-        setSelectedBuildId(buildId);
+        setBuildId(buildId);
     };
 
     const visibleComponents = layout.components.filter(comp => comp.visible);
@@ -80,18 +77,12 @@ const DashboardContainer = ({
                             </div>
                         )}
                         <div className="component-content">
-                            <ComponentRegistry
+                            <MemoizedComponentRegistry
                                 type={component.type}
-                                props={
-                                    component.isStatic
-                                        ? component.props
-                                        : {
-                                            ...component.props,
-                                            ...(projectId && { projectId }),
-                                            ...(suiteId && { suiteId }),
-                                            ...(selectedBuildId && { buildId: selectedBuildId }),
-                                        }
-                                }
+                                props={component.props}
+                                projectId={projectId ?? undefined}
+                                suiteId={suiteId ?? undefined}
+                                buildId={buildId}
                             />
                         </div>
                     </div>

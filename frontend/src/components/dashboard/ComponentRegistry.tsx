@@ -1,10 +1,14 @@
+import React from 'react';
 import { ComponentType, ComponentProps, ComponentDefinition } from '../../types/dashboard';
 import BuildsTable from '../build/BuildsTable';
 import ExecutionsSummary from '../execution/ExecutionsSummary';
 import BuildDoughnutChart from '../build/BuildDoughnutChart';
-import BuildDurationTrendChart from '../build/BuildDurationTrendChart';
 import MostFailedTestsTable from '../test/MostFailedTestsTable';
+import MetricCard from '../widgets/MetricCard';
+import StatusBadge from '../widgets/StatusBadge';
+import DataChart from '../widgets/DataChart';
 import { fetchBuilds } from '../../services/api';
+import { dashboardApi } from '../../services/dashboardApi';
 
 interface ComponentRegistryProps {
     type: ComponentType;
@@ -39,13 +43,20 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
             return <div className="component-placeholder">Select a build to view the chart.</div>;
 
         case 'build-duration-trend-chart':
-            const finalProjectId = (projectId ? Number(projectId) : undefined) ?? (props.projectId ? Number(props.projectId) : undefined);
-            const suiteIdNumber = (suiteId ? Number(suiteId) : undefined) ?? (props.suiteId ? Number(props.suiteId) : undefined);
-            if (finalProjectId && suiteIdNumber) {
-                const { projectId: _, suiteId: __, ...restProps } = componentProps;
-                return <BuildDurationTrendChart projectId={finalProjectId} suiteId={suiteIdNumber} {...restProps} />;
-            }
-            return <div className="component-placeholder">Select a project and suite to view the trend chart.</div>;
+            return <DataChart
+                {...componentProps}
+                projectId={projectId}
+                suiteId={suiteId}
+                buildId={buildId}
+                chartType="line"
+                dataSource="build-duration-trend"
+                isStatic={props.isStatic}
+                staticProjectId={props.projectId}
+                staticSuiteId={props.suiteId}
+                staticBuildId={props.buildId}
+                limit={props.limit}
+                refreshOn={['project', 'suite', 'build']}
+            />;
 
         case 'most-failed-tests-table':
             const finalMostFailedProjectId = (projectId ? Number(projectId) : undefined) ?? (props.projectId ? Number(props.projectId) : undefined);
@@ -63,12 +74,44 @@ function ComponentRegistry({ type, props, projectId, suiteId, buildId }: Compone
             }
             return <div className="component-placeholder">Select a build to view the summary.</div>;
 
+        case 'metric-card':
+            return <MetricCard {...componentProps} projectId={projectId} metricType={props.metricType || 'passing-rate'} />;
+
+        case 'status-badge':
+            return <StatusBadge projectId={projectId} />;
+
+        case 'data-chart':
+            // Configure smart refresh based on data source
+            let refreshOn: ('project' | 'suite' | 'build')[] = ['project', 'suite', 'build'];
+            if (props.dataSource === 'build-duration') {
+                // Build duration charts should only refresh on project/suite changes
+                // Not on build changes since they show trends across multiple builds
+                refreshOn = ['project', 'suite'];
+            }
+
+            return <DataChart
+                {...componentProps}
+                projectId={projectId}
+                suiteId={suiteId}
+                buildId={buildId}
+                chartType={props.chartType || 'bar'}
+                dataSource={props.dataSource || 'build-duration'}
+                isStatic={props.isStatic}
+                staticProjectId={props.projectId}
+                staticSuiteId={props.suiteId}
+                staticBuildId={props.buildId}
+                limit={props.limit}
+                refreshOn={refreshOn}
+            />;
+
         default:
             return <div className="component-placeholder">Unknown component: {type}</div>;
     }
 }
 
-export default ComponentRegistry;
+const MemoizedComponentRegistry = React.memo(ComponentRegistry);
+
+export default MemoizedComponentRegistry;
 
 export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> = {
     'builds-table': {
@@ -209,5 +252,130 @@ export const COMPONENT_DEFINITIONS: Record<ComponentType, ComponentDefinition> =
             }
         ]
     },
-
+    'metric-card': {
+        name: 'Metric Card',
+        description: 'Display a single metric with a trend indicator',
+        category: 'Widgets',
+        defaultProps: { title: 'Metric', value: 'N/A' },
+        defaultGridSize: { w: 3, h: 2, minW: 2, minH: 2 },
+        configFields: [
+            {
+                key: 'title',
+                label: 'Title',
+                type: 'text',
+                defaultValue: 'Metric',
+            },
+            {
+                key: 'value',
+                label: 'Value',
+                type: 'text',
+                defaultValue: 'N/A',
+            },
+            {
+                key: 'change',
+                label: 'Change',
+                type: 'text',
+            },
+            {
+                key: 'changeType',
+                label: 'Change Type',
+                type: 'select',
+                options: ['increase', 'decrease', 'neutral'],
+                defaultValue: 'neutral',
+            },
+        ],
+    },
+    'status-badge': {
+        name: 'Status Badge',
+        description: 'Display a status badge',
+        category: 'Widgets',
+        defaultProps: { status: 'neutral', children: 'Status' },
+        defaultGridSize: { w: 2, h: 1, minW: 2, minH: 1 },
+        configFields: [
+            {
+                key: 'status',
+                label: 'Status',
+                type: 'select',
+                options: ['success', 'warning', 'danger', 'info', 'neutral'],
+                defaultValue: 'neutral',
+            },
+            {
+                key: 'children',
+                label: 'Text',
+                type: 'text',
+                defaultValue: 'Status',
+            },
+        ],
+    },
+    'data-chart': {
+        name: 'Data Chart',
+        description: 'Display a chart from data',
+        category: 'Charts',
+        defaultProps: { type: 'bar', data: {} },
+        defaultGridSize: { w: 6, h: 8, minW: 4, minH: 4 },
+        configFields: [
+            {
+                key: 'title',
+                label: 'Component Title',
+                type: 'text',
+                defaultValue: 'Data Chart',
+                placeholder: 'Enter component title'
+            },
+            {
+                key: 'dataSource',
+                label: 'Data Source',
+                type: 'select',
+                asyncOptions: async () => {
+                    const response = await dashboardApi.getAvailableWidgets();
+                    return response.charts;
+                },
+                defaultValue: 'build-duration',
+            },
+            {
+                key: 'chartType',
+                label: 'Chart Type',
+                type: 'select',
+                options: ['line', 'bar', 'pie', 'doughnut'],
+                defaultValue: 'bar',
+            },
+            {
+                key: 'isStatic',
+                label: 'Static Chart',
+                type: 'checkbox',
+                defaultValue: false,
+            },
+            {
+                key: 'projectId',
+                label: 'Project ID',
+                type: 'text',
+                required: true,
+                placeholder: 'Enter project ID',
+                condition: (props: ComponentProps) => props.isStatic,
+            },
+            {
+                key: 'suiteId',
+                label: 'Suite ID',
+                type: 'text',
+                required: false,
+                placeholder: 'Enter suite ID (optional)',
+                condition: (props: ComponentProps) => props.isStatic,
+            },
+            {
+                key: 'buildId',
+                label: 'Build ID',
+                type: 'text',
+                required: false,
+                placeholder: 'Enter build ID (optional)',
+                condition: (props: ComponentProps) => props.isStatic,
+            },
+            {
+                key: 'limit',
+                label: 'Limit',
+                type: 'number',
+                required: false,
+                defaultValue: 10,
+                placeholder: 'Enter the number of items to display',
+            },
+        ],
+    },
 };

@@ -34,20 +34,23 @@ export interface ComponentProps {
   buildId?: string | number;
   projectId?: string | number;
   suiteId?: string | number;
+  dataSource?: string;
   fetchFunction?: () => Promise<any[]>;
   onResultSelect?: (result: any) => void;
   [key: string]: any;
 }
 
 export interface ConfigField {
-  key: string;
-  label: string;
-  type: "select" | "text" | "number" | "boolean" | "multi-select";
-  required?: boolean;
-  options?: { value: string | number; label: string }[];
-  defaultValue?: any;
-  placeholder?: string;
-  helpText?: string;
+    key: string;
+    label: string;
+    type: 'text' | 'select' | 'number' | 'checkbox' | 'textarea';
+    options?: string[] | { value: string; label: string }[];
+    asyncOptions?: () => Promise<{ value: string; label: string }[]>;
+    required?: boolean;
+    defaultValue?: any;
+    placeholder?: string;
+    helpText?: string;
+    condition?: (props: ComponentProps) => boolean;
 }
 
 export type ComponentType =
@@ -55,7 +58,10 @@ export type ComponentType =
   | "build-chart"
   | "build-duration-trend-chart"
   | "most-failed-tests-table"
-  | "executions-summary";
+  | "executions-summary"
+  | "metric-card"
+  | "status-badge"
+  | "data-chart";
 
 export interface DashboardSettings {
   theme: "light" | "dark";
@@ -77,4 +83,36 @@ export interface ComponentDefinition {
     maxH?: number;
   };
   configFields?: ConfigField[];
+}
+
+export interface StatusBadgeDTO {
+  status: string;
+  count: number;
+}
+
+export interface MetricCardDTO {
+  metric: string;
+  value: number;
+}
+
+export interface DataChartDTO {
+  labels: string[];
+  datasets: DatasetDTO[];
+  xAxisLabel?: string;
+  yAxisLabel?: string;
+}
+
+export interface DatasetDTO {
+  label: string;
+  data: number[];
+  backgroundColor?: string | string[];
+  borderColor?: string | string[];
+}
+
+export interface Widget {
+    id: string;
+    name: string;
+    description: string;
+    component: string;
+    props: any;
 }

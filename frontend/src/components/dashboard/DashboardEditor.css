@@ -1,25 +1,26 @@
 .dashboard-editor {
     padding: 1rem;
-    background-color: #f8f9fa;
-    border-radius: 8px;
+    background-color: var(--background-secondary);
+    border-radius: var(--border-radius-md);
     margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
 }
 
 .add-widget-button {
-    background-color: var(--primary-color);
-    color: var(--white-color);
+    background-color: var(--color-info);
+    color: var(--background-primary);
     border: none;
     padding: 0.75rem 1.5rem;
-    border-radius: 8px;
+    border-radius: var(--border-radius-sm);
     cursor: pointer;
     font-weight: 600;
     transition: background-color 0.2s ease-in-out;
 }
 
 .add-widget-button:hover {
-    background-color: var(--primary-hover-color);
+    background-color: var(--color-info);
 }
 
 .add-component-btn:hover {
-  background-color: var(--primary-hover-color);
+  background-color: var(--color-info);
 }

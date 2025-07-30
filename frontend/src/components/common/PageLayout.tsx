@@ -1,15 +1,15 @@
-//Boilerplate to be included on all pages 
 import React from 'react';
-import BreadcrumbNavbar from './BreadcrumbNavbar';
+import UniversalNavbar from './UniversalNavbar';
 
 interface PageLayoutProps {
   children: React.ReactNode;
+  onProjectSelect?: (projectId: number) => void;
 }
 
-const PageLayout = ({ children }: PageLayoutProps) => {
+const PageLayout = ({ children, onProjectSelect }: PageLayoutProps) => {
   return (
     <div>
-      <BreadcrumbNavbar />
+      <UniversalNavbar onProjectSelect={onProjectSelect} />
       <main className="page-container">
         {children}
       </main>

@@ -16,7 +16,7 @@ type UserConfigRepository interface {
 
 // UserConfigService defines the interface for user config business logic
 type UserConfigService interface {
-	GetUserConfigs(ctx context.Context, userID int64) ([]*models.UserConfig, error)
+	GetUserConfigs(ctx context.Context, userID int64) (*models.UserConfig, error)
 	GetUserConfig(ctx context.Context, userID int64, key string) (*models.UserConfig, error)
 	SaveUserConfig(ctx context.Context, userID int64, layouts, activeLayoutID string) (*models.UserConfig, error)
 	DeleteUserConfig(ctx context.Context, id int64) error
