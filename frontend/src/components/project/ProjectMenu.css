@@ -1,9 +1,10 @@
 .project-menu {
     width: 200px;
     padding: 1rem;
-    background-color: #f4f4f4;
+    background-color: var(--background-secondary);
     height: 100vh;
     overflow-y: auto;
+    border-right: 1px solid var(--border-color);
 }
 
 .project-menu.loading,
@@ -16,6 +17,7 @@
 
 .project-menu h3 {
     margin-top: 0;
+    color: var(--text-primary);
 }
 
 .project-menu ul {
@@ -30,8 +32,11 @@
     text-align: left;
     width: 100%;
     cursor: pointer;
+    color: var(--text-secondary);
+    border-radius: var(--border-radius-sm);
 }
 
 .project-menu li button:hover {
-    background-color: #e0e0e0;
+    background-color: rgba(255, 255, 255, .075);
+    color: var(--text-primary);
 }

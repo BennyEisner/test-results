@@ -1,0 +1,74 @@
+/* ==========================================================================
+   Button Styles
+   ========================================================================== */
+
+@use "variables" as *;
+
+.btn {
+    display: inline-block;
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    text-align: center;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    background-color: transparent;
+    border: 1px solid transparent;
+    padding: 0.5rem 1rem;
+    font-size: var(--font-size-md);
+    border-radius: var(--border-radius-sm);
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.btn:hover {
+    text-decoration: none;
+}
+
+.btn:focus, .btn.focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.5);
+}
+
+.btn.disabled, .btn:disabled {
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+/* Primary Button */
+.btn-primary {
+    color: $white;
+    background-color: $primary;
+    border-color: $primary;
+}
+
+.btn-primary:hover {
+    background-color: darken($primary, 10%);
+    border-color: darken($primary, 10%);
+    color: $white;
+}
+
+/* Secondary Button */
+.btn-secondary {
+    color: $white;
+    background-color: $secondary;
+    border-color: $secondary;
+}
+
+.btn-secondary:hover {
+    background-color: lighten($secondary, 10%);
+    border-color: lighten($secondary, 10%);
+    color: $white;
+}
+
+/* Danger Button */
+.btn-danger {
+    color: $white;
+    background-color: $danger;
+    border-color: $danger;
+}
+
+.btn-danger:hover {
+    background-color: darken($danger, 10%);
+    border-color: darken($danger, 10%);
+    color: $white;
+}

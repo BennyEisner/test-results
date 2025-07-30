@@ -1,46 +1,46 @@
 .suite-menu {
     position: absolute;
     left: 1rem;
-    top: 160px; 
+    top: 160px;
     width: 250px;
     max-height: calc(100vh - 180px);
-    background-color: var(--white-color);
+    background-color: var(--background-secondary);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: var(--border-radius-md);
     padding: 1rem;
     overflow-y: auto;
     z-index: 1000;
-    box-shadow: var(--box-shadow);
+    box-shadow: var(--box-shadow-md);
 }
 
 .suite-menu-title {
     margin-bottom: 1rem;
-    color: var(--text-color);
+    color: var(--text-primary);
     font-weight: 600;
 }
 
 .suite-menu .list-group-item {
     border: none;
-    border-radius: 8px;
+    border-radius: var(--border-radius-sm);
     margin-bottom: 0.25rem;
     cursor: pointer;
     transition: all 0.2s ease;
-    color: var(--text-light-color);
+    color: var(--text-secondary);
     background-color: transparent;
 }
 
 .suite-menu .list-group-item:hover {
-    background-color: var(--light-gray-color);
-    color: var(--text-color);
+    background-color: var(--border-color);
+    color: var(--text-primary);
 }
 
 .suite-menu .list-group-item.active {
-    background-color: var(--primary-color);
-    border-color: var(--primary-color);
-    color: var(--white-color);
+    background-color: var(--color-info);
+    border-color: var(--color-info);
+    color: var(--text-primary);
     font-weight: 600;
 }
 
 .suite-menu .list-group-item.active:hover {
-    background-color: var(--primary-hover-color);
+    background-color: var(--color-info);
 }

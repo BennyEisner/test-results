@@ -14,7 +14,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import LoginPage from './components/auth/LoginPage';
 import UserProfile from './components/auth/UserProfile';
 import './styles/shared.css';
-import './styles/tables.css';
+import './styles/tables.scss';
 
 const AppRoutes = () => {
     const { isAuthenticated, isLoading } = useAuth();

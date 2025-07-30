@@ -1,0 +1,37 @@
+// Custom.scss
+// Option A: Include all of Bootstrap
+
+@use "sass:color";
+@use "variables" as *;
+
+// Then, include all of Bootstrap
+@use "bootstrap/scss/bootstrap" with (
+  $primary: $primary,
+  $secondary: $secondary,
+  $success: $success,
+  $info: $info,
+  $warning: $warning,
+  $danger: $danger,
+  $light: $light,
+  $dark: $dark,
+  $body-bg: $body-bg,
+  $body-color: $body-color,
+  $link-color: $link-color,
+  $link-hover-color: $link-hover-color,
+  $border-color: $border-color,
+  $border-radius: $border-radius,
+  $border-radius-lg: $border-radius-lg,
+  $border-radius-sm: $border-radius-sm,
+  $card-bg: $card-bg,
+  $card-border-color: $card-border-color,
+  $card-cap-bg: $card-cap-bg,
+  $table-bg: $table-bg,
+  $table-border-color: $table-border-color,
+  $table-hover-bg: $table-hover-bg,
+  $btn-padding-y: $btn-padding-y,
+  $btn-padding-x: $btn-padding-x,
+  $btn-font-weight: $btn-font-weight
+);
+
+@use "buttons";
+@use "tables";

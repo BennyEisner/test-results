@@ -1,6 +1,7 @@
 .app-navbar {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     margin-bottom: 1rem;
+    background-color: var(--dark-grey);
 }
 
 .navbar-avatar {
@@ -21,16 +22,58 @@
     transition: background-color 0.2s ease;
 }
 
-.project-nav-link:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+.project-nav-link:hover,
+.navbar-nav .nav-link:hover {
+    background-color: rgba(255, 255, 255, .075);
+    color: var(--white);
 }
 
 .navbar-error {
-    background-color: #f8d7da;
-    color: #721c24;
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger);
     padding: 0.5rem 1rem;
     border-radius: 4px;
     margin-bottom: 1rem;
+}
+
+/* Bootstrap NavDropdown styling */
+.dropdown-menu {
+    background-color: var(--dark-grey) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.dropdown-item {
+    color: var(--white) !important;
+    background-color: transparent !important;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background-color: rgba(255, 255, 255, .075) !important;
+    color: var(--white) !important;
+}
+
+.dropdown-divider {
+    border-color: var(--border-color) !important;
+}
+
+/* Navbar brand styling */
+.navbar-brand {
+    color: var(--white) !important;
+    font-weight: 600;
+}
+
+.navbar-brand:hover {
+    color: var(--accent-blue) !important;
+}
+
+/* Navbar toggler for mobile */
+.navbar-toggler {
+    border-color: var(--border-color) !important;
+}
+
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
 }
 
 /* Responsive adjustments */

@@ -2,23 +2,27 @@
   min-height: 100vh;
   display: flex;
   align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  justify-content: center;
+  background: var(--background-primary);
+  padding: 2rem;
 }
 
 .login-card {
-  border: none;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--box-shadow-lg);
+  background: var(--background-secondary);
+  width: 100%;
+  max-width: 500px;
+  min-width: 400px;
 }
 
 .login-card .card-body {
-  padding: 3rem 2rem;
+  padding: 3rem 2.5rem;
 }
 
 .login-card h2 {
-  color: #333;
+  color: var(--text-primary);
   font-weight: 600;
   margin-bottom: 1rem;
 }
@@ -44,14 +48,22 @@
 }
 
 .login-button.btn-outline-dark:hover {
-  background-color: #333;
-  border-color: #333;
-  color: white;
+  background-color: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--background-primary);
+}
+
+.login-button.btn-primary {
+    background-color: var(--color-info);
+    border-color: var(--color-info);
+    color: var(--text-primary);
 }
 
 .login-button.btn-primary:hover {
-  background-color: #0056b3;
-  border-color: #0056b3;
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  filter: brightness(1.2);
+  color: var(--text-primary);
 }
 
 .login-button i {
@@ -63,7 +75,18 @@
     padding: 1rem;
   }
   
+  .login-card {
+    min-width: unset;
+    max-width: 100%;
+  }
+  
   .login-card .card-body {
     padding: 2rem 1.5rem;
   }
-} 
+}
+
+@media (max-width: 480px) {
+  .login-card .card-body {
+    padding: 1.5rem 1rem;
+  }
+}

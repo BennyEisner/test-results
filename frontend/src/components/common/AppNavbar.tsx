@@ -43,7 +43,7 @@ const AppNavbar = ({ onProjectClick }: AppNavbarProps) => {
     }
 
     return (
-        <Navbar bg="light" expand="lg" className="app-navbar">
+        <Navbar expand="lg" className="app-navbar">
             <Container>
                 <Navbar.Brand as={Link} to="/">
                     Test Results

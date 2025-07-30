@@ -3,9 +3,10 @@
 }
 
 .profile-card {
-  border: none;
-  border-radius: 15px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--box-shadow-md);
+  background-color: var(--background-secondary);
 }
 
 .profile-avatar {
@@ -13,7 +14,7 @@
   height: 100px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #f8f9fa;
+  border: 3px solid var(--background-primary);
 }
 
 .loading-container {
@@ -25,21 +26,23 @@
 }
 
 .user-profile .card {
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: none;
+  background-color: var(--background-secondary);
 }
 
 .user-profile .card-header {
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
-  border-radius: 10px 10px 0 0 !important;
+  background-color: var(--background-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md) var(--border-radius-md) 0 0 !important;
+  color: var(--text-primary);
 }
 
 .user-profile .table th {
   border-top: none;
   font-weight: 600;
-  color: #495057;
+  color: var(--text-secondary);
 }
 
 .user-profile .table td {
@@ -59,4 +62,4 @@
     width: 80px;
     height: 80px;
   }
-} 
+}

@@ -22,28 +22,34 @@ interface DataChartProps {
     refreshOn?: RefreshTrigger[];
 }
 
-const colorPalette = [
-    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6366F1', '#EC4899', '#6B7280',
-];
-const borderPalette = [
-    '#1D4ED8', '#059669', '#D97706', '#DC2626', '#7C3AED', '#4338CA', '#BE185D', '#4B5563',
-];
+const getChartColors = () => {
+    const style = getComputedStyle(document.documentElement);
+    return [
+        style.getPropertyValue('--chart-color-1').trim(),
+        style.getPropertyValue('--chart-color-2').trim(),
+        style.getPropertyValue('--chart-color-3').trim(),
+        style.getPropertyValue('--chart-color-4').trim(),
+        style.getPropertyValue('--chart-color-5').trim(),
+    ];
+};
 
 const transformData = (data: DataChartDTO | null, chartType: 'line' | 'bar' | 'pie' | 'doughnut'): ChartData => {
     if (!data || !data.datasets) {
         return { labels: [], datasets: [] };
     }
 
+    const chartColors = getChartColors();
+
     return {
         labels: data.labels || [],
         datasets: (data.datasets || []).map(dataset => {
             const isPieOrDoughnut = chartType === 'pie' || chartType === 'doughnut';
             const backgroundColors = isPieOrDoughnut
-                ? (data.labels || []).map((_, i) => colorPalette[i % colorPalette.length])
-                : dataset.backgroundColor || 'rgba(75, 192, 192, 0.6)';
+                ? (data.labels || []).map((_, i) => chartColors[i % chartColors.length])
+                : dataset.backgroundColor || 'rgba(139, 233, 253, 0.6)';
             const borderColors = isPieOrDoughnut
-                ? (data.labels || []).map((_, i) => borderPalette[i % borderPalette.length])
-                : dataset.borderColor || 'rgba(75, 192, 192, 1)';
+                ? (data.labels || []).map((_, i) => chartColors[i % chartColors.length])
+                : dataset.borderColor || 'rgba(139, 233, 253, 1)';
 
             return {
                 ...dataset,
@@ -143,38 +149,74 @@ const DataChart = ({
 };
 
 const getChartOptions = (data: DataChartDTO | null, chartType: 'line' | 'bar' | 'pie' | 'doughnut'): ChartOptions => {
-    const isPieOrDoughnut = chartType === 'pie' || chartType === 'doughnut';
+    const style = getComputedStyle(document.documentElement);
+    const textColor = style.getPropertyValue('--text-primary').trim();
+    const gridColor = style.getPropertyValue('--border-color').trim();
 
-    if (isPieOrDoughnut) {
+    const baseOptions: ChartOptions = {
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top' as const,
+                labels: {
+                    color: textColor,
+                },
+            },
+            tooltip: {
+                backgroundColor: style.getPropertyValue('--background-secondary').trim(),
+                titleColor: textColor,
+                bodyColor: textColor,
+                borderColor: gridColor,
+                borderWidth: 1,
+            },
+        },
+    };
+
+    if (chartType === 'pie' || chartType === 'doughnut') {
         return {
+            ...baseOptions,
             scales: {
                 x: { display: false },
                 y: { display: false },
             },
             plugins: {
-                legend: {
-                    position: 'top' as const,
-                },
+                ...baseOptions.plugins,
                 title: {
                     display: true,
                     text: data?.xAxisLabel || '',
+                    color: textColor,
                 },
             },
         };
     }
 
     return {
+        ...baseOptions,
         scales: {
             x: {
                 title: {
                     display: !!data?.xAxisLabel,
                     text: data?.xAxisLabel || '',
+                    color: textColor,
+                },
+                ticks: {
+                    color: textColor,
+                },
+                grid: {
+                    color: gridColor,
                 },
             },
             y: {
                 title: {
                     display: !!data?.yAxisLabel,
                     text: data?.yAxisLabel || '',
+                    color: textColor,
+                },
+                ticks: {
+                    color: textColor,
+                },
+                grid: {
+                    color: gridColor,
                 },
             },
         },

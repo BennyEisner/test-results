@@ -33,5 +33,5 @@
 
 .status-badge-neutral {
     color: var(--text-secondary);
-    background-color: var(--border-color-light);
+    background-color: var(--background-secondary);
 }

@@ -1,0 +1,39 @@
+// Define the new color palette
+$darkest-grey: #111111;
+$dark-grey: #232323;
+$light-grey: #F1F0F0;
+$accent-blue: #292E89;
+$white: #ffffff;
+
+// Include any default variable overrides here
+$primary:       $accent-blue; // Blue as accent
+$secondary:     $dark-grey;
+$success:       #198754;
+$info:          #0dcaf0;
+$warning:       #ffc107;
+$danger:        #dc3545;
+$light:         $light-grey;
+$dark:          $darkest-grey;
+
+$body-bg:    $darkest-grey;
+$body-color: $white;
+
+$link-color:              $primary;
+$link-hover-color:        $light-grey;
+
+$border-color:            $dark-grey;
+$border-radius:           .375rem;
+$border-radius-lg:        .5rem;
+$border-radius-sm:        .25rem;
+
+$card-bg:                 $dark-grey;
+$card-border-color:       $dark-grey;
+$card-cap-bg:             rgba(0, 0, 0, .03);
+
+$table-bg:                $dark-grey;
+$table-border-color:      $dark-grey;
+$table-hover-bg:          rgba(255, 255, 255, .075);
+
+$btn-padding-y:           .5rem;
+$btn-padding-x:           1rem;
+$btn-font-weight:         600;
