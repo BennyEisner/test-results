@@ -48,6 +48,7 @@ export interface SearchResult {
   id: number;
   name: string;
   url: string;
+  project_id?: number;
 }
 
 export interface BuildDurationTrend {

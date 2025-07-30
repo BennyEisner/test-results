@@ -3,7 +3,7 @@ import { Nav, Navbar, Container, NavDropdown } from 'react-bootstrap';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { fetchProjects } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import type { Project } from '../../types';
+import type { Project, SearchResult } from '../../types';
 import './UniversalNavbar.scss';
 import SearchBar from './SearchBar';
 
@@ -36,6 +36,26 @@ const UniversalNavbar = ({ onProjectSelect }: UniversalNavbarProps) => {
     const handleLogout = async () => {
         await logout();
         navigate('/');
+    };
+
+    const handleResultSelect = (result: SearchResult) => {
+        const { type, id, project_id } = result;
+        switch (type) {
+            case 'project':
+                navigate(`/projects/${id}`);
+                break;
+            case 'test_suite':
+                navigate(`/projects/${project_id}/suites/${id}`);
+                break;
+            case 'build':
+                navigate(`/builds/${id}`);
+                break;
+            case 'test_case':
+                navigate(`/test-cases/${id}`);
+                break;
+            default:
+                console.warn(`Unknown search result type: ${type}`);
+        }
     };
 
     const renderTitle = () => {
@@ -112,7 +132,7 @@ const UniversalNavbar = ({ onProjectSelect }: UniversalNavbarProps) => {
                     </Nav>
                     
                     <Nav className="ms-auto d-flex align-items-center">
-                        <SearchBar />
+                        <SearchBar onResultSelect={handleResultSelect} />
                         {isAuthenticated ? (
                             <NavDropdown 
                                 title={

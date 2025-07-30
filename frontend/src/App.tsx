@@ -5,7 +5,6 @@ import ProjectDetail from './components/project/ProjectDetail';
 import SuiteDetail from './components/suite/SuiteDetail';
 import BuildsTable from './components/build/BuildsTable';
 import BuildDetail from './components/build/BuildDetail.tsx';
-import HomePage from './components/page/HomePage';
 import DashboardPage from './components/page/DashboardPage';
 import PageLayout from './components/common/PageLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -35,8 +34,8 @@ const AppRoutes = () => {
     return (
         <Routes>
             {/* Public routes */}
-            <Route path="/" element={<PageLayout><HomePage /></PageLayout>} />
-            <Route path="/login" element={<PageLayout><LoginPage /></PageLayout>} />
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPage />} />
 
             {/* Protected routes */}
             <Route path="/dashboard" element={

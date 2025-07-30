@@ -23,6 +23,9 @@ import (
 	projectApp "github.com/BennyEisner/test-results/internal/project/application"
 	projectDB "github.com/BennyEisner/test-results/internal/project/infrastructure/database"
 	projectHTTP "github.com/BennyEisner/test-results/internal/project/infrastructure/http"
+	searchApp "github.com/BennyEisner/test-results/internal/search/application"
+	searchDB "github.com/BennyEisner/test-results/internal/search/infrastructure"
+	searchHTTP "github.com/BennyEisner/test-results/internal/search/infrastructure/http"
 	"github.com/BennyEisner/test-results/internal/shared/middleware"
 	testCaseApp "github.com/BennyEisner/test-results/internal/test_case/application"
 	testCaseDB "github.com/BennyEisner/test-results/internal/test_case/infrastructure/database"
@@ -117,6 +120,7 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	testSuiteRepo := testSuiteDB.NewSQLTestSuiteRepository(db)
 	testCaseRepo := testCaseDB.NewSQLTestCaseRepository(db)
 	userConfigRepo := userConfigDB.NewSQLUserConfigRepository(db)
+	searchRepo := searchDB.NewSQLSearchRepository(db)
 
 	// Wire up services
 	authService := authApp.NewAuthService(authRepo)
@@ -129,6 +133,7 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	testCaseService := testCaseApp.NewTestCaseService(testCaseRepo)
 	userConfigService := userConfigApp.NewUserConfigService(userConfigRepo)
 	dashboardService := dashboardApp.NewDashboardService(buildRepo, buildExecRepo)
+	searchService := searchApp.NewSearchService(searchRepo)
 
 	// Wire up HTTP handlers
 	authHandler := authHTTP.NewAuthHandler(authService, frontendURL)
@@ -141,6 +146,7 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	testCaseHandler := testCaseHTTP.NewTestCaseHandler(testCaseService)
 	userConfigHandler := userConfigHTTP.NewUserConfigHandler(userConfigService)
 	dashboardHandler := dashboardHTTP.NewDashboardHandler(dashboardService)
+	searchHandler := searchHTTP.NewSearchHandler(searchService)
 
 	// Wire up middleware
 	authMiddleware := authMiddleware.NewAuthMiddleware(authService)
@@ -148,7 +154,7 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	// --- API subrouter ---
 	apiMux := http.NewServeMux()
 	registerRoutes(apiMux, projectHandler, buildHandler,
-		buildExecHandler, failureHandler, userHandler, testSuiteHandler, testCaseHandler, userConfigHandler, authMiddleware, dashboardHandler)
+		buildExecHandler, failureHandler, userHandler, testSuiteHandler, testCaseHandler, userConfigHandler, authMiddleware, dashboardHandler, searchHandler)
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
 
 	// --- Auth routes (not under /api prefix) ---
@@ -172,7 +178,11 @@ func registerRoutes(mux *http.ServeMux,
 	userConfigHandler *userConfigHTTP.UserConfigHandler,
 	authMiddleware *authMiddleware.AuthMiddleware,
 	dashboardHandler *dashboardHTTP.DashboardHandler,
+	searchHandler *searchHTTP.SearchHandler,
 ) {
+	// Search routes
+	mux.Handle("GET /search", authMiddleware.RequireAuth(http.HandlerFunc(searchHandler.Search)))
+
 	// Dashboard routes
 	mux.Handle(
 		"GET /dashboard/projects/{projectID}/status",
