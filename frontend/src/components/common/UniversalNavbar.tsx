@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Nav, Navbar, Container, NavDropdown } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { fetchProjects } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import type { Project } from '../../types';
-import './AppNavbar.css';
+import './UniversalNavbar.scss';
+import SearchBar from './SearchBar';
 
-interface AppNavbarProps {
-    onProjectClick?: (projectId: number) => void;
+interface UniversalNavbarProps {
+    onProjectSelect?: (projectId: number) => void;
 }
 
-const AppNavbar = ({ onProjectClick }: AppNavbarProps) => {
+const UniversalNavbar = ({ onProjectSelect }: UniversalNavbarProps) => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { user, isAuthenticated, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     useEffect(() => {
         const loadProjects = async () => {
@@ -26,12 +28,66 @@ const AppNavbar = ({ onProjectClick }: AppNavbarProps) => {
                 console.error("Navbar project fetch error: ", err);
             }
         };
-        loadProjects();
-    }, []);
+        if (isAuthenticated) {
+            loadProjects();
+        }
+    }, [isAuthenticated]);
 
     const handleLogout = async () => {
         await logout();
         navigate('/');
+    };
+
+    const renderTitle = () => {
+        if (location.pathname === '/') {
+            return "Test Results";
+        }
+        if (location.pathname.startsWith('/dashboard')) {
+            return "Dashboard";
+        }
+        if (location.pathname.startsWith('/projects')) {
+            return "Projects";
+        }
+        return "Test Results";
+    };
+
+    const renderNavLinks = () => {
+        if (location.pathname === '/') {
+            return (
+                <>
+                    <Nav.Link as={Link} to="/dashboard">
+                        Dashboard
+                    </Nav.Link>
+                    <Nav.Link as={Link} to="/projects">
+                        Projects
+                    </Nav.Link>
+                </>
+            );
+        }
+        if (location.pathname.startsWith('/dashboard')) {
+            return (
+                <>
+                    <Nav.Link as={Link} to="/">
+                        Home
+                    </Nav.Link>
+                    <NavDropdown title="Projects" id="projects-dropdown">
+                        {projects.map((project) => (
+                            <NavDropdown.Item
+                                key={project.id}
+                                onClick={() => onProjectSelect && onProjectSelect(project.id)}
+                            >
+                                {project.name}
+                            </NavDropdown.Item>
+                        ))}
+                    </NavDropdown>
+                </>
+            );
+        }
+        return (
+            <Nav.Link as={Link} to="/">
+                Home
+            </Nav.Link>
+        );
     };
 
     if (error) {
@@ -46,52 +102,17 @@ const AppNavbar = ({ onProjectClick }: AppNavbarProps) => {
         <Navbar expand="lg" className="app-navbar">
             <Container>
                 <Navbar.Brand as={Link} to="/">
-                    Test Results
+                    {renderTitle()}
                 </Navbar.Brand>
                 
                 <Navbar.Toggle aria-controls="basic-navbar-nav" />
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="me-auto">
-                        {isAuthenticated && (
-                            <>
-                                <Nav.Link as={Link} to="/dashboard">
-                                    Dashboard
-                                </Nav.Link>
-                                <Nav.Link as={Link} to="/projects">
-                                    Projects
-                                </Nav.Link>
-                            </>
-                        )}
+                        {isAuthenticated && renderNavLinks()}
                     </Nav>
                     
-                    <Nav className="projects-nav-container">
-                        {isAuthenticated && projects.map((project) => {
-                            if (onProjectClick) {
-                                return (
-                                    <Nav.Link
-                                        key={project.id}
-                                        onClick={() => onProjectClick(project.id)}
-                                        className="project-nav-link"
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        {project.name}
-                                    </Nav.Link>
-                                );
-                            }
-                            return (
-                                <Nav.Link
-                                    key={project.id}
-                                    as={Link}
-                                    to={`/projects/${project.id}`}
-                                    className="project-nav-link"
-                                >
-                                    {project.name}
-                                </Nav.Link>
-                            );
-                        })}
-                    </Nav>
-
-                    <Nav className="ms-auto">
+                    <Nav className="ms-auto d-flex align-items-center">
+                        <SearchBar />
                         {isAuthenticated ? (
                             <NavDropdown 
                                 title={
@@ -107,6 +128,7 @@ const AppNavbar = ({ onProjectClick }: AppNavbarProps) => {
                                     </span>
                                 } 
                                 id="user-dropdown"
+                                align="end"
                             >
                                 <NavDropdown.Item as={Link} to="/profile">
                                     Profile & API Keys
@@ -128,4 +150,4 @@ const AppNavbar = ({ onProjectClick }: AppNavbarProps) => {
     );
 };
 
-export default AppNavbar;
+export default UniversalNavbar;

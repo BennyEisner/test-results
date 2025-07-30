@@ -1,5 +1,5 @@
 import React from 'react';
-import BreadcrumbNavbar from './BreadcrumbNavbar';
+import UniversalNavbar from './UniversalNavbar';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -9,7 +9,7 @@ interface PageLayoutProps {
 const PageLayout = ({ children, onProjectSelect }: PageLayoutProps) => {
   return (
     <div>
-      <BreadcrumbNavbar onProjectSelect={onProjectSelect} />
+      <UniversalNavbar onProjectSelect={onProjectSelect} />
       <main className="page-container">
         {children}
       </main>
