@@ -19,15 +19,15 @@ func NewSQLSearchRepository(db *sql.DB) ports.SearchRepository {
 
 func (r *SQLSearchRepository) Search(ctx context.Context, query string) ([]*models.SearchResult, error) {
 	searchQuery := `
-		SELECT 'project' as type, p.id, p.name, '/projects/' || p.id as url
+		SELECT 'project' as type, p.id, p.name, '/projects/' || p.id as url, NULL::integer as project_id, NULL::integer as suite_id
 		FROM projects p
 		WHERE p.name ILIKE $1
 		UNION ALL
-		SELECT 'test_suite' as type, ts.id, ts.name, '/projects/' || ts.project_id || '/suites/' || ts.id as url
+		SELECT 'test_suite' as type, ts.id, ts.name, '/projects/' || ts.project_id || '/suites/' || ts.id as url, ts.project_id, NULL::integer as suite_id
 		FROM test_suites ts
 		WHERE ts.name ILIKE $1
 		UNION ALL
-		SELECT 'build' as type, b.id, b.build_number as name, '/projects/' || ts.project_id || '/suites/' || b.test_suite_id || '/builds/' || b.id as url
+		SELECT 'build' as type, b.id, b.build_number as name, '/projects/' || ts.project_id || '/suites/' || b.test_suite_id || '/builds/' || b.id as url, ts.project_id, b.test_suite_id
 		FROM builds b
 		JOIN test_suites ts ON b.test_suite_id = ts.id
 		WHERE b.build_number ILIKE $1
@@ -42,7 +42,7 @@ func (r *SQLSearchRepository) Search(ctx context.Context, query string) ([]*mode
 	var results []*models.SearchResult
 	for rows.Next() {
 		var result models.SearchResult
-		if err := rows.Scan(&result.Type, &result.ID, &result.Name, &result.URL); err != nil {
+		if err := rows.Scan(&result.Type, &result.ID, &result.Name, &result.URL, &result.ProjectID, &result.SuiteID); err != nil {
 			return nil, err
 		}
 		results = append(results, &result)

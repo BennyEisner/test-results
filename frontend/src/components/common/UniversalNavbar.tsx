@@ -41,7 +41,7 @@ const UniversalNavbar = ({ onProjectSelect }: UniversalNavbarProps) => {
     };
 
     const handleResultSelect = (result: SearchResult) => {
-        const { type, id, project_id } = result;
+        const { type, id, project_id, suite_id } = result;
         switch (type) {
             case 'project':
                 navigate(`/projects/${id}`);
@@ -50,7 +50,7 @@ const UniversalNavbar = ({ onProjectSelect }: UniversalNavbarProps) => {
                 navigate(`/projects/${project_id}/suites/${id}`);
                 break;
             case 'build':
-                navigate(`/builds/${id}`);
+                navigate(`/projects/${project_id}/suites/${suite_id}/builds/${id}`);
                 break;
             case 'test_case':
                 navigate(`/test-cases/${id}`);

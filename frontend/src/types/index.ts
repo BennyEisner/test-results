@@ -44,11 +44,12 @@ export interface Failure {
 }
 
 export interface SearchResult {
-  type: string;
-  id: number;
-  name: string;
-  url: string;
-  project_id?: number;
+    type: 'project' | 'test_suite' | 'build' | 'test_case';
+    id: number;
+    name: string;
+    url: string;
+    project_id?: number;
+    suite_id?: number;
 }
 
 export interface BuildDurationTrend {
