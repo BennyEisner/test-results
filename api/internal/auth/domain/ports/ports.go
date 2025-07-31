@@ -49,6 +49,6 @@ type AuthRepository interface {
 	CreateAPIKey(ctx context.Context, apiKey *models.APIKey) error
 	GetAPIKeyByHash(ctx context.Context, keyHash string) (*models.APIKey, error)
 	UpdateAPIKeyLastUsed(ctx context.Context, keyID int64) error
-	DeleteAPIKey(ctx context.Context, keyID int64) error
+	DeleteAPIKey(ctx context.Context, userID int64, keyID int64) error
 	ListAPIKeysByUser(ctx context.Context, userID int64) ([]*models.APIKey, error)
 }

@@ -23,14 +23,14 @@ type User struct {
 
 // APIKey represents an API key for CLI/Jenkins authentication
 type APIKey struct {
-	ID         int64     `json:"id"`
-	UserID     int64     `json:"user_id"`
-	Name       string    `json:"name"` // Human-readable name for the key
-	KeyHash    string    `json:"-"`    // Hashed API key
-	LastUsedAt time.Time `json:"last_used_at"`
-	ExpiresAt  time.Time `json:"expires_at"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID         int64      `json:"id"`
+	UserID     int64      `json:"user_id"`
+	Name       string     `json:"name"` // Human-readable name for the key
+	KeyHash    string     `json:"-"`    // Hashed API key
+	LastUsedAt *time.Time `json:"last_used_at"`
+	ExpiresAt  time.Time  `json:"expires_at"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 // AuthSession represents an active authentication session

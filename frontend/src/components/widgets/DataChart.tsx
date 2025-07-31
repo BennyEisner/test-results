@@ -20,6 +20,7 @@ interface DataChartProps {
     staticBuildId?: string | number;
     limit?: number;
     refreshOn?: RefreshTrigger[];
+    className?: string;
 }
 
 const getChartColors = () => {
@@ -81,6 +82,7 @@ const DataChart = ({
     staticBuildId,
     limit,
     refreshOn = ['project', 'suite', 'build'],
+    className,
 }: DataChartProps) => {
     console.log(`DataChart (${dataSource}): Props`, { projectId, suiteId, buildId, chartType, dataSource, isStatic, staticProjectId, staticSuiteId, staticBuildId, limit, refreshOn });
     const chartRef = useRef<HTMLCanvasElement>(null);
@@ -153,7 +155,11 @@ const DataChart = ({
     }
 
     console.log(`DataChart (${dataSource}): Rendering canvas`);
-    return <canvas ref={chartRef} />;
+    return (
+        <div className={className} style={{ position: 'relative', width: '100%', height: '100%' }}>
+            <canvas ref={chartRef} />
+        </div>
+    );
 };
 
 const getChartOptions = (data: DataChartDTO | null, chartType: 'line' | 'bar' | 'pie' | 'doughnut'): ChartOptions => {
@@ -162,7 +168,8 @@ const getChartOptions = (data: DataChartDTO | null, chartType: 'line' | 'bar' | 
     const gridColor = style.getPropertyValue('--border-color').trim();
 
     const baseOptions: ChartOptions = {
-        maintainAspectRatio: false,
+        responsive: true,
+        maintainAspectRatio: true,
         plugins: {
             legend: {
                 position: 'top' as const,

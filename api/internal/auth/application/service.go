@@ -172,7 +172,7 @@ func (s *AuthService) ValidateAPIKey(ctx context.Context, apiKey string) (*model
 
 // DeleteAPIKey deletes an API key
 func (s *AuthService) DeleteAPIKey(ctx context.Context, userID int64, keyID int64) error {
-	return s.authRepo.DeleteAPIKey(ctx, keyID)
+	return s.authRepo.DeleteAPIKey(ctx, userID, keyID)
 }
 
 // ListAPIKeys lists all API keys for a user

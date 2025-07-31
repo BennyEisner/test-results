@@ -237,8 +237,9 @@ func (r *SQLAuthRepository) GetAPIKeyByHash(ctx context.Context, keyHash string)
 		FROM auth_api_keys WHERE key_hash = $1`
 
 	apiKey := &models.APIKey{}
+	var lastUsedAt sql.NullTime
 	err := r.db.QueryRowContext(ctx, query, keyHash).Scan(
-		&apiKey.ID, &apiKey.UserID, &apiKey.Name, &apiKey.KeyHash, &apiKey.LastUsedAt,
+		&apiKey.ID, &apiKey.UserID, &apiKey.Name, &apiKey.KeyHash, &lastUsedAt,
 		&apiKey.ExpiresAt, &apiKey.CreatedAt, &apiKey.UpdatedAt,
 	)
 
@@ -247,6 +248,10 @@ func (r *SQLAuthRepository) GetAPIKeyByHash(ctx context.Context, keyHash string)
 			return nil, fmt.Errorf("API key not found")
 		}
 		return nil, fmt.Errorf("failed to get API key: %w", err)
+	}
+
+	if lastUsedAt.Valid {
+		apiKey.LastUsedAt = &lastUsedAt.Time
 	}
 
 	return apiKey, nil
@@ -263,10 +268,10 @@ func (r *SQLAuthRepository) UpdateAPIKeyLastUsed(ctx context.Context, keyID int6
 	return nil
 }
 
-func (r *SQLAuthRepository) DeleteAPIKey(ctx context.Context, keyID int64) error {
-	query := `DELETE FROM auth_api_keys WHERE id = $1`
+func (r *SQLAuthRepository) DeleteAPIKey(ctx context.Context, userID, keyID int64) error {
+	query := `DELETE FROM auth_api_keys WHERE id = $1 AND user_id = $2`
 
-	result, err := r.db.ExecContext(ctx, query, keyID)
+	result, err := r.db.ExecContext(ctx, query, keyID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to delete API key: %w", err)
 	}
@@ -297,12 +302,16 @@ func (r *SQLAuthRepository) ListAPIKeysByUser(ctx context.Context, userID int64)
 	apiKeys := make([]*models.APIKey, 0)
 	for rows.Next() {
 		apiKey := &models.APIKey{}
+		var lastUsedAt sql.NullTime
 		err := rows.Scan(
-			&apiKey.ID, &apiKey.UserID, &apiKey.Name, &apiKey.KeyHash, &apiKey.LastUsedAt,
+			&apiKey.ID, &apiKey.UserID, &apiKey.Name, &apiKey.KeyHash, &lastUsedAt,
 			&apiKey.ExpiresAt, &apiKey.CreatedAt, &apiKey.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan API key: %w", err)
+		}
+		if lastUsedAt.Valid {
+			apiKey.LastUsedAt = &lastUsedAt.Time
 		}
 		apiKeys = append(apiKeys, apiKey)
 	}
