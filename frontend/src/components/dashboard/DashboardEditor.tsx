@@ -41,7 +41,7 @@ const DashboardEditor = ({ onAddComponent }: DashboardEditorProps) => {
 
   return (
     <div className="dashboard-editor">
-      <button className="add-widget-button" onClick={() => setShowAddModal(true)}>
+      <button className="btn btn-primary add-widget-button" onClick={() => setShowAddModal(true)}>
         Add Widget
       </button>
       
