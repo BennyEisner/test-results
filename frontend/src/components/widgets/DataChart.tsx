@@ -44,12 +44,19 @@ const transformData = (data: DataChartDTO | null, chartType: 'line' | 'bar' | 'p
         labels: data.labels || [],
         datasets: (data.datasets || []).map(dataset => {
             const isPieOrDoughnut = chartType === 'pie' || chartType === 'doughnut';
-            const backgroundColors = isPieOrDoughnut
-                ? (data.labels || []).map((_, i) => chartColors[i % chartColors.length])
-                : dataset.backgroundColor || 'rgba(139, 233, 253, 0.6)';
-            const borderColors = isPieOrDoughnut
-                ? (data.labels || []).map((_, i) => chartColors[i % chartColors.length])
-                : dataset.borderColor || 'rgba(139, 233, 253, 1)';
+            
+            // Use dynamic colors from API if available, otherwise fall back to default
+            const backgroundColors = Array.isArray(dataset.backgroundColor) && dataset.backgroundColor.length > 0
+                ? dataset.backgroundColor
+                : isPieOrDoughnut
+                    ? (data.labels || []).map((_, i) => chartColors[i % chartColors.length])
+                    : 'rgba(139, 233, 253, 0.6)';
+
+            const borderColors = Array.isArray(dataset.borderColor) && dataset.borderColor.length > 0
+                ? dataset.borderColor
+                : isPieOrDoughnut
+                    ? (data.labels || []).map((_, i) => chartColors[i % chartColors.length])
+                    : 'rgba(139, 233, 253, 1)';
 
             return {
                 ...dataset,

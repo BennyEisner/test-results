@@ -1,86 +1,34 @@
-# Dynamic Chart Data
+# Dynamic Chart Data Grouping
 
-This document outlines the current implementation of the chart data fetching mechanism and proposes a plan for making it dynamic, allowing users to select the data they want to see in the charts.
+This document outlines the dynamic data grouping logic for dashboard charts, specifically for "Build Duration" and "Test Case Pass Rate." The grouping behavior changes based on the context provided (project, suite, or build), ensuring that the visualizations are always meaningful and relevant.
 
-## Current Implementation
+## Context-Aware Grouping
 
-### Frontend
+The core principle is to adapt the data aggregation to the user's current view. Here’s how it works for each chart type:
 
-The `DataChart` component is responsible for fetching and rendering chart data. It takes a `chartType` prop, which it uses to request data from the backend.
+### 1. Build Duration Chart
 
-```typescript
-// frontend/src/components/widgets/DataChart.tsx
+-   **Chart Type:** `build-duration`
+-   **Data Type:** Pie/Doughnut
 
-const DataChart = ({ projectId, chartType }: DataChartProps) => {
-    // ...
-    useEffect(() => {
-        if (projectId) {
-            const fetchChartData = async () => {
-                try {
-                    setLoading(true);
-                    const response = await dashboardApi.getChartData(Number(projectId), chartType);
-                    setChartData(response.chart_data);
-                } catch (err) {
-                    setError(err as Error);
-                } finally {
-                    setLoading(false);
-                }
-            };
-            fetchChartData();
-        }
-    }, [projectId, chartType]);
-    // ...
-};
-```
+| Context | Grouping | Description |
+| :--- | :--- | :--- |
+| **Project Only** | By Test Suite | Shows the **average** build duration for each test suite within the project. |
+| **Project and Suite** | By Build | Shows the duration for each individual build within the selected suite. |
 
-The `dashboardApi.getChartData` function makes a GET request to the `/dashboard/projects/{projectId}/chart/{chartType}` endpoint.
+### 2. Test Case Pass Rate Chart
 
-### Backend
+-   **Chart Type:** `test-case-pass-rate`
+-   **Data Type:** Pie/Doughnut
 
-The `GetChartData` handler in `api/internal/dashboard/infrastructure/http/http_handler.go` receives the request and calls the `GetChartData` service.
+| Context | Grouping | Description |
+| :--- | :--- | :--- |
+| **Project Only** | By Test Suite | Shows the **overall** pass rate for each test suite within the project. |
+| **Project and Suite** | By Build | Shows the pass rate for each individual build within the selected suite. |
+| **Build** | By Test Case | Shows the pass/fail status for each test case within the selected build. |
 
-The `GetChartData` service in `api/internal/dashboard/application/service.go` currently returns hardcoded data for the `bar` and `line` chart types.
+## Implementation Details
 
-```go
-// api/internal/dashboard/application/service.go
+The logic is implemented in the `GetChartData` function in `api/internal/build_test_case_execution/infrastructure/database/repository.go`. This function uses a helper, `getChartQuery`, to select the appropriate SQL query based on the provided `suiteID` and `buildID`.
 
-func (s *DashboardServiceImpl) GetChartData(ctx context.Context, projectID int64, chartType string) (*models.DataChartDTO, error) {
-	// Hardcoded data for testing
-	if chartType == "build-duration" || chartType == "bar" {
-		// ... returns hardcoded data
-	}
-
-	if chartType == "pass-fail-trend" || chartType == "line" {
-		// ... returns hardcoded data
-	}
-
-	return s.buildExecRepo.GetChartData(ctx, projectID, chartType)
-}
-```
-
-## Proposed Changes for Dynamic Data
-
-To allow users to select the data they want to see, we need to make the following changes:
-
-### Frontend
-
-1.  **Update `ComponentConfigModal`:**
-    *   Add a new field to the modal that allows users to select the type of data they want to see in the chart (e.g., "Build Duration", "Pass/Fail Trend", "Execution Time").
-    *   This field should be a dropdown that is populated with the available chart types from the backend.
-    *   When the user selects a chart type, the `chartType` prop of the `DataChart` component should be updated.
-
-2.  **Update `DataChart` component:**
-    *   The `DataChart` component will receive the selected `chartType` as a prop and use it to fetch the corresponding data from the backend.
-
-### Backend
-
-1.  **Update `GetChartData` service:**
-    *   Remove the hardcoded data.
-    *   The `chartType` parameter will now be used to determine which data to fetch from the repository.
-    *   The service will call the appropriate repository method based on the `chartType`.
-
-2.  **Update `build_test_case_execution` repository:**
-    *   The `GetChartData` function will be modified to accept a `chartType` parameter.
-    *   It will use this parameter to construct the correct SQL query to fetch the requested data.
-
-By implementing these changes, we will create a flexible and user-friendly charting system that allows users to visualize the data that is most important to them.
+By centralizing this logic in the backend, the frontend `DataChart` component remains simple and does not need to be aware of the grouping rules. It simply requests the data for a given context, and the backend returns the correctly aggregated data.
