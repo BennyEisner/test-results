@@ -6,6 +6,7 @@ import SuiteDetail from './components/suite/SuiteDetail';
 import BuildsTable from './components/build/BuildsTable';
 import BuildDetail from './components/build/BuildDetail.tsx';
 import DashboardPage from './components/page/DashboardPage';
+import HomePage from './components/page/HomePage';
 import PageLayout from './components/common/PageLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DashboardProvider } from './context/DashboardContext';

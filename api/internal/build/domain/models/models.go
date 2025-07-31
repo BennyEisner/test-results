@@ -5,7 +5,7 @@ import "time"
 type Build struct {
 	ID          int64     `json:"id"`
 	ProjectID   int64     `json:"project_id"`
-	SuiteID     int64     `json:"suite_id"`
+	SuiteID     int64     `json:"test_suite_id"`
 	BuildNumber string    `json:"build_number"`
 	Status      string    `json:"status"`
 	Duration    float64   `json:"duration"`
