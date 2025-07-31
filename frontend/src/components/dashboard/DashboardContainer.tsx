@@ -68,12 +68,13 @@ const DashboardContainer = ({
                         {isEditing && (
                             <div className="component-header">
                                 <span className="component-title">{component.props.title || component.type}</span>
-                                <button
-                                    className="remove-btn"
-                                    onClick={() => onRemoveComponent && onRemoveComponent(component.id)}
-                                >
-                                    x
-                                </button>
+                                <div className="remove-btn-wrapper" onClick={() => onRemoveComponent && onRemoveComponent(component.id)}>
+                                    <button
+                                        className="remove-btn"
+                                    >
+                                        x
+                                    </button>
+                                </div>
                             </div>
                         )}
                         <div className="component-content">

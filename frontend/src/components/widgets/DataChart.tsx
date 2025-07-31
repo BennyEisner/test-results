@@ -45,7 +45,7 @@ const transformData = (data: DataChartDTO | null, chartType: 'line' | 'bar' | 'p
         labels: data.labels || [],
         datasets: (data.datasets || []).map(dataset => {
             const isPieOrDoughnut = chartType === 'pie' || chartType === 'doughnut';
-            
+
             // Use dynamic colors from API if available, otherwise fall back to default
             const backgroundColors = Array.isArray(dataset.backgroundColor) && dataset.backgroundColor.length > 0
                 ? dataset.backgroundColor
@@ -169,7 +169,7 @@ const getChartOptions = (data: DataChartDTO | null, chartType: 'line' | 'bar' | 
 
     const baseOptions: ChartOptions = {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: {
                 position: 'top' as const,

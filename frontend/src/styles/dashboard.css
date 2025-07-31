@@ -110,18 +110,35 @@
     color: var(--text-primary);
 }
 
+.remove-btn-wrapper {
+    position: relative;
+    z-index: 10;
+    padding: var(--spacing-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .remove-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
     border: none;
     background: none;
-    cursor: pointer;
     color: var(--text-secondary);
     font-size: 18px;
     line-height: 1;
-    padding: 0 var(--spacing-xs);
+    border-radius: var(--border-radius-sm);
+    transition: background-color 0.2s ease, color 0.2s ease;
+    pointer-events: none;
 }
 
-.remove-btn:hover {
+.remove-btn-wrapper:hover .remove-btn {
     color: var(--color-danger);
+    background-color: rgba(239, 68, 68, 0.1);
 }
 
 /* Widget Content */
