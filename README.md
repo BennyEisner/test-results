@@ -1,253 +1,68 @@
-# Test Results
+# Test Results Reporting and Analysis Platform
 
-## Overview
+## 1. Overview
 
-This project is a full-stack application designed to:
+This project is a comprehensive, full-stack application designed to provide a centralized system for ingesting, storing, and analyzing test results from various CI/CD pipelines. It empowers development and QA teams with a powerful dashboard to track test performance, identify trends, and improve software quality.
 
-* Accept test results in **JUnit** and **ReadyAPI** formats from various CI systems (GitHub Actions, Travis, Jenkins) via a **Go-based CLI**
-* Post the test results to a **Go-based REST API**
-* Store and manage test results in a **PostgreSQL** database
-* Display test results over time using a **React frontend dashboard**
+### Key Features
 
-The project provides experience in:
-
-* Backend development with Go
-* Frontend development with React
-* Working with RESTful APIs
-* Using relational databases
-* Unit, integration, and end-to-end testing
+*   **Multi-format Test Result Ingestion**: A robust Go-based CLI accepts test results in standard formats like **JUnit** and **ReadyAPI**, making it easy to integrate with CI systems like GitHub Actions, Travis CI, and Jenkins.
+*   **RESTful API**: A high-performance Go backend exposes a RESTful API for data ingestion, querying, and management. It is built using a clean, maintainable Hexagonal Architecture.
+*   **Relational Data Store**: Test results, builds, suites, and projects are stored in a **PostgreSQL** database, providing a reliable and scalable data foundation.
+*   **Interactive Dashboard**: A dynamic **React** frontend provides an interactive dashboard for visualizing test data, exploring build histories, and analyzing test suite performance over time.
+*   **Authentication**: Secure access to the platform is managed through an authentication system supporting both **OAuth2** (e.g., GitHub) for web users and **API keys** for CLI and automated clients.
 
 ---
 
-## System Architecture Diagram
+## 2. Architecture
 
-```
-+------------------------+        +----------------+        +---------------------+
-|   CLI / Build Agent    +------->+     REST API    +------->+  PostgreSQL DB       |
-| (junit/readyapi input) |        | (Go-based)      |        | (test results store) |
-+------------------------+        +--------+-------+        +-----------+---------+
-                                            |
-                                            v
-                                    +---------------+
-                                    | React Frontend|
-                                    +---------------+
-```
+The system is designed as a set of containerized services that work together to provide a seamless experience, from data submission to visualization.
 
----
+### Backend Architecture (API)
 
-## Getting Started Guide
+The Go backend follows the **Hexagonal Architecture**, ensuring a clean separation of concerns and making the system easier to test and maintain.
 
-### Install Required Tools
+*   **Domain Core**: Contains the core business logic and models, with no dependencies on external technologies.
+*   **Application Layer**: Orchestrates the business logic by using the domain core.
+*   **Infrastructure Layer**: Contains all external-facing components, such as:
+    *   **HTTP Handlers**: Expose the API endpoints.
+    *   **Database Repositories**: Implement data persistence using PostgreSQL.
+    *   **Authentication Middleware**: Secures the API.
+*   **Backend for Frontend (BFF)**: The API is designed as a BFF, providing data tailored specifically for the needs of the React frontend.
 
-* Go
-* Node.js & npm
-* Docker
+### Frontend Architecture
 
-### Clone the Repository
+The frontend single-page application built with **React** and **TypeScript**.
 
-```bash
-git clone https://github.com/your-org/fullstack-test-tracker.git
-cd fullstack-test-tracker
-```
+*   **Routing**: **React Router** is used for all client-side navigation.
+*   **State Management**: Application-wide state, such as authentication status and dashboard configurations, is managed using React's **Context API** (`AuthContext`, `DashboardContext`).
+*   **UI Components**: The UI is built with a combination of custom components and libraries, including:
+    *   **Tanstack Table** for data-rich tables.
+    *   **Chart.js** for data visualization.
+    *   **React-Grid-Layout** for customizable dashboard widgets.
+*   **Styling**: A combination of CSS Modules, SCSS, and global stylesheets are used for styling.
 
-### Start the Project
+### Data Model
 
-```bash
-docker-compose up -d
-cd api && go run main.go
-cd ../frontend && npm install && npm start
-```
+The PostgreSQL database schema is designed to store test data hierarchically:
 
-### Authentication Setup (Optional)
+*   `projects` -> `test_suites` -> `builds` -> `test_cases` -> `build_test_case_executions`
+*   Authentication tables (`auth_users`, `auth_api_keys`, `auth_sessions`) manage user and client access.
 
-If you want to use the authentication system:
+### Containerization
 
-```bash
-# Run the authentication setup script
-./scripts/setup-auth-dev.sh
-
-# Follow the prompts to set up GitHub OAuth2
-# See docs/auth-development.md for detailed instructions
-```
-
-### Seed Database
-
-Insert test data manually or using a seed script.
-
-### Run CLI
-
-Point the CLI to sample JUnit/ReadyAPI result files and post them to the API.
+The entire application is containerized using **Docker** and orchestrated with **Docker Compose**. This provides a consistent, isolated development environment and simplifies deployment. The `docker-compose.yml` file defines three main services: `db`, `api`, and `frontend`.
 
 ---
 
-## Contribution Guide
+## 3. Technology Stack
 
-* Use feature branches (see [Feature Branch Workflow](docs/feature-branch.md))
-* Format code with `gofmt`, Prettier, etc.
-* Write tests for new code
-* Use pre-commit hooks if available
+| Category      | Technologies                                                              |
+|---------------|---------------------------------------------------------------------------|
+| **Backend**   | Go, Gorilla/Mux, Goth, Cobra, `sqlx`                                        |
+| **Frontend**  | React, TypeScript, Vite, React Router, Tanstack Table, Chart.js, SCSS       |
+| **Database**  | PostgreSQL                                                                |
+| **CLI**       | Go, Cobra                                                                 |
+| **DevOps**    | Docker, Docker Compose, Nginx                                             |
 
-For more detailed contribution guidelines, see [Contributing Guide](docs/contributing.md).
 
----
-
-## Project Layout (Monorepo)
-
-```text
-fullstack-test-tracker/
-├── api/               # Go REST API
-│   ├── main.go
-│   ├── handlers/
-│   ├── models/
-│   └── tests/
-├── cli/               # Go CLI
-│   ├── main.go
-│   ├── parsers/
-│   └── uploader/
-├── frontend/          # React app
-│   ├── public/
-│   ├── src/
-│   └── tests/
-├── db/                # SQL migrations
-│   └── schema.sql
-├── docker-compose.yml
-├── Makefile
-├── README.md
-└── docs/
-```
-
----
-
-## Milestone Plan
-
-### Week 1: Setup & Orientation
-
-* Install dependencies
-* Run services locally
-* Understand architecture and DB schema
-
-### Week 2: Backend API
-
-* Create endpoints for tests, suites, runs
-* Connect to PostgreSQL
-* Unit test handlers and models
-
-### Week 3: CLI Tool
-
-* Parse JUnit & ReadyAPI XML
-* Post data to API
-* Include metadata flags (CI type, run ID, etc.)
-
-### Week 4: Frontend App
-
-* Display list of test runs
-* Filter by CI system and test status
-* Drill-down into run details
-
-### Week 5+: Testing & CI
-
-* Add integration and E2E tests
-* Set up CI pipelines (GitHub Actions)
-* Optional: Add authentication
-
----
-
-## Story Descriptions
-* [ ] Setup local dev environment and verify Docker + Go + Node installation
-* [ ] Run Postgres with Docker and connect via psql or GUI
-* [ ] Create initial DB schema for test results and test suites
-* [ ] Build a basic Go server with a health check endpoint
-* [ ] Add API route to submit test run metadata (test name, suite, CI system, timestamp)
-* [ ] Implement unit tests for API handlers
-* [ ] Write CLI parser for JUnit XML files
-* [ ] Send parsed JUnit data to the API using HTTP POST
-* [ ] Expand CLI to support ReadyAPI XML format
-* [ ] Add metadata flags to CLI for CI source, run ID, and suite ID
-* [ ] Build frontend layout with a basic test run list view
-* [ ] Fetch and render test data from the API using React Query
-* [ ] Add filter UI for CI system and test status
-* [ ] Build detail page for a single test run
-* [ ] Implement integration tests for API + DB flow
-* [ ] Add E2E test
-* [ ] Set up GitHub Actions CI pipeline for Go tests and React build
-
----
-
-## Key Concepts to Learn
-
-* REST API design
-* Git workflows
-* Relational modeling
-* Unit, integration, and E2E testing
-* Containerized dev environments with Docker
-
----
-
-## Documentation
-
-Additional documentation is available in the `docs/` directory:
-
-* [Architectural Design Records (ADR)](docs/ADR.md) - Design decisions and architectural considerations
-* [API Documentation](docs/api.md) - Detailed API reference and usage
-* [Database Documentation](docs/db.md) - Database schema and migration information
-* [Authentication Development Guide](docs/auth-development.md) - Local development setup and usage for authentication system
-* [Contributing Guide](docs/contributing.md) - How to contribute to the project
-* [Feature Branch Workflow](docs/feature-branch.md) - Git workflow for feature development
-
-## Optional
-
-We can generate a GitHub repo scaffold if needed to jumpstart development.
-
-## Local Development URLs
-
-When running the stack locally with Docker Compose, use the following URLs to access the services:
-
-- **Frontend (UI):** [http://localhost:8088](http://localhost:8088)
-  - This serves the web UI via Nginx.
-
-- **Backend API:** [http://localhost:8080](http://localhost:8080)
-  - The API root. Endpoints are available under `/api`, e.g.:
-    - [http://localhost:8080/api/projects](http://localhost:8080/api/projects)
-    - [http://localhost:8080/api/builds](http://localhost:8080/api/builds)
-
-- **Swagger API Documentation:** [http://localhost:8080/swagger/](http://localhost:8080/swagger/)
-  - Interactive OpenAPI docs for the backend API.
-
-- **Health Checks:**
-  - [http://localhost:8080/readyz](http://localhost:8080/readyz) (readiness)
-  - [http://localhost:8080/livez](http://localhost:8080/livez) (liveness)
-  - [http://localhost:8080/healthz](http://localhost:8080/healthz) (comprehensive health)
-
-## Using the CLI to Post Results to the API
-
-The CLI can be used to submit test results to the backend API. Make sure the API is running and accessible (see URLs above).
-
-### Example: Post JUnit Results
-
-From the project root, run:
-
-```sh
-cd cli
-./cli post --file <path-to-junit-xml> --project <project-name> --suite <suite-name> --api-url http://localhost:8080/api
-```
-
-- `--file` (required): Path to the JUnit XML file to upload.
-- `--project` (required): Name of the project to associate the results with.
-- `--suite` (required): Name of the test suite.
-- `--api-url` (optional): The base URL of the API (default: `http://localhost:8080/api`).
-
-### Example: Using Dockerized CLI
-
-If you want to run the CLI in a container:
-
-```sh
-docker run --rm -v $(pwd)/results:/results cli-image-name post --file /results/junit.xml --project MyProject --suite MySuite --api-url http://host.docker.internal:8080/api
-```
-
-### Notes
-- Ensure the API is running and accessible at the specified `--api-url`.
-- The CLI may require configuration (see `cli/README.md` for more details).
-- For more CLI commands and options, run:
-  ```sh
-  ./cli --help
-  ```
