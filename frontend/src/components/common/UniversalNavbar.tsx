@@ -4,6 +4,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { fetchProjects } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import type { Project, SearchResult } from '../../types';
+
+
 import './UniversalNavbar.scss';
 import SearchBar from './SearchBar';
 
@@ -57,6 +59,7 @@ const UniversalNavbar = ({ onProjectSelect }: UniversalNavbarProps) => {
                 console.warn(`Unknown search result type: ${type}`);
         }
     };
+
 
     const renderTitle = () => {
         if (location.pathname === '/') {
@@ -133,6 +136,7 @@ const UniversalNavbar = ({ onProjectSelect }: UniversalNavbarProps) => {
                     
                     <Nav className="ms-auto d-flex align-items-center">
                         <SearchBar onResultSelect={handleResultSelect} />
+
                         {isAuthenticated ? (
                             <NavDropdown 
                                 title={

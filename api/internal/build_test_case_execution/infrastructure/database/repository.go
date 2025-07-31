@@ -204,6 +204,7 @@ func (r *SQLBuildTestCaseExecutionRepository) getChartQuery(chartType string, pr
 		groupBy = "GROUP BY tc.name"
 		orderBy = "ORDER BY value DESC"
 	case "build-duration":
+
 		if suiteID == nil {
 			baseQuery = `
                 SELECT
@@ -231,6 +232,7 @@ func (r *SQLBuildTestCaseExecutionRepository) getChartQuery(chartType string, pr
             `
 			orderBy = "ORDER BY suite_id, rn"
 		}
+
 	case "line", "pass-fail-trend":
 		baseQuery = `
             SELECT
@@ -238,6 +240,7 @@ func (r *SQLBuildTestCaseExecutionRepository) getChartQuery(chartType string, pr
                 SUM(CASE WHEN btce.status = 'passed' THEN 1 ELSE 0 END) as passed,
                 SUM(CASE WHEN btce.status = 'failed' THEN 1 ELSE 0 END) as failed,
                 SUM(CASE WHEN btce.status = 'skipped' THEN 1 ELSE 0 END) as skipped
+
             FROM build_test_case_executions btce
             JOIN builds b ON btce.build_id = b.id
             JOIN test_suites ts ON b.test_suite_id = ts.id
@@ -298,6 +301,7 @@ func (r *SQLBuildTestCaseExecutionRepository) GetChartData(ctx context.Context, 
 
 	baseQuery, groupBy, orderBy, args, paramIndex := r.getChartQuery(chartType, projectID, suiteID, buildID)
 	if baseQuery == "" {
+
 		return nil, fmt.Errorf("unknown chart type: %s", chartType)
 	}
 
@@ -310,6 +314,7 @@ func (r *SQLBuildTestCaseExecutionRepository) GetChartData(ctx context.Context, 
 		args = append(args, *suiteID)
 		paramIndex++
 	} else if buildID == nil && chartType != "test-case-pass-rate" {
+
 		if suiteID != nil {
 			conditions += fmt.Sprintf(" AND ts.id = $%d", paramIndex)
 			args = append(args, *suiteID)
@@ -339,6 +344,7 @@ func (r *SQLBuildTestCaseExecutionRepository) GetChartData(ctx context.Context, 
 	var failedData []int
 	var skippedData []int
 	var values []float64
+
 	datasets := []dashboardModels.DatasetDTO{}
 
 	for rows.Next() {
@@ -356,12 +362,15 @@ func (r *SQLBuildTestCaseExecutionRepository) GetChartData(ctx context.Context, 
 			var date string
 			var passed, failed, skipped int
 			if err := rows.Scan(&date, &passed, &failed, &skipped); err != nil {
+
+
 				return nil, fmt.Errorf("failed to scan chart data: %w", err)
 			}
 			labels = append(labels, date)
 			passedData = append(passedData, passed)
 			failedData = append(failedData, failed)
 			skippedData = append(skippedData, skipped)
+
 		}
 	}
 
@@ -383,6 +392,7 @@ func (r *SQLBuildTestCaseExecutionRepository) getChartStyling(chartType string, 
 
 	backgroundColors, borderColors := r.getDynamicColors(chartType, values, labels)
 
+
 	switch chartType {
 	case "bar":
 		xAxisLabel = "Test Cases"
@@ -396,6 +406,7 @@ func (r *SQLBuildTestCaseExecutionRepository) getChartStyling(chartType string, 
 	case "build-duration":
 		xAxisLabel = "Build ID"
 		yAxisLabel = "Duration (seconds)"
+
 		datasets = append(datasets, dashboardModels.DatasetDTO{
 			Label:           "Duration (s)",
 			Data:            passedData,
@@ -405,6 +416,7 @@ func (r *SQLBuildTestCaseExecutionRepository) getChartStyling(chartType string, 
 	case "test-case-pass-rate":
 		xAxisLabel = "Test Cases"
 		yAxisLabel = "Pass Rate (%)"
+
 		datasets = append(datasets, dashboardModels.DatasetDTO{
 			Label:           "Pass Rate (%)",
 			Data:            passedData,
@@ -548,4 +560,5 @@ func getColorForPercentage(p float64) string {
 	}
 
 	return fmt.Sprintf("#%02x%02x%02x", r, g, b)
+
 }

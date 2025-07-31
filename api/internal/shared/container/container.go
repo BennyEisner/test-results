@@ -148,13 +148,15 @@ func NewRouter(db *sql.DB, frontendURL string) http.Handler {
 	dashboardHandler := dashboardHTTP.NewDashboardHandler(dashboardService)
 	searchHandler := searchHTTP.NewSearchHandler(searchService)
 
+
 	// Wire up middleware
 	authMiddleware := authMiddleware.NewAuthMiddleware(authService)
 
 	// --- API subrouter ---
 	apiMux := http.NewServeMux()
 	registerRoutes(apiMux, projectHandler, buildHandler,
-		buildExecHandler, failureHandler, userHandler, testSuiteHandler, testCaseHandler, userConfigHandler, authMiddleware, dashboardHandler, searchHandler)
+	  buildExecHandler, failureHandler, userHandler, testSuiteHandler, testCaseHandler, userConfigHandler, authMiddleware, dashboardHandler, searchHandler)
+
 	mux.Handle("/api/", http.StripPrefix("/api", apiMux))
 
 	// --- Auth routes (not under /api prefix) ---

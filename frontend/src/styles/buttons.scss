@@ -37,6 +37,7 @@
 /* Primary Button */
 .btn.btn-primary {
     color: $white !important;
+
     background-color: $primary;
     border-color: $primary;
 }
@@ -45,6 +46,7 @@
     color: $white !important;
     background-color: darken($primary, 10%);
     border-color: darken($primary, 10%);
+
 }
 
 /* Secondary Button */

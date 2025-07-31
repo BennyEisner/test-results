@@ -49,6 +49,7 @@ const DashboardPage = () => {
                 <div className="dashboard-header">
                     <h2>{activeLayout.name}{projectId && ` - Project ${projectId}`}</h2>
                     <button className="btn btn-primary" onClick={() => setIsEditing(!isEditing)}>
+
                         {isEditing ? 'Done' : 'Edit Dashboard'}
                     </button>
                 </div>

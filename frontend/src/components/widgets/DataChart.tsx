@@ -58,6 +58,7 @@ const transformData = (data: DataChartDTO | null, chartType: 'line' | 'bar' | 'p
                     ? (data.labels || []).map((_, i) => chartColors[i % chartColors.length])
                     : 'rgba(139, 233, 253, 1)';
 
+
             return {
                 ...dataset,
                 backgroundColor: backgroundColors,
